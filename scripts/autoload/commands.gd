@@ -1149,9 +1149,10 @@ func _c_col_play(c: Dictionary) -> String:
 func _c_col_equip(c: Dictionary) -> String:
 	var CD = load("res://data/colosseum.gd")
 	var st: Dictionary = GameState.col_state()
-	var res: Dictionary = CD.equip(st["fit"], String(c.get("place", "")), int(c.get("idx", 0)), String(c.get("id", "")), CD.budget(st), int(CD.RANKS[CD.rank(st)]["q"]))
+	var fk := "fit2" if int(c.get("seat", 0)) == 1 else "fit"      # split screen: seat 1 is the second player, with a fit and the same gear points of their own
+	var res: Dictionary = CD.equip(st[fk], String(c.get("place", "")), int(c.get("idx", 0)), String(c.get("id", "")), CD.budget(st), int(CD.RANKS[CD.rank(st)]["q"]))
 	if String(res["err"]) == "":
-		st["fit"] = res["fit"]
+		st[fk] = res["fit"]
 	return String(res["err"])
 
 
@@ -1230,6 +1231,11 @@ func _c_sv_weapon(c: Dictionary) -> String:
 		return "%s is still locked: the Survivor console in the lobby." % String(SV.WEAPONS[id]["name"])
 	if not SV.can_begin(GameState.col_state(), id):
 		return "%s is a weapon for the end of a run: its card comes from level %d on." % [String(SV.WEAPONS[id]["name"]), int(SV.WEAPONS[id]["from"])]
+	if int(c.get("seat", 0)) == 1:                       # split screen: the second player's first weapon (one of the two carries a weapon, never both)
+		if id == SV.first_weapon(GameState.col_state()):
+			return "The first player begins with %s." % String(SV.WEAPONS[id]["name"])
+		SV.record(GameState.col_state())["weapon2"] = id
+		return ""
 	SV.record(GameState.col_state())["weapon"] = id
 	return ""
 
@@ -1328,6 +1334,8 @@ func _c_col_ready(_c: Dictionary) -> String:
 		return "Pick a mode first."
 	if CD.fit_cost(st["fit"]) > CD.budget(st):
 		return "Your fit costs more gear points than you have."
+	if Players.split and GameState.has_pilot2() and CD.fit_cost(st["fit2"]) > CD.budget(st):
+		return "The second player's fit costs more gear points than there are."
 	if String(st["mode"]) == "team" and bool(st.get("team_open", false)):
 		return "Your team is not full: pick who stands beside you."
 	return ""

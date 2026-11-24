@@ -3,6 +3,139 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.7 – 2026-11-24
+
+**Package 75, split screen: the second player's display in a match, in full.** Before, it was a small box in a
+corner of their half.
+- **The same display as yours, in their colour:** top left their name and keys, then health, shield, armour,
+  energy and rounds as bars, and the dodge with its charge; top centre their target (name, distance, hit chance,
+  its weapon, its three bars); top right the fight (how many, who is nearest, the key for the next target);
+  bottom left the belt on its places with their keys; along the bottom the weapons as tiles (the one in hand
+  framed) and the grenades.
+- Out of energy or rounds: a line of its own under the bars. The word in the middle (down, out, a charging
+  point, bringing you back) stays.
+- **Not in it:** a cover line (cover is not worked out for the second player), drones and modules (they do
+  nothing for them yet).
+- Noted for later (Luz): more weapons for Survivor, since a weapon is carried by one of the two only.
+- Smoke test group `split3` run again with pictures: none failed. No full run.
+
+## alpha 0.8.75.6 – 2026-11-24
+
+**Package 75, split screen: Survivor for two after Luz's rules.** This replaces what 0.8.75.5 did with boni and
+cards.
+- **A weapon to begin with, each:** Survivor's fighters' room has two tabs over the weapons, P1 and P2 (Tab, or
+  L1 / R1). The second player cannot take the first player's weapon; the other's pick is marked on its tile.
+- **The level is one for both, its cards go in turn:** this level's card to you, the next level's to the second
+  player, and so on. The name of whose card it is stands over the cards; the second player picks with their own
+  device.
+- **Five places for weapons and five for boni, each.** A bonus now belongs to who took it and works for their
+  weapons, their health, their pace and their reach for shards. A weapon fuses with its owner's bonus.
+- **A weapon crate's draw goes to one of you by lot,** all of it into their arsenal; a word across the picture
+  says whose it was. Either of you can pick a crate up.
+- **The display** has four rows at the left: the second player's weapons and boni above yours.
+- **Gone:** the second player's sidearm (they begin with a real weapon now).
+- **As before:** a weapon is carried by one of the two, never by both. Item crates (shield, magnet, medkit and
+  so on) still work on the first player. The swarm is not made larger for two. Not tried with two real
+  controllers.
+- Smoke test groups `split2` (6 checks) and `split4` (7 checks), run alone: none failed. No full run.
+
+## alpha 0.8.75.5 – 2026-11-24
+
+**Package 75, split screen, stage 1, third part (Survivor): an arsenal each.**
+- **A weapon belongs to who took its card** and fires from where they stand, the way they look. It cannot be
+  taken twice and never comes among the other's cards. Each of you has five places for weapons.
+- **Boni are the run's:** whoever takes one, it counts for both, and it fuses either one's weapon into its
+  ultimate.
+- **A card each with every level:** first yours, then the second player's, their name over the cards. They pick
+  with their own device (left, right, confirm). Only then the run goes on. A med cell heals who took it.
+- **A weapon rests while its owner is down**; the other's goes on. (Before, all weapons rested while the first
+  player was down.)
+- **The display** has a row for the second player's weapons above yours; the boni row says it is for both.
+- **What is thrown and what lies on the ground** (spit, embers, acid, clouds) reaches the second player too.
+- **Not yet:** crates and items are picked up by the first player only; shock waves, stamps and the bosses'
+  blows are still aimed at the first player while both stand; mines, guns and wells act the same whoever set
+  them. The second player's sidearm stays as it was. Two cards a level make the two of you strong fast: the
+  swarm is not made larger for two yet. Not tried with two real controllers.
+- Smoke test group `split4` (5 checks, run alone: none failed). In one headless run the engine crashed while
+  quitting, after the result was printed (a thread still at work); not seen again, not looked into.
+
+## alpha 0.8.75.4 – 2026-11-24
+
+**Package 75, split screen, stage 1, third part (matches): the second player is a fighter in full.** Survivor's
+share of this part (an arsenal and cards of their own) is next.
+- **A fit of their own in the fighters' room:** two tabs, P1 and P2 (Tab, or L1 / R1). Each has the same gear
+  points and picks suit, weapons, grenades, belt and module from the house's pieces. READY needs both fits within
+  the points. A lost run hands both back to the house.
+- **Energy and rounds** as their suit holds them: a shot and the shield cost them as they cost you, and out of
+  them the weapon is silent. **Charging points:** the use key at one fills them up and draws it dry for a while.
+- **The other weapon** into their hand with a press, **a grenade** at their target with another (as good as
+  yours, and it spares your side), **the belt** on its four places: a medkit, an energy cell.
+- **Their half shows it:** energy, rounds, the weapon in hand, grenades and belt with what is left, the word at a
+  charging point.
+- **Your orders** go to your two or to all, no longer to the second player.
+- **What a match pays** (Coins, gear points, rank points) belongs to the game, so to both: there is no purse of
+  the second player's own.
+- **Not yet:** drones and suit modules do nothing for the second player; stimulants and ammunition packs on
+  their belt neither; the entrance and the lobby are the first player's alone. Not tried with two real
+  controllers.
+- Smoke test group `split3` (5 checks, run alone: none failed). No full run.
+
+## alpha 0.8.75.3 – 2026-11-24
+
+**Package 75, split screen, stage 1, second part: Survivor for two, in one picture.**
+- **The second player stands in the run with you:** their own pilot's looks, as much health as you, walked by
+  their own device, with a dodge nothing gets through. A ring, their name and their health show above them.
+- **One picture, the camera on the first player.** The second player cannot leave what it shows: at its edge
+  they are carried along.
+- **A sidearm of their own** that fires by itself at whoever is near, stronger the longer the run lasts. Shards
+  near them fly to you: what they are worth is for both.
+- **Bringing each other back:** whoever goes down lies there until the other holds the use key beside them
+  (2.5 seconds, back with half the health). While you are down the stage and the picture turn to the second
+  player and your weapons rest. With both of you down the run is over. A last chance bought at the console still
+  comes first.
+- **Not yet:** the second player has no arsenal and no cards of their own (the first player picks, and only
+  their weapons grow); crates, items and what a run pays are the first player's; while both stand, only what
+  touches the second player hurts them (what is thrown, burns or bursts is aimed at the first player). Not tried
+  with two real controllers; the balance for two is untouched.
+- Smoke test group `split2` (6 checks, run alone: none failed). No full run.
+
+## alpha 0.8.75.2 – 2026-11-24
+
+**Package 75, split screen, stage 1, first part: a match in the Colosseum for two.** Survivor for two is the
+second part and not built yet.
+- **The second player fights beside you** in King of the Colosseum and Team Deathmatch: their own pilot's looks,
+  the house's gear as you wear it, walked by their own device. Their weapon fires by itself at their target as
+  yours does; a press takes the next target, another dodges (no shot gets through, a moment until the next).
+- **The picture in two halves:** left yours as it always was, right theirs with a camera of its own on the same
+  ground. Your bars, targets, tiles and the log keep to your half; theirs shows their name, shield, armour,
+  health and target. One picture again when the match is over.
+- **Bringing each other back:** the second player shot down lies there for 45 seconds, and you bring them back by
+  holding the use key beside them. Shot down while they stand, you are down and not out, the others leave you be,
+  and they bring you back the same way. With both of you down the match is lost (in Team Deathmatch your two
+  fight on as before).
+- **Not yet:** the second player has no belt, grenades, drones, second weapon or charging points (energy and
+  rounds do not run out for them); they get no reward of their own; the line "orders to" still names them; the
+  entrance, the lobby and the fighters' room are the first player's alone. Not tried with two real controllers.
+- Smoke test group `split1` (5 checks, run alone: none failed). No full run.
+
+## alpha 0.8.75.1 – 2026-11-24
+
+**Package 75, split screen (two players at one screen), stage 0: the foundation.** Nothing parts in the game
+itself yet: that is stage 1, the Colosseum.
+- **Start menu: "Split Screen".** The picture parts in two. Left the first player: their device and the game to
+  play. Right the second player: their device and their pilot. Greyed out while no game exists.
+- **A device for each player:** keyboard and mouse, or any controller that is connected. Two players cannot share
+  one. A controller plugged in or pulled shows at once.
+- **A second pilot in the save:** if the game has none, the second player makes one in a creator that fits the
+  right half (looks, name, call sign, attributes). A new one is level 1 with the starting gear and comes into the
+  game in the first pilot's start system. The save list shows both names.
+- **Under the hood:** every view can ask what one player pressed (`Players`), the first player's controller code
+  leaves the second player's controller alone, and a picture in two halves on one world is there as a building
+  block (`split_view.gd`).
+- **Not yet:** the second pilot has no figure and no ship in the game; in the start menu itself the keyboard, the
+  mouse and the first controller steer both halves. Not tried with two real controllers.
+- Smoke test group `split0` (5 checks, run alone: none failed). No full run.
+
 ## alpha 0.8.64.11 – 2026-11-24
 
 **After Luz's second look at package 64: the way with Rook, talks in the bar, a window for the work, music.**

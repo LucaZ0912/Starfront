@@ -529,6 +529,8 @@ func _pilot_fire(delta: float) -> void:
 		return
 	if cloak_t > 0.0:
 		return                                         # 0.7.52.25: cloaked, your weapons hold fire
+	if view.level == "zcolvr" and (view.col_lost or view.col_down):
+		return                                         # (out of the fight, or down: no shot)
 	if view.charging():
 		return                                         # 0.7.53.16 (Luz): charging at a socket – no shooting
 	if peaceful(active):
@@ -950,8 +952,8 @@ func blast_share(at: Vector2, p: Vector2, r: float) -> float:
 func _hurt_pilot(dmg: float, dtype: String) -> void:
 	if Commands.suit_god:
 		return                                          # debug: invulnerable
-	if view.level == "zcolvr" and view.col_lost:
-		return                                          # package 62a, part 4: out of the fight already
+	if view.level == "zcolvr" and (view.col_lost or view.col_down):
+		return                                          # package 62a, part 4: out of the fight already (or down, waiting for the second player)
 	var out: Dictionary = GameState.gear.take_damage(dmg, dtype)
 	_number(pilot_pos(), out)
 	Audio.play("hit_hull" if float(out["health"]) > 0.0 else ("hit_armor" if float(out["armor"]) > 0.0 else "hit_shield"), "hit on foot", -8.0)
@@ -961,7 +963,10 @@ func _hurt_pilot(dmg: float, dtype: String) -> void:
 		if view.level == "zcolvr":
 			# package 62a, part 4 (Luz): the Colosseum's hologram: nobody dies, you are out of the fight
 			GameState.gear.health = 1.0
-			view.col_lost = true
+			if p2_up():
+				view.col_down_start()                     # split screen: the second player can bring you back
+			else:
+				view.col_lost = true
 			return
 		if view.level == "sim":
 			# package 58, part 6: shot down in the simulation – nobody dies; the round starts again
@@ -1766,6 +1771,8 @@ func _detonate(gr: Dictionary) -> void:
 	match String(gr["id"]):
 		"gr_frag":
 			var mult := float(from["dmg"]) / FoeData.DAMAGE * 0.25 if from != null else 1.0
+			if from != null and from.has("p2"):
+				mult = 1.0                                 # (split screen: the second player's grenade is as good as yours)
 			_explode(at, r, float(st.get("damage", 60.0)) * mult, "explosive", from, from != null and from.has("ally"))
 		"gr_emp":
 			booms.append({"pos": at, "r": r, "t": 0.0, "col": Color(0.45, 0.8, 1.0)})
@@ -2602,7 +2609,7 @@ const CLOAK_CD := {"F": 30.0, "D": 27.0, "C": 24.0, "B": 21.0, "A": 18.0}
 
 
 func pilot_hidden() -> bool:
-	if view != null and view.level == "zcolvr" and view.col_lost:
+	if view != null and view.level == "zcolvr" and (view.col_lost or view.col_down):
 		return true                                     # package 62a, part 5: out of the fight; the others turn to your team
 	return cloak_t > 0.0
 
@@ -2905,6 +2912,213 @@ func spawn_ally(m: Dictionary, i: int) -> Dictionary:
 	return a
 
 
+# ---------------------------------------------------------------- split screen, stage 1: the second player
+
+const P2_DODGE := 0.22                             # seconds a dodge lasts
+const P2_DODGE_COOL := 1.5                         # ... and until the next one
+const P2_REACH := 26.0                             # how near they stand to bring you back
+
+## The second player's figure: one of your side with their own pilot's looks, walked by their own device. Their
+## weapon fires by itself at their target as yours does. In the Colosseum they wear the house's gear as you do.
+func spawn_p2(arena: bool) -> Dictionary:
+	var old = p2()
+	if old != null:
+		if is_instance_valid(old["w"]):
+			(old["w"] as Walker).queue_free()
+		allies.erase(old)
+	# in the Colosseum: the house's gear in a fit of their own (the fighters' room); elsewhere what they carry
+	var gr = load("res://data/colosseum.gd").gear_of(GameState.col_state()["fit2"]) if arena else GameState.gear2
+	var wids: Array = []
+	for wi in gr.weapons:
+		if String(wi) != "":
+			wids.append(String(wi))
+	if wids.is_empty():
+		wids.append(CrewData.TEAM_WEAPON)
+	var wid := String(wids[0])
+	var suit_id := String(gr.suit)
+	var p2d: Dictionary = GameState.pilot2
+	var m := {"name": String(p2d.get("name", "Wingmate")), "look": (p2d.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate(),
+		"quality": "F", "gear": {"suit": suit_id, "weapons": [wid]}}
+	var a := spawn_ally(m, allies.size())
+	var sst := GearData.stats(suit_id)
+	var sk: Dictionary = p2d.get("skills", {})
+	a["p2"] = true
+	a["name"] = String(m["name"]).get_slice(" ", 0)
+	a["weapon"] = wid
+	a["dmg"] = 1.0
+	a["firearms"] = int(sk.get("firearms", {}).get("lvl", 0))
+	a["athletics"] = int(sk.get("athletics", {}).get("lvl", 0))
+	a["st"] = {"shield": float(sst.get("shield", 0.0)), "armor": float(sst.get("armor", 0.0)), "health": float(GearData.HEALTH)}
+	a["mx"] = (a["st"] as Dictionary).duplicate()
+	a["order"] = "own"
+	a["cool"] = 0.4
+	a["dodge_t"] = 0.0
+	a["dodge_cd"] = 0.0
+	a["dodge_dir"] = Vector2.ZERO
+	a["cloak_id"] = ""
+	# what they carry: the weapons in their hands, grenades, the belt, energy and rounds as the suit holds them
+	var tot: Dictionary = gr.totals()
+	a["gear"] = gr
+	a["weapons"] = wids
+	a["wi"] = 0
+	a["grenades"] = (gr.grenades as Array).duplicate(true)
+	a["belt"] = (gr.belt as Array).duplicate(true)
+	a["energy_max"] = float(tot.get("energy", 50.0))
+	a["energy"] = float(a["energy_max"])
+	a["ammo_max"] = int(tot.get("ammo", 0))
+	a["ammo"] = int(a["ammo_max"])
+	a["stations"] = map.get_meta("col_stations", []) if arena else []
+	a["station_cool"] = load("res://data/colosseum.gd").STATION_COOL
+	if arena:
+		a["arena"] = true
+	return a
+
+
+## Split screen: the other weapon into their hand. Returns its name ("" they carry one only).
+func p2_swap(a: Dictionary) -> String:
+	var ws: Array = a.get("weapons", [])
+	if ws.size() < 2:
+		return ""
+	a["wi"] = (int(a["wi"]) + 1) % ws.size()
+	a["weapon"] = String(ws[int(a["wi"])])
+	a["cool"] = maxf(float(a["cool"]), 0.5)
+	var w: Walker = a["w"]
+	w.slung = String(GearData.base(String(a["weapon"])).get("dtype", "kinetic"))
+	w.aim_dtype = w.slung
+	w.aim_weapon = GearData.family(String(a["weapon"]))
+	w.queue_redraw()
+	Audio.play("ui_click", "second player: the other weapon", -6.0)
+	return String(GearData.base(String(a["weapon"])).get("name", ""))
+
+
+## … a grenade at their target (the first kind they still have). Returns what was thrown ("" none).
+func p2_grenade(a: Dictionary) -> String:
+	var t = a.get("cur")
+	if t == null or t["dead"]:
+		return ""
+	var w: Walker = a["w"]
+	var at: Vector2 = (t["w"] as Walker).pos
+	if w.pos.distance_to(at) > THROW_RANGE:
+		at = w.pos + (at - w.pos).normalized() * THROW_RANGE
+	for g in a.get("grenades", []):
+		if not (g as Dictionary).is_empty() and int(g.get("n", 0)) > 0:
+			g["n"] = int(g["n"]) - 1
+			throw_grenade(a, at, String(g["id"]))
+			return String(g["id"])
+	return ""
+
+
+## … a place of their belt: a medkit, an energy cell. Returns what was used ("" nothing to use there).
+func p2_belt(a: Dictionary, i: int) -> String:
+	var bt: Array = a.get("belt", [])
+	if i < 0 or i >= bt.size() or (bt[i] as Dictionary).is_empty() or int(bt[i].get("n", 0)) <= 0:
+		return ""
+	var id := String(bt[i]["id"])
+	var bs: Dictionary = GearData.base(id)
+	var w: Walker = a["w"]
+	if bs.has("heal"):
+		if float(a["st"]["health"]) >= float(a["mx"]["health"]):
+			return ""
+		a["st"]["health"] = minf(float(a["mx"]["health"]), float(a["st"]["health"]) + float(bs["heal"]))
+		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "+%d" % int(bs["heal"]), "col": Color(0.45, 1.0, 0.6), "t": 0.0})
+	elif bs.has("energy"):
+		if float(a["energy"]) >= float(a["energy_max"]):
+			return ""
+		a["energy"] = minf(float(a["energy_max"]), float(a["energy"]) + float(bs["energy"]))
+		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "+%d energy" % int(bs["energy"]), "col": Color(1.0, 0.85, 0.3), "t": 0.0})
+	else:
+		return ""
+	bt[i]["n"] = int(bt[i]["n"]) - 1
+	Audio.play("module_on", "second player: the belt", -6.0)
+	return id
+
+
+## … and a charging point they stand at: full again, and the point is drawn dry for a while. The point, or {}.
+func p2_station(a: Dictionary) -> Dictionary:
+	var w: Walker = a["w"]
+	for sd in a.get("stations", []):
+		if w.pos.distance_to(sd["at"]) < 18.0:
+			return sd
+	return {}
+
+
+func p2_charge(a: Dictionary) -> bool:
+	var sd := p2_station(a)
+	if sd.is_empty() or float(sd["cool"]) > 0.0:
+		return false
+	a["energy"] = float(a["energy_max"])
+	a["ammo"] = int(a["ammo_max"])
+	sd["cool"] = float(a["station_cool"])
+	floaters.append({"pos": (a["w"] as Walker).pos + Vector2(0, -46), "text": "recharged", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
+	Audio.play_at("dock_clamp", (a["w"] as Walker).pos, "second player at a charging point", -8.0)
+	return true
+
+
+## The second player's figure (null: none).
+func p2() -> Variant:
+	for a in allies:
+		if a.has("p2"):
+			return a
+	return null
+
+
+## Is the second player there and on their feet?
+func p2_up() -> bool:
+	var a = p2()
+	return a != null and not a["dead"] and not a["down"]
+
+
+## Their step: the stick or the keys walk them, a dodge no shot gets through, the next target, and the use key held
+## beside you while you are down.
+func _p2_step(a: Dictionary, delta: float) -> void:
+	var w: Walker = a["w"]
+	a["dodge_t"] = maxf(0.0, float(a["dodge_t"]) - delta)
+	a["dodge_cd"] = maxf(0.0, float(a["dodge_cd"]) - delta)
+	var live: bool = view.p2_may_act()
+	var mv: Vector2 = Players.move(1) if live else Vector2.ZERO
+	if live and Players.just_pressed(1, "foot_dodge") and float(a["dodge_cd"]) <= 0.0 and mv.length() > 0.2:
+		a["dodge_t"] = P2_DODGE
+		a["dodge_cd"] = P2_DODGE_COOL
+		a["dodge_dir"] = mv.normalized()
+		Audio.play("ui_tick", "second player: dodge", -6.0)
+	if live and Players.just_pressed(1, "foot_target"):
+		p2_next_target(a)
+	if live and Players.just_pressed(1, "foot_swap"):
+		p2_swap(a)
+	if live and Players.just_pressed(1, "foot_grenade"):
+		p2_grenade(a)
+	for bi in 4:
+		if live and Players.just_pressed(1, "foot_belt_%d" % (bi + 1)):
+			p2_belt(a, bi)
+	if live and not view.col_down and Players.just_pressed(1, "interact"):
+		p2_charge(a)
+	var moved := false
+	if float(a["dodge_t"]) > 0.0:
+		moved = _walk(a, a["dodge_dir"], delta, 3.4)
+	elif mv.length() > 0.15:
+		var run: bool = mv.length() > 0.85 if not Players.on_keys(1) else Players.pressed(1, "foot_run")
+		moved = _walk(a, mv if mv.length() <= 1.0 else mv.normalized(), delta, 1.6 if run else 1.0)
+	if not moved:
+		w.moving = false
+	# you are down: they hold the use key beside you
+	if view.col_down and live and w.pos.distance_to(pilot_pos()) <= P2_REACH and Players.pressed(1, "interact"):
+		view.col_revive_hold(delta)
+	elif view.col_down:
+		view.col_revive_k = 0.0
+
+
+## Their next target: the others standing, the nearest first, one further with every press.
+func p2_next_target(a: Dictionary) -> void:
+	var w: Walker = a["w"]
+	var up: Array = alive().filter(func(f): return not peaceful(f))
+	if up.is_empty():
+		a["tgt"] = null
+		return
+	up.sort_custom(func(x, y): return (x["w"] as Walker).pos.distance_to(w.pos) < (y["w"] as Walker).pos.distance_to(w.pos))
+	var i := up.find(a["cur"])
+	a["tgt"] = up[(i + 1) % up.size()]
+
+
 ## The members standing (not down, not dead).
 func allies_up() -> Array:
 	return allies.filter(func(a): return not a["dead"] and not a["down"])
@@ -2980,6 +3194,8 @@ func _chance_between(from: Dictionary, to: Dictionary) -> float:
 func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 	if a["dead"] or a["down"]:
 		return
+	if a.has("p2") and (float(a.get("dodge_t", 0.0)) > 0.0 or Commands.suit_god):
+		return                                          # split screen: the second player's dodge (and the debug's invulnerable)
 	var out := GearData.apply_damage(a["st"], dmg, dtype)
 	a["regen_wait"] = GearData.SHIELD_WAIT
 	_number((a["w"] as Walker).pos, out)
@@ -2987,7 +3203,7 @@ func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 		a["down"] = true
 		a["down_t"] = 0.0
 		a["state"] = "down"
-		if a.has("arena"):                               # package 62a, part 5: in the hologram nobody lies waiting: out is out
+		if a.has("arena") and not a.has("p2"):            # package 62a, part 5: in the hologram nobody lies waiting: out is out (the second player does: you can bring them back)
 			_ally_dies(a)
 			return
 		a["goal"] = Vector2.INF
@@ -3183,7 +3399,7 @@ func _ally_target(a: Dictionary) -> Variant:
 	var reach := float(GearData.stats(String(a["weapon"]))["range"])
 	if a["tgt"] != null and not a["tgt"]["dead"]:
 		return a["tgt"]
-	if active != null and not active["dead"] and not sight(w.pos, (active["w"] as Walker).pos)["blocked"] \
+	if not a.has("p2") and active != null and not active["dead"] and not sight(w.pos, (active["w"] as Walker).pos)["blocked"] \
 			and w.pos.distance_to((active["w"] as Walker).pos) <= reach * 1.2:
 		return active
 	var best = null
@@ -3343,6 +3559,10 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	a["cur"] = _ally_target(a) if fight else null
 	var wst := GearData.stats(String(a["weapon"]))
 	var reach := float(wst["range"])
+	if a.has("p2"):                                    # split screen: the second player walks them, their weapon fires as yours does
+		_p2_step(a, delta)
+		_ally_shoot(a, delta, wst, reach)
+		return
 	if a.has("energy") and _foe_recharge(a, delta):
 		return                                          # (out of energy or rounds, or told to fill up: on its way to a charging point)
 	a["think"] = float(a["think"]) - delta
@@ -3366,6 +3586,12 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 			a["goal"] = Vector2.INF
 	if not moved:
 		w.moving = false
+	_ally_shoot(a, delta, wst, reach)
+
+
+## … and its weapon: at whoever it is after, when the way is clear and the target in reach.
+func _ally_shoot(a: Dictionary, delta: float, wst: Dictionary, reach: float) -> void:
+	var w: Walker = a["w"]
 	# shooting
 	a["cool"] = float(a["cool"]) - delta
 	var t = a["cur"]

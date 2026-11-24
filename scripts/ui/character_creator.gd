@@ -61,6 +61,10 @@ func _ready() -> void:
 		_build_restyle()                          # package 56 (Luz): Visage Clinics in the scanner's style
 		_refresh()
 		return
+	if mode == "p2":
+		_build_p2()                               # split screen: the second player's pilot, in half a picture
+		_refresh()
+		return
 	var sb := UI.panel_style(UI.NEON_BG, COL)
 	sb.set_border_width_all(2)
 	sb.set_content_margin_all(16)
@@ -215,13 +219,109 @@ func _refresh() -> void:
 	for o in PilotArt.OPTIONS:
 		var names: Array = o[2]
 		_values[o[0]].text = String(names[int(look.get(o[0], 0)) % names.size()])
-	if mode in ["new", "debug"]:
+	if mode in ["new", "debug", "p2"]:
 		for id in _attr_labels:
 			_attr_labels[id].text = str(int(attrs[id]))
 		var left := PilotData.FREE - PilotData.spent(attrs)
-		_points.text = ("%d point%s open" if mode == "new" else "%d point%s left to hand out (3 to 8 each)") % [left, "" if left == 1 else "s"]
+		_points.text = ("%d point%s open" if mode in ["new", "p2"] else "%d point%s left to hand out (3 to 8 each)") % [left, "" if left == 1 else "s"]
 		_points.add_theme_color_override("font_color", UI.GOLD if left > 0 else UI.GOOD)
 	_err.text = ""
+
+
+## Split screen (stage 0): the second player's creator. Narrow enough for the right half: the face, name and
+## attributes on the left, the looks on the right.
+func _build_p2() -> void:
+	var col := UI.NEON_PINK
+	var sb := UI.panel_style(Color(0.03, 0.02, 0.07, 0.97), Color(col, 0.7))
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(0)
+	sb.set_content_margin_all(14)
+	add_theme_stylebox_override("panel", sb)
+	var v := UI.vbox(8)
+	add_child(v)
+	var head := UI.hbox(10)
+	v.add_child(head)
+	head.add_child(UI.label("PLAYER 2", 22, col))
+	head.add_child(UI.label("·  NEW PILOT", 15, UI.TEXT_DIM))
+	head.add_child(UI.spacer())
+	head.add_child(UI.button("Back", func(): cancelled.emit()))
+	var cols := UI.hbox(18)
+	v.add_child(cols)
+	var left := UI.vbox(5)
+	left.custom_minimum_size = Vector2(250, 0)
+	cols.add_child(left)
+	var face := UI.hbox(8)
+	left.add_child(face)
+	var frame := UI.neon_panel(Color(col, 0.5), Color(0.02, 0.01, 0.05, 1.0), 1)
+	face.add_child(frame)
+	_portrait = TextureRect.new()
+	_portrait.custom_minimum_size = Vector2(170, 170)
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	frame.add_child(_portrait)
+	_sprite = TextureRect.new()
+	_sprite.custom_minimum_size = Vector2(54, 120)
+	_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_sprite.size_flags_vertical = Control.SIZE_SHRINK_END
+	face.add_child(_sprite)
+	left.add_child(UI.button("Random look", func():
+		look = PilotArt.random_look()
+		_refresh()))
+	left.add_child(UI.label("NAME", 14, col))
+	_name_edit = LineEdit.new()
+	_name_edit.text = pilot_name
+	_name_edit.max_length = 24
+	_name_edit.placeholder_text = "Pilot name"
+	_name_edit.text_changed.connect(func(t): pilot_name = t)
+	left.add_child(_name_edit)
+	_call_edit = LineEdit.new()
+	_call_edit.max_length = 16
+	_call_edit.placeholder_text = "Call sign (optional)"
+	_call_edit.text_changed.connect(func(t): callsign = t)
+	left.add_child(_call_edit)
+	left.add_child(UI.label("ATTRIBUTES", 14, col))
+	_points = UI.label("", 13, UI.GOLD)
+	left.add_child(_points)
+	for at in PilotData.ATTRS:
+		var id: String = at[0]
+		var row := UI.hbox(6)
+		left.add_child(row)
+		var nl := UI.label(String(at[1]), 14)
+		nl.custom_minimum_size = Vector2(110, 0)
+		nl.tooltip_text = String(at[2])
+		nl.mouse_filter = Control.MOUSE_FILTER_STOP
+		row.add_child(nl)
+		row.add_child(UI.button("−", func(): _attr(id, -1)))
+		var vl := UI.label("", 15, UI.GOOD)
+		vl.custom_minimum_size = Vector2(30, 0)
+		vl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		row.add_child(vl)
+		_attr_labels[id] = vl
+		row.add_child(UI.button("+", func(): _attr(id, 1)))
+	var kit := UI.vbox(1)
+	cols.add_child(kit)
+	kit.add_child(UI.label("LOOKS", 14, col))
+	for o in PilotArt.OPTIONS:
+		var key: String = o[0]
+		var krow := UI.hbox(6)
+		kit.add_child(krow)
+		var l := UI.label(String(o[1]), 13, UI.TEXT_DIM)
+		l.custom_minimum_size = Vector2(104, 0)
+		krow.add_child(l)
+		krow.add_child(UI.button("‹", func(): _step(key, -1)))
+		var val := UI.label("", 13)
+		val.custom_minimum_size = Vector2(140, 0)
+		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		krow.add_child(val)
+		_values[key] = val
+		krow.add_child(UI.button("›", func(): _step(key, 1)))
+	_err = UI.label("", 13, UI.BAD)
+	v.add_child(_err)
+	_go = UI.menu_button("Ready", _finish, UI.GOOD, 300)
+	v.add_child(_go)
 
 
 ## What the creator hands back; "" error = ready.

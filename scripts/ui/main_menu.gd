@@ -21,6 +21,12 @@ static var force_backdrop := ""        # the debug renders and the smoke test pi
 const BACKDROPS := ["terran", "red_giant", "directorate", "black_hole"]
 var backdrop := ""
 var _drift: Array = []                # [node, base position, amplitude, speed]
+# split screen (stage 0): the two halves of the start menu
+var split_root: Control = null
+var _sp_slot := ""                    # the game the two will play
+var _sp_dev: Array = ["kbm", ""]      # the device of each player
+var _sp_new := {}                     # slot -> the creator's data of a second pilot made just now
+var _sp_creating := false
 
 
 func _ready() -> void:
@@ -196,7 +202,11 @@ func _build_menu() -> void:
 	menu_box.add_child(cont)
 	menu_box.add_child(_menu_button(2, "New Game", _show_new_game))
 	menu_box.add_child(_menu_button(3, "Load Game", _show_load))
-	var n := 4
+	var sp := _menu_button(4, "Split Screen", _show_split, Color(1.0, 0.45, 0.85))
+	sp.disabled = latest == ""
+	sp.tooltip_text = "Two players at one screen. The second half of the picture opens here." if latest != "" else "Start a game first: the second player joins a game that exists."
+	menu_box.add_child(sp)
+	var n := 5
 	if Commands.cheats_enabled:
 		var tb := _menu_button(n, "Test System (Debug)", func(): SaveGame.start_test(), UI.GOLD)
 		n += 1
@@ -289,6 +299,188 @@ func _show_creator() -> void:
 		d["intro"] = true                               # package 56: the story goes on at Dan's station
 		SaveGame.start_new(String(d["name"]), int(d["seed"]), d))
 	_show_overlay(cc)
+
+
+# ---------------------------------------------------------------- Split screen (stage 0)
+
+## "Split Screen": the picture parts in two. Left the first player (their device, the game to play), right the second
+## (their device, their pilot: the one in the save, or a new one from the creator).
+func _show_split() -> void:
+	if _sp_slot == "":
+		_sp_slot = SaveGame.latest_slot()
+		_sp_dev = Players.default_devices()
+	_sp_creating = false
+	if not Players.changed.is_connected(_split_devices_changed):
+		Players.changed.connect(_split_devices_changed)
+	_build_split()
+
+
+## A controller was plugged in or pulled: the lists follow (not while the creator is open).
+func _split_devices_changed() -> void:
+	if split_root != null and is_instance_valid(split_root) and not _sp_creating:
+		if not Players.device_ok(String(_sp_dev[1])):
+			_sp_dev[1] = Players.next_device("", String(_sp_dev[0]), 1) if Players.device_list().size() > 1 else ""
+		_build_split()
+
+
+func _hide_split() -> void:
+	if split_root != null and is_instance_valid(split_root):
+		split_root.queue_free()
+	split_root = null
+	menu_box.visible = true
+	_build_menu()
+
+
+func _split_half(right: bool, col: Color) -> VBoxContainer:
+	var half := Control.new()
+	half.anchor_left = 0.5 if right else 0.0
+	half.anchor_right = 1.0 if right else 0.5
+	half.anchor_bottom = 1.0
+	half.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	split_root.add_child(half)
+	if right:
+		var bg := ColorRect.new()
+		bg.color = Color(0.02, 0.015, 0.05, 0.93)
+		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		half.add_child(bg)
+		var edge := ColorRect.new()                     # the line between the two halves
+		edge.color = col
+		edge.anchor_bottom = 1.0
+		edge.offset_right = 3.0
+		half.add_child(edge)
+	var box := UI.vbox(10)
+	if right:                                           # the second player's side: in the middle of their half
+		var mid := CenterContainer.new()
+		mid.set_anchors_preset(Control.PRESET_FULL_RECT)
+		mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		half.add_child(mid)
+		mid.add_child(box)
+	else:
+		box.position = Vector2(110, 318)
+		half.add_child(box)
+	return box
+
+
+func _split_device_row(parent: Control, player: int, col: Color) -> void:
+	parent.add_child(UI.label("INPUT", 14, col))
+	var row := UI.hbox(8)
+	parent.add_child(row)
+	var other := String(_sp_dev[1 - player])
+	row.add_child(UI.button("‹", func():
+		_sp_dev[player] = Players.next_device(String(_sp_dev[player]), other, -1)
+		_build_split()))
+	var nm := UI.label(Players.device_name(String(_sp_dev[player])), 16, Color(0.9, 0.94, 1.0) if Players.device_ok(String(_sp_dev[player])) else UI.BAD)
+	nm.custom_minimum_size = Vector2(430, 0)
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.clip_text = true
+	row.add_child(nm)
+	row.add_child(UI.button("›", func():
+		_sp_dev[player] = Players.next_device(String(_sp_dev[player]), other, 1)
+		_build_split()))
+
+
+func _build_split() -> void:
+	if split_root != null and is_instance_valid(split_root):
+		split_root.queue_free()
+	menu_box.visible = false
+	split_root = Control.new()
+	split_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	split_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.get_parent().add_child(split_root)
+	var c1 := UI.NEON_CYAN
+	var c2 := Color(1.0, 0.45, 0.85)
+	# ---- the left half: the first player
+	var lb := _split_half(false, c1)
+	lb.add_child(UI.label("PLAYER 1", 26, c1))
+	_split_device_row(lb, 0, c1)
+	lb.add_child(UI.label("GAME", 14, c1))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(520, 250)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lb.add_child(sc)
+	var list := UI.vbox(4)
+	sc.add_child(list)
+	for e in SaveGame.list_saves():
+		if e.get("old", false):
+			continue
+		var slot := String(e["slot"])
+		var meta: Dictionary = e["meta"]
+		var two := String(meta.get("pilot2", ""))
+		var b := UI.button("%s   ·   %s%s\n%s" % [String(meta.get("label", slot)), String(meta.get("pilot", "?")),
+			("  +  " + two) if two != "" else "", String(meta.get("location", ""))], func():
+			_sp_slot = slot
+			_build_split())
+		b.custom_minimum_size = Vector2(500, 50)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.clip_text = true
+		if slot == _sp_slot:
+			b.add_theme_color_override("font_color", c1)
+			var sel := UI.panel_style(Color(c1.darkened(0.78), 0.9), c1)
+			sel.set_content_margin_all(6)
+			b.add_theme_stylebox_override("normal", sel)
+		list.add_child(b)
+	lb.add_child(UI.button("Back", _hide_split))
+	# ---- the right half: the second player
+	var rb := _split_half(true, c2)
+	if _sp_creating:
+		var cc = CharacterCreatorScript.new()
+		cc.setup("p2", {}, {}, "Wingmate")
+		cc.cancelled.connect(func():
+			_sp_creating = false
+			_build_split())
+		cc.done.connect(func(d: Dictionary):
+			_sp_new[_sp_slot] = d
+			_sp_creating = false
+			_build_split())
+		rb.add_child(cc)
+		return
+	rb.add_child(UI.label("PLAYER 2", 26, c2))
+	_split_device_row(rb, 1, c2)
+	rb.add_child(UI.label("PILOT", 14, c2))
+	var p2: Dictionary = _sp_new.get(_sp_slot, {})
+	var fresh := not p2.is_empty()
+	if not fresh:
+		p2 = SaveGame.pilot2_of(_sp_slot)
+	var to_creator := func():
+		_sp_creating = true
+		_build_split()
+	if p2.is_empty():
+		rb.add_child(UI.wrap_label("No second pilot in this game yet. Create one: they come into the game in the first pilot's start system.", 14, UI.TEXT_DIM, 520))
+		rb.add_child(UI.menu_button("Create pilot", to_creator, c2, 300))
+	else:
+		var card := UI.hbox(14)
+		rb.add_child(card)
+		var frame := UI.neon_panel(Color(c2, 0.5), Color(0.02, 0.01, 0.05, 1.0), 1)
+		card.add_child(frame)
+		var por := TextureRect.new()
+		por.custom_minimum_size = Vector2(190, 190)
+		por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		por.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		por.texture = GameState.PilotArt.portrait(GameState.PilotArt.clean(p2.get("look", {})))
+		frame.add_child(por)
+		var info := UI.vbox(6)
+		card.add_child(info)
+		info.add_child(UI.label(String(p2.get("name", "Wingmate")), 24))
+		var cs := String(p2.get("callsign", ""))
+		if cs != "":
+			info.add_child(UI.label("»%s«" % cs, 15, c2))
+		info.add_child(UI.label("New pilot, level 1" if fresh else "Level %d" % int(p2.get("level", 1)), 14, UI.TEXT_DIM))
+		info.add_child(UI.button("New pilot instead" if not fresh else "Change", to_creator, "A new pilot takes the place of this one once the game is saved." if not fresh else ""))
+	var err := Players.devices_error(String(_sp_dev[0]), String(_sp_dev[1]))
+	if err == "" and p2.is_empty():
+		err = "Player 2 needs a pilot."
+	rb.add_child(UI.label(err, 14, UI.BAD))
+	var go := UI.menu_button("Start", func(): _split_start(), UI.GOOD, 300)
+	go.disabled = err != ""
+	rb.add_child(go)
+	rb.add_child(UI.wrap_label("The picture parts in two where two play at once. In this first stage the second half opens here, in the start menu; the Colosseum is next.", 12, UI.TEXT_DIM, 520))
+
+
+func _split_start() -> void:
+	if Players.devices_error(String(_sp_dev[0]), String(_sp_dev[1])) != "":
+		return
+	SaveGame.start_split(_sp_slot, String(_sp_dev[0]), String(_sp_dev[1]), _sp_new.get(_sp_slot, {}))
 
 
 # ---------------------------------------------------------------- Background animation

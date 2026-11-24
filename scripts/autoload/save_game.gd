@@ -63,6 +63,7 @@ func save_game(slot: String, label: String = "") -> String:
 		"meta": {
 			"label": label if label != "" else slot.capitalize(),
 			"pilot": GameState.pilot_name, "credits": GameState.credits,
+			"pilot2": String(GameState.pilot2.get("name", "")),
 			"ship": f.ship_name if f != null else "–",
 			"location": f.location_text() if f != null else "–",
 			"play_time": GameState.play_time,
@@ -170,6 +171,22 @@ func start_load(slot: String) -> void:
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 
+## Split screen (stage 0): loads a game for two. d0 and d1 are the players' devices (see Players); pilot2_data is
+## the creator's data for a new second pilot ({}: the one in the save).
+func start_split(slot: String, d0: String, d1: String, pilot2_data: Dictionary = {}) -> void:
+	pending = {"mode": "load", "slot": slot, "split": [d0, d1], "pilot2": pilot2_data}
+	get_tree().paused = false
+	get_tree().change_scene_to_file(GAME_SCENE)
+
+
+## The second pilot stored in a save ({} none).
+func pilot2_of(slot: String) -> Dictionary:
+	var data := read_save(slot)
+	if data.is_empty():
+		return {}
+	return (data["game"] as Dictionary).get("pilot2", {})
+
+
 ## Called by main.gd: sets up the game state for the pending action.
 func start_pending() -> void:
 	var p := pending
@@ -187,10 +204,19 @@ func start_pending() -> void:
 	GameState.running = true
 	if err != "":
 		GameState.log_msg(err, GameState.COL_BAD)
+	Players.stop_split()
+	if p.has("split") and err == "":
+		var new2: Dictionary = p.get("pilot2", {})
+		if not new2.is_empty():
+			GameState.new_pilot2(new2)
+		if GameState.has_pilot2():
+			Players.start_split(String(p["split"][0]), String(p["split"][1]))
+			GameState.log_msg("Split screen: %s is with you (%s)." % [String(GameState.pilot2["name"]), Players.device_name(String(p["split"][1]))], Color(0.6, 0.9, 1.0))
 
 
 func to_menu() -> void:
 	GameState.running = false
+	Players.stop_split()
 	Engine.time_scale = 1.0
 	Commands.god_mode = false
 	Commands.suit_god = false

@@ -169,6 +169,10 @@ var museum_donated: Array = []          # 53e: the exhibits in their cases at th
 ## Package 51: the pilot's personal equipment – suit, weapons, belt, features, pockets, the ships' lockers.
 const PilotGearScript = preload("res://scripts/core/pilot_gear.gd")
 var gear = PilotGearScript.new()
+## Split screen, stage 0: the second player's pilot (the same parts as pilot; {} none yet) and what they carry.
+## "start_system" is where they come into the game: the first pilot's start system.
+var pilot2 := {}
+var gear2 = PilotGearScript.new()
 var wake_pending := false        # 0.7.51.4: the ship was lost – after the buy-back window you wake in the clinic
 const DATA_PRICE := 5000           # per unit of data …
 const DATA_REP := 0.5              # … and standing with the Directorate
@@ -212,6 +216,8 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 		Universe.generate(p_seed)
 	set_pilot(make_pilot(p_pilot, p_data))
 	gear.start()                                 # package 51: a civilian suit, a laser pistol, medkits
+	pilot2 = {}
+	gear2 = PilotGearScript.new()
 	surveys.clear()
 	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0,
 		# package 30: achievements for the skill tree
@@ -561,6 +567,7 @@ func col_state() -> Dictionary:
 		if not col.has(k):
 			col[k] = CD.fresh()[k]
 	col["fit"] = CD.fitted(col["fit"])
+	col["fit2"] = CD.fitted(col["fit2"]) if col.has("fit2") else CD.default_fit()      # split screen: the second player's fit
 	return col
 
 
@@ -649,6 +656,19 @@ func set_pilot(p: Dictionary) -> void:
 	pilot_name = String(p["name"])
 
 
+func has_pilot2() -> bool:
+	return not pilot2.is_empty()
+
+
+## Split screen: a new second pilot from the creator's data. Starts like the first one did: level 1, the starting
+## gear, and the first pilot's start system as the place to come into the game.
+func new_pilot2(data: Dictionary) -> void:
+	pilot2 = make_pilot("Wingmate", data)
+	pilot2["start_system"] = Universe.home_system
+	gear2 = PilotGearScript.new()
+	gear2.start()
+
+
 func pilot_attr(id: String) -> int:
 	return int(pilot.get("attrs", {}).get(id, PilotData.START))
 
@@ -681,6 +701,7 @@ func to_dict() -> Dictionary:
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true), "gear": (col_own_gear if col_own_gear != null else gear).to_dict(),
 		"on_foot": on_foot.duplicate(),
+		"pilot2": pilot2.duplicate(true), "gear2": gear2.to_dict() if not pilot2.is_empty() else {},
 	}
 
 
@@ -695,6 +716,13 @@ func from_dict(d: Dictionary) -> void:
 	var pd: Dictionary = d.get("pilot_data", {})
 	set_pilot(make_pilot(pilot_name, pd))     # package 28 (older saves: default looks and attributes)
 	gear.from_dict(d.get("gear", {}))         # package 51 (older saves: the starting gear)
+	pilot2 = {}
+	gear2 = PilotGearScript.new()
+	var p2d: Dictionary = d.get("pilot2", {})
+	if not p2d.is_empty():                    # split screen: the second pilot
+		pilot2 = make_pilot("Wingmate", p2d)
+		pilot2["start_system"] = p2d.get("start_system", Universe.home_system)
+		gear2.from_dict(d.get("gear2", {}))
 	surveys.clear()
 	credits = int(d["credits"])
 	coins = int(d.get("coins", 0))

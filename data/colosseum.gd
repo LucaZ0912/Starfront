@@ -416,6 +416,7 @@ static func settle(col: Dictionary, won: bool) -> Dictionary:
 		col["streak"] = 0
 		col["round"] = 1
 		col["fit"] = default_fit()                          # (the run's gear goes back to the house)
+		col["fit2"] = default_fit()                         # (split screen: the second player's too)
 	out["rank_up"] = rank(col) > before
 	return out
 

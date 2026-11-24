@@ -344,17 +344,19 @@ class Hud extends Control:
 		# ---- at the left: the places for weapons and for boni
 		var ss := 50.0
 		var gap := 6.0
-		for grp in 2:
-			var items: Array = run["weapons"] if grp == 0 else run["boni"]
-			var gy := vs.y - 150.0 + grp * (ss + 24.0)
-			draw_string(font, Vector2(16.0, gy - 6.0), "WEAPONS" if grp == 0 else "BONI", HORIZONTAL_ALIGNMENT_LEFT, 200.0, 11, Color(CYAN if grp == 0 else GOLD, 0.8))
+		var two_on: bool = game != null and game.two != null and is_instance_valid(game.two)      # split screen: a row for the second player's weapons above yours
+		for grp in (4 if two_on else 2):                     # (0, 1: your weapons and boni; 2, 3: the second player's, above yours)
+			var items: Array = (run["boni"] if grp == 1 else run.get("boni2", [])) if grp % 2 == 1 else (game.weapons_of(grp / 2) if two_on else run["weapons"])
+			var gy := vs.y - 150.0 + (grp % 2) * (ss + 24.0) - (2.0 * (ss + 24.0) if grp >= 2 else 0.0)
+			draw_string(font, Vector2(16.0, gy - 6.0), ["WEAPONS" if not two_on else "P1 WEAPONS", "BONI" if not two_on else "P1 BONI", "P2 WEAPONS", "P2 BONI"][grp], HORIZONTAL_ALIGNMENT_LEFT, 200.0, 11,
+				Color([CYAN, GOLD, PINK, PINK.lerp(GOLD, 0.5)][grp], 0.8))
 			for i in SD.SLOTS:
 				var r := Rect2(16.0 + i * (ss + gap), gy, ss, ss)
 				if i >= items.size():
 					_slot(r, CYAN, false)
 					continue
-				var col := CYAN if grp == 0 else GOLD
-				var ult: bool = grp == 0 and int(items[i][1]) >= SD.ULT
+				var col: Color = [CYAN, GOLD, PINK, PINK.lerp(GOLD, 0.5)][grp]
+				var ult: bool = grp % 2 == 0 and int(items[i][1]) >= SD.ULT
 				if ult:
 					col = Color.from_hsv(fposmod(_t * 0.2 + i * 0.13, 1.0), 0.55, 1.0)      # (a weapon that is its ultimate: all colours)
 				_slot(r, col, true)
@@ -524,6 +526,8 @@ class LevelUp extends Control:
 	var game = null                  # the run (part 7c-3: a reroll draws its cards anew)
 	var ui = load("res://scripts/ground/survivor_ui.gd")
 	var _t := 0.0
+	var seat := 0                    # split screen: whose cards these are (0 you, 1 the second player)
+	var who := ""                    # … and their name over the cards ("" one player)
 
 	func is_sv_levelup() -> bool:
 		return true
@@ -533,6 +537,8 @@ class LevelUp extends Control:
 		run = cfg.get("run", {})
 		game = cfg.get("game", null)
 		level = int(cfg.get("level", 1))
+		seat = int(cfg.get("seat", 0))
+		who = String(cfg.get("who", ""))
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -581,6 +587,13 @@ class LevelUp extends Control:
 	func _process(dt: float) -> void:
 		_t += dt
 		queue_redraw()
+		if seat == 1 and Players.split:                      # split screen: the second player picks with their own device
+			var lf: bool = Players.just_pressed(1, "pad_left", "menu") or Players.just_pressed(1, "walk_left")
+			var rt: bool = Players.just_pressed(1, "pad_right", "menu") or Players.just_pressed(1, "walk_right")
+			if lf or rt:
+				sel = posmod(sel + (1 if rt else -1), maxi(1, cards.size()))
+			elif Players.just_pressed(1, "pad_confirm", "menu") or Players.just_pressed(1, "interact"):
+				pick(sel)
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseMotion:
@@ -715,6 +728,9 @@ class LevelUp extends Control:
 			draw_line(Vector2(0.0, gy), Vector2(vs.x, gy), Color(CYAN, 0.035), 1.0)
 		var hy := vs.y * 0.5 - CH * 0.5 - 30.0
 		draw_string(font, Vector2(0.0, hy), "LEVEL %d" % level, HORIZONTAL_ALIGNMENT_CENTER, vs.x, 56, CYAN)
+		if who != "":                                        # split screen: whose card this is
+			var wc: Color = CYAN if seat == 0 else PINK
+			draw_string(font, Vector2(0.0, hy - 62.0), "%s  PICKS A CARD" % who.to_upper(), HORIZONTAL_ALIGNMENT_CENTER, vs.x, 24, wc)
 		draw_line(Vector2(vs.x * 0.5 - 330.0, hy + 14.0), Vector2(vs.x * 0.5 - 90.0, hy + 14.0), Color(CYAN, 0.8), 2.0)
 		draw_line(Vector2(vs.x * 0.5 + 90.0, hy + 14.0), Vector2(vs.x * 0.5 + 330.0, hy + 14.0), Color(CYAN, 0.8), 2.0)
 		draw_string(font, Vector2(0.0, hy + 20.0), "TAKE ONE", HORIZONTAL_ALIGNMENT_CENTER, vs.x, 15, GOLD)

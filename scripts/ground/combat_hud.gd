@@ -39,7 +39,7 @@ func _s(p: Vector2, t: String, col: Color, sz: int = 12) -> void:
 func _draw() -> void:
 	if combat == null or not is_instance_valid(combat):
 		return
-	var vs := get_viewport_rect().size
+	var vs: Vector2 = (get_parent() as Control).size if get_parent() is Control else get_viewport_rect().size      # (in a split picture: your half)
 	var red := Color(1.0, 0.35, 0.3)
 	var dim := Color(0.7, 0.72, 0.76)
 	var font := ThemeDB.fallback_font
@@ -160,6 +160,8 @@ func _draw_team(y0: float) -> void:
 		var ord := "dead: a clinic can bring them back" if not a.has("arena") else "out of this fight"
 		if not a["dead"] and a["down"]:
 			ord = "DOWN: hold %s beside them  (%d s)" % [Keybinds.key_text("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
+		elif a.has("p2") and not a["dead"]:
+			ord = "Player 2"                                 # split screen: nobody you give orders to
 		elif not a["dead"]:
 			match String(a["order"]):
 				"hold":
@@ -188,7 +190,7 @@ func _draw_team(y0: float) -> void:
 			draw_arc(cc, 15.0, -PI / 2, -PI / 2 + TAU * k, 28, Color(1.0, 0.82, 0.35) if k < 1.0 else green, 3.0)
 			draw_string(ThemeDB.fallback_font, cc + Vector2(-17, 4), ("%d%%" % int(k * 100.0)) if k < 1.0 else "READY", HORIZONTAL_ALIGNMENT_CENTER, 34, 9, Color(0.9, 0.9, 0.9))
 			draw_string(ThemeDB.fallback_font, cc + Vector2(-44, 33), String(ab["name"]), HORIZONTAL_ALIGNMENT_CENTER, 84, 9, Color(0.75, 0.78, 0.82))
-	if not combat.allies.is_empty():
+	if combat.allies.any(func(al): return not al.has("p2")):      # (split screen: the second player takes no orders)
 		var who := "all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])
 		_label(Vector2(14, y0 + combat.allies.size() * 84 + 14), "%s  orders to: %s  (tap: next, hold: wheel)" % [Keybinds.key_text("foot_team"), who])
 
@@ -197,7 +199,7 @@ func _draw_team(y0: float) -> void:
 ## ability); the one under the mouse lit; in its middle whom the order goes to. Letting go of V gives it.
 func _draw_wheel() -> void:
 	var green := GroundCombat.TEAM_COL
-	var vs := get_viewport_rect().size
+	var vs: Vector2 = (get_parent() as Control).size if get_parent() is Control else get_viewport_rect().size      # (in a split picture: your half)
 	draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.25))
 	var c: Vector2 = combat.view.wheel_centre()
 	var fields: Array = combat.wheel_fields()          # (package 62a, part 6: the arena's six in place of the crew's four)

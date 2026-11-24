@@ -141,9 +141,30 @@ class Prep extends Control:
 	var msg := "Mark a place of your fit, then pick what goes into it. Pick a mode and press READY."
 	var _t := 0.0
 	var _last := 6
+	var seat := 0                    # split screen: whose fit is on the table (0 you, 1 the second player)
 
 	func is_col_prep() -> bool:
 		return true
+
+	func two() -> bool:
+		return Players.split and GameState.has_pilot2()
+
+	func fit_key() -> String:
+		return "fit2" if seat == 1 and two() else "fit"
+
+	func seat_rect(i: int) -> Rect2:
+		return Rect2(210.0 + i * 200.0, 150.0, 190.0, 30.0)
+
+	## Split screen: the other player's fit onto the table.
+	func pick_seat(i: int) -> void:
+		if not two() or counting >= 0.0:
+			return
+		seat = clampi(i, 0, 1)
+		slot = 0
+		scroll = 0
+		opt_sel = 0
+		msg = "%s: mark a place of the fit, then pick what goes into it." % String((GameState.pilot2 if seat == 1 else GameState.pilot).get("name", "")).get_slice(" ", 0)
+		Audio.play("ui_click", "colosseum: whose fit")
 
 	func setup(_cfg: Dictionary) -> void:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -154,7 +175,7 @@ class Prep extends Control:
 
 	## The places of the fit as rows: [{"place", "idx", "label", "id"}].
 	func slots() -> Array:
-		var fit: Dictionary = col()["fit"]
+		var fit: Dictionary = col()[fit_key()]
 		var out: Array = [{"place": "suit", "idx": 0, "label": "Suit", "id": String(fit["suit"])}]
 		for p in CD.PLACES:
 			var k := String(p[0])
@@ -218,7 +239,7 @@ class Prep extends Control:
 		if i < 0 or i >= o.size() or counting >= 0.0:
 			return
 		var sl: Dictionary = slots()[slot]
-		var e: String = Commands.execute({"type": "col_equip", "seat": 0, "place": String(sl["place"]), "idx": int(sl["idx"]), "id": String(o[i])})
+		var e: String = Commands.execute({"type": "col_equip", "seat": seat if two() else 0, "place": String(sl["place"]), "idx": int(sl["idx"]), "id": String(o[i])})
 		msg = e if e != "" else "%s: %s." % [String(sl["label"]), CD.piece_name(String(o[i]))]
 		Audio.play("ui_error" if e != "" else "ui_click", "colosseum: a piece")
 		slot = clampi(slot, 0, slots().size() - 1)
@@ -281,6 +302,11 @@ class Prep extends Control:
 			if ready_rect().has_point(mb.position):
 				go_ready()
 				return
+			if two():
+				for si in 2:
+					if seat_rect(si).has_point(mb.position):
+						pick_seat(si)
+						return
 			for i in slots().size():
 				if slot_rect(i).has_point(mb.position):
 					col_focus = 0
@@ -352,6 +378,9 @@ class Prep extends Control:
 				KEY_R:
 					if not (event as InputEventKey).echo:
 						go_ready()
+				KEY_TAB:
+					if not (event as InputEventKey).echo:
+						pick_seat(1 - seat)
 				_:
 					used = false
 			if used:
@@ -374,6 +403,8 @@ class Prep extends Control:
 				_press()
 			"triangle", "square", "options":
 				go_ready()
+			"l1", "r1":
+				pick_seat(1 - seat)                                  # split screen: the other player's fit
 			"circle":
 				back()
 		return true
@@ -382,7 +413,7 @@ class Prep extends Control:
 		var vs := get_viewport_rect().size
 		var font := ThemeDB.fallback_font
 		var c := col()
-		var fit: Dictionary = c["fit"]
+		var fit: Dictionary = c[fit_key()]
 		var used: int = CD.fit_cost(fit)
 		var have: int = CD.budget(c)
 		draw_rect(Rect2(Vector2.ZERO, vs), Color(0.03, 0.03, 0.07))
@@ -403,7 +434,16 @@ class Prep extends Control:
 			Color(0.6, 0.65, 0.78))
 		var mp := get_local_mouse_position()
 		# ---- your gear
-		draw_string(font, Vector2(60.0, 172.0), "YOUR GEAR", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(1.0, 0.85, 0.4))
+		draw_string(font, Vector2(60.0, 172.0), "YOUR GEAR" if not two() else "THE GEAR OF", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, Color(1.0, 0.85, 0.4))
+		if two():                                                # split screen: a fit each, the same gear points each
+			for si in 2:
+				var sr := seat_rect(si)
+				var scol: Color = Color(0.3, 0.9, 1.0) if si == 0 else Color(1.0, 0.45, 0.85)
+				draw_rect(sr, Color(scol.darkened(0.7), 0.9) if si == seat else Color(0.06, 0.06, 0.12, 0.9))
+				draw_rect(sr, scol if si == seat else Color(scol, 0.35), false, 2.0)
+				draw_string(font, sr.position + Vector2(10.0, 21.0), "P%d  %s" % [si + 1, String((GameState.pilot2 if si == 1 else GameState.pilot).get("name", "")).get_slice(" ", 0)],
+					HORIZONTAL_ALIGNMENT_LEFT, sr.size.x - 16.0, 16, scol if si == seat else Color(scol, 0.6))
+			draw_string(font, Vector2(60.0, vs.y - 132.0), "[Tab] or L1 / R1: the other player's fit. Each of you has the same gear points.", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, Color(0.6, 0.65, 0.78))
 		var sl := slots()
 		for i in sl.size():
 			var r := slot_rect(i)
@@ -691,12 +731,32 @@ class SvPrep extends Control:
 	var msg := "Pick a stage and the weapon you begin with, then press READY."
 	var _t := 0.0
 	var _last := 6
+	var seat := 0                    # split screen: whose first weapon is being picked (0 you, 1 the second player)
 
 	func is_col_prep() -> bool:
 		return true
 
 	func is_sv_prep() -> bool:
 		return true
+
+	func two() -> bool:
+		return Players.split and GameState.has_pilot2()
+
+	func seat_rect(i: int) -> Rect2:
+		return Rect2(get_viewport_rect().size.x - 810.0 + 250.0 + i * 180.0, 140.0, 170.0, 28.0)
+
+	## The weapon one of you begins with.
+	func weapon_of(i: int) -> String:
+		return SV.second_weapon(col()) if i == 1 else SV.first_weapon(col())
+
+	## Split screen: the other player's first weapon.
+	func pick_seat(i: int) -> void:
+		if not two() or counting >= 0.0:
+			return
+		seat = clampi(i, 0, 1)
+		w_sel = maxi(0, (SV.WEAPON_ORDER as Array).find(weapon_of(seat)))
+		msg = "%s: pick the weapon to begin with." % String((GameState.pilot2 if seat == 1 else GameState.pilot).get("name", "")).get_slice(" ", 0)
+		Audio.play("ui_click", "survivor: whose first weapon")
 
 	func setup(_cfg: Dictionary) -> void:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -732,8 +792,10 @@ class SvPrep extends Control:
 		if i < 0 or i >= SV.WEAPON_ORDER.size() or counting >= 0.0:
 			return
 		w_sel = i
-		var e: String = Commands.execute({"type": "sv_weapon", "seat": 0, "id": String(SV.WEAPON_ORDER[i])})
-		msg = e if e != "" else "You begin with: %s." % String(SV.WEAPONS[String(SV.WEAPON_ORDER[i])]["name"])
+		var st2: bool = two() and seat == 1
+		var e: String = Commands.execute({"type": "sv_weapon", "seat": 1 if st2 else 0, "id": String(SV.WEAPON_ORDER[i])})
+		msg = e if e != "" else ("%s begins with: %s." % [String(GameState.pilot2.get("name", "")).get_slice(" ", 0), String(SV.WEAPONS[String(SV.WEAPON_ORDER[i])]["name"])] if st2
+			else "You begin with: %s." % String(SV.WEAPONS[String(SV.WEAPON_ORDER[i])]["name"]))
 		Audio.play("ui_error" if e != "" else "ui_click", "survivor: the first weapon")
 
 	func go_ready() -> void:
@@ -780,6 +842,11 @@ class SvPrep extends Control:
 			if ready_rect().has_point(mb.position):
 				go_ready()
 				return
+			if two():
+				for si in 2:
+					if seat_rect(si).has_point(mb.position):
+						pick_seat(si)
+						return
 			for i in SV.STAGES.size():
 				if sv_stage_rect(i).has_point(mb.position):
 					focus = 0
@@ -860,6 +927,9 @@ class SvPrep extends Control:
 				KEY_R:
 					if not (event as InputEventKey).echo:
 						go_ready()
+				KEY_TAB:
+					if not (event as InputEventKey).echo:
+						pick_seat(1 - seat)
 				_:
 					used = false
 			if used:
@@ -881,6 +951,8 @@ class SvPrep extends Control:
 				press()
 			"triangle", "square", "options":
 				go_ready()
+			"l1", "r1":
+				pick_seat(1 - seat)                                  # split screen: the other player's first weapon
 			"circle":
 				back()
 		return true
@@ -1027,8 +1099,18 @@ class SvPrep extends Control:
 			else "Complete. Outside the arena: the Champion's Regalia.", HORIZONTAL_ALIGNMENT_LEFT, rb.end.x - rx - 10.0, 13, Color(0.7, 0.76, 0.88))
 		# ---- the weapons you can begin with
 		var x0 := vs.x - 810.0
-		var first: String = SV.first_weapon(c)
-		draw_string(font, Vector2(x0, 160.0), "YOUR FIRST WEAPON", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, gold)
+		var first: String = weapon_of(seat if two() else 0)
+		var other_w: String = weapon_of(1 - seat) if two() else ""
+		draw_string(font, Vector2(x0, 160.0), "YOUR FIRST WEAPON" if not two() else "THE FIRST WEAPON OF", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 18, gold)
+		if two():                                                # split screen: a first weapon each, never the same one
+			for si in 2:
+				var sr := seat_rect(si)
+				var scol: Color = Color(0.3, 0.9, 1.0) if si == 0 else Color(1.0, 0.45, 0.85)
+				draw_rect(sr, Color(scol.darkened(0.7), 0.9) if si == seat else Color(0.06, 0.06, 0.12, 0.9))
+				draw_rect(sr, scol if si == seat else Color(scol, 0.35), false, 2.0)
+				draw_string(font, sr.position + Vector2(10.0, 20.0), "P%d  %s" % [si + 1, String((GameState.pilot2 if si == 1 else GameState.pilot).get("name", "")).get_slice(" ", 0)],
+					HORIZONTAL_ALIGNMENT_LEFT, sr.size.x - 16.0, 15, scol if si == seat else Color(scol, 0.6))
+			draw_string(font, Vector2(seat_rect(1).end.x + 12.0, 160.0), "[Tab] or L1 / R1", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color(0.6, 0.65, 0.78))
 		for i in SV.WEAPON_ORDER.size():
 			var id := String(SV.WEAPON_ORDER[i])
 			var wr := sv_weapon_rect(i)
@@ -1046,6 +1128,8 @@ class SvPrep extends Control:
 				draw_string(font, wr.position + Vector2(wr.size.x - 40.0, 17.0), "late", HORIZONTAL_ALIGNMENT_RIGHT, 34.0, 11, Color(1.0, 0.82, 0.3))
 			elif not mine:
 				SU.icon(self, "lock", wr.position + Vector2(wr.size.x - 15.0, 14.0), 6.0, Color(0.6, 0.64, 0.76))
+			if other_w != "" and id == other_w:                  # (split screen: the other one begins with this)
+				draw_string(font, wr.position + Vector2(6.0, 17.0), "P%d" % (2 - seat), HORIZONTAL_ALIGNMENT_LEFT, 40.0, 12, Color(0.3, 0.9, 1.0) if seat == 1 else Color(1.0, 0.45, 0.85))
 		# ---- what the weapon marked does
 		var rows := (SV.WEAPON_ORDER.size() + PER_ROW - 1) / PER_ROW
 		var wp := Rect2(x0, 176.0 + rows * 100.0 + 8.0, 750.0, vs.y - (176.0 + rows * 100.0 + 8.0) - 176.0)

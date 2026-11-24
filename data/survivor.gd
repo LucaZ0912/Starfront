@@ -1011,6 +1011,22 @@ static func first_weapon(col: Dictionary) -> String:
 	return w if can_begin(col, w) else START_WEAPON
 
 
+## Split screen: the weapon the second player begins with: what they picked in the fighters' room, never the first
+## player's (a weapon is carried by one of the two); else the first one of yours that may begin a run.
+static func second_weapon(col: Dictionary) -> String:
+	var f := first_weapon(col)
+	var w := String(record(col).get("weapon2", ""))
+	if w != "" and w != f and WEAPONS.has(w) and owned(col, w) and can_begin(col, w):
+		return w
+	for id in WEAPON_ORDER:
+		if String(id) != f and owned(col, String(id)) and can_begin(col, String(id)):
+			return String(id)
+	for id2 in WEAPON_ORDER:
+		if String(id2) != f and int(WEAPONS[id2].get("from", 0)) <= 1:
+			return String(id2)
+	return f
+
+
 ## How far you have come in Survivor (0 … 1): the share of what you have unlocked and tuned at the console. (Luz)
 ## The crowd in the stands goes by this.
 static func progress(col: Dictionary) -> float:

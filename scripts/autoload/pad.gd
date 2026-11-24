@@ -129,6 +129,9 @@ func _ready() -> void:
 	Keybinds.changed.connect(_apply_axes)
 	_apply_axes()
 	Input.joy_connection_changed.connect(func(_d, _c): _pick_device())
+	Players.changed.connect(func():              # split screen: this is the first player's controller from here on
+		_pick_device()
+		_apply_axes())
 	_pick_device()
 
 
@@ -227,9 +230,9 @@ func _apply_axes() -> void:
 		for ev in InputMap.action_get_events(act):
 			if ev is InputEventJoypadMotion:
 				InputMap.action_erase_event(act, ev)
-		if enabled:
+		if enabled and not (Players.split and Players.pad_of(0) < 0):
 			var m := InputEventJoypadMotion.new()
-			m.device = -1
+			m.device = Players.pad_of(0) if Players.split else -1     # split screen: only the first player's stick walks them
 			m.axis = spec[1]
 			m.axis_value = spec[2]
 			InputMap.action_add_event(act, m)
@@ -239,6 +242,8 @@ func _apply_axes() -> void:
 func _pick_device() -> void:
 	var pads := Input.get_connected_joypads()
 	device = pads[0] if not pads.is_empty() else -1
+	if Players.split:                            # split screen: the first player's own controller, or none (the keyboard)
+		device = Players.pad_of(0) if Players.pad_of(0) in pads else -1
 	kind = ""
 	if device >= 0:
 		var nm := Input.get_joy_name(device).to_lower()
@@ -384,6 +389,8 @@ func aim_point(from: Vector2, facing: Vector2) -> Vector2:
 # ---------------------------------------------------------------- each frame
 
 func _input(event: InputEvent) -> void:
+	if Players.split and not Players.owns(0, event):
+		return                                    # split screen: the second player's device is not this one's business
 	if event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf(event.axis_value) > 0.5):
 		if not using_pad:
 			using_pad = true

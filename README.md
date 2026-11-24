@@ -467,6 +467,53 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.7: `GroundView._split_hud_draw()` draws the second player's whole display over their half (bars, dodge,
+  target card, the fight, belt and weapon tiles through `SuitHud.tile`); `_split_key(action)` is the key or button
+  of their device; `_split_label()`.
+- 0.8.75.6 (Survivor for two after Luz's rules): `run["boni2"]` and `mods2` (the second player's boni and what
+  they do), `_remods()`, `two_max()`, `apply_for(seat, card)` (the one way a card goes into an arsenal);
+  `run_of(1)` carries their boni and health; `_weapons()` wraps `_weapons_run()`, which sets `mods` to the owner's
+  for each weapon. `card_seat` flips after every card (one card a level). `open_draw()` draws for `draw_seat`
+  (tests) or by lot, kept in `last_draw_seat`. `SD.second_weapon(col)`, the record's `weapon2`, `sv_weapon` with
+  seat 1; `ColosseumUI.SvPrep.seat`, `pick_seat()`, `weapon_of()`. The sidearm is gone.
+- 0.8.75.5 (split screen, stage 1, an arsenal each in Survivor): `run["own2"]` holds the ids of the second
+  player's weapons; `owner_of(id)`, `owner_up(id)`, `wpos(id)`, `weapons_of(seat)`, `run_of(seat)` (a player's view
+  of the run for `SD.offers` / `SD.apply`: their weapons, a `pool_w` without the other's). `_weapons(delta,
+  pp_focus)` sets `pp` and `fdir` per weapon from its owner and skips it while they are down. `card_seat` and
+  `_offer()` / `pick()` deal a card each per level; `LevelUp.seat` / `who`, polled from `Players` for seat 1.
+  The pulse's rings carry their place (`"p"`); the superlaser and the Nova Field are drawn at `wpos()`.
+  `Players.pressed()` no longer asks the InputMap for actions it does not have. Smoke group `split4` (pictures
+  with `SPLIT4_SHOTS=1`).
+- 0.8.75.4 (split screen, stage 1, the second player's gear in a match): the Colosseum's state has `fit2`
+  (`col_equip` with seat 1; `col_ready` checks both); `ColosseumUI.Prep.seat`, `fit_key()`, `pick_seat()`,
+  `seat_rect()`. `spawn_p2(true)` builds `CD.gear_of(fit2)` and gives the ally `gear`, `weapons`, `wi`,
+  `grenades`, `belt`, `energy(_max)`, `ammo(_max)`, `stations`; `p2_swap()`, `p2_grenade()`, `p2_belt()`,
+  `p2_station()`, `p2_charge()` on "foot_swap", "foot_grenade", "foot_belt_1…4", "interact". Smoke group `split3`
+  (pictures with `SPLIT3_SHOTS=1`).
+- 0.8.75.3 (split screen, stage 1, Survivor): `survivor_game.gd` has the second player as `two` (a Walker) with
+  `two_hp`, `two_down`, `one_down`, `rev_k`: `two_join()` in `setup()`, `_two_step()` each step (`Players.move(1)`,
+  "foot_dodge", the sidearm into `shots`, `touching()` for what hurts them, "interact" beside whoever is down),
+  `two_hurt()`, `_one_goes_down()`, `_one_back()`, `_two_back()`, `_two_draw()` from `draw_over()`. `focus_pos()`
+  is whom the stage is after (the second player while the first is down); `_hurt()` and `can_hurt()` follow it;
+  the view's `story_cam` carries the picture. Smoke group `split2` (pictures with `SPLIT2_SHOTS=1`).
+- 0.8.75.2 (split screen, stage 1, matches): `GroundCombat.spawn_p2(arena)` makes the second player a member of
+  `allies` with the key `p2` (`p2()`, `p2_up()`); `_ally_step()` hands them to `_p2_step()` (`Players.move(1)`,
+  "foot_dodge", "foot_target", "interact" beside the pilot down) and the shared `_ally_shoot()`. The view:
+  `_split_open()` moves `_world` into a SubViewport for the left half and adds a second one on the same world with
+  a camera on the second player (`_split_step()`, `_split_close()`, `_split_hud_draw()`); `_ui` is narrowed to the
+  left half and `CombatHud` measures its parent. `col_down`, `col_down_start()`, `col_revive_hold()`,
+  `col_revive()`, `p2_may_act()`. Smoke group `split1` (pictures with `SPLIT1_SHOTS=1`).
+- 0.8.75.1 (package 75, split screen, stage 0; Steckbrief `Claude outputs/steckbrief_splitscreen.md`): the
+  autoload `Players` (`scripts/autoload/players.gd`, before `Pad`): `split`, `devices` ("kbm" or "pad:<id>"),
+  `start_split()` / `stop_split()`, `pad_of()`, `on_keys()`, `owns(player, event)`, and the questions a view asks:
+  `pressed()`, `just_pressed()`, `just_released()` (an InputMap action plus the controller's context), `move()`,
+  `aim()`; `sim` for tests. `Pad` follows the first player's device only while `Players.split`.
+  `GameState.pilot2` / `gear2`, `new_pilot2()`, `has_pilot2()` (saved as `pilot2`, `gear2`; the save's meta carries
+  `pilot2`). `SaveGame.start_split(slot, d0, d1, pilot2_data)`, `pilot2_of(slot)`; `start_pending()` switches split
+  screen on, `to_menu()` off. The creator's mode "p2". `main_menu.gd`: `_show_split()`, `_build_split()`.
+  `scripts/ui/split_view.gd` (preload it): two SubViewports on one world, `cams`, `add_world()`, `set_split()`,
+  `to_screen()`. Pictures of the menu: `Claude outputs/_furn/split0.tscn` (windowed). Smoke group `split0`
+  (pictures with `SPLIT0_SHOTS=1`).
 - 0.8.64.9 to 0.8.64.11 (after Luz's play): the fire group settings list `stats()["locked"]`; `tree_locked()` only
   while the intro runs; `dan_work._convoy_weaken()`, `LUZ_SPAWN`; `_lead_walk()` now leads by itself
   (`_lead_follow()`, `_lead_go()`); `_hub_talk(who)` with the dialogues `<who>_hub`, the answer flag `hub_do`, the

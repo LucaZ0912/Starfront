@@ -209,6 +209,34 @@ var dash_charges := 2.0
 var kb_t := 0.0                    # you are thrown back: seconds left
 var kb_dir := Vector2.ZERO
 var hud: Control = null
+# split screen, stage 1 (Luz): Survivor for two, in one picture. The camera stays on the first player; the second
+# keeps inside what it shows. Whoever goes down lies there until the other brings them back; with both down the run
+# is over.
+const TWO_REACH := 26.0            # how near one stands to bring the other back
+const TWO_REVIVE := 2.5            # seconds the use key is held for it
+const TWO_GUN_REACH := 170.0       # how far the second player's sidearm carries
+const TWO_GUN_GAP := 0.4           # seconds between two of its shots
+var two: Walker = null             # the second player's figure (null: one player)
+var two_hp := 0.0
+var two_down := false
+var two_dash_t := 0.0
+var two_dash_cd := 0.0
+var two_dash_dir := Vector2.ZERO
+var two_hurt_cd := 0.0
+var two_cool := 0.0
+var two_flash := 0.0
+var one_down := false              # the first player is down and waits for the second
+var rev_k := 0.0                   # how far the one standing is with bringing the other back (0 … 1)
+# third part: an arsenal each. Every weapon belongs to who took its card and fires from where they stand
+# (run["own2"]: the ids of the second player's); boni are for both. With a new level each picks a card.
+var two_face := Vector2.DOWN       # which way the second player looks (what they throw ahead goes that way)
+# (Luz, 24 Nov 2026) five places for weapons and five for boni each: run["boni2"] are the second player's boni and
+# `mods2` what they make of them and their weapons. The level is one for both; its cards go to the two in turn. A
+# weapon crate's draw goes to one of the two by lot. Each begins with a weapon of their own.
+var mods2: Dictionary = {}
+var draw_seat := -1                # tests: whose the next weapon crate is (-1: by lot)
+var last_draw_seat := 0            # whose the last one was
+var card_seat := 0                 # whose cards are on the table (0 you, 1 the second player)
 var _over: Node2D = null
 var _glow: Node2D = null
 var _shtex: Array = []             # the shards' pictures: by kind, by frame
@@ -321,7 +349,7 @@ func setup(p_view, p_map: GroundMap, p_run: Dictionary) -> void:
 	view = p_view
 	map = p_map
 	run = p_run
-	mods = SD.mods(run)
+	_remods()
 	rng.randomize()
 	_w = map.w
 	_h = map.h
@@ -459,11 +487,300 @@ func setup(p_view, p_map: GroundMap, p_run: Dictionary) -> void:
 	hud = SUI.Hud.new()
 	hud.game = self
 	view._ui.add_child(hud)
+	if Players.split and GameState.has_pilot2():          # split screen: the second player stands beside you
+		two_join()
+
+
+# ---------------------------------------------------------------- split screen: the second player
+
+## What the boni make of each of you: `mods` yours, `mods2` the second player's.
+func _remods() -> void:
+	mods = SD.mods(run)
+	mods2 = SD.mods(run_of(1)) if two != null else mods
+
+
+## The most health the second player can have (their own boni).
+func two_max() -> float:
+	return SD.max_hp(run_of(1)) if two != null else SD.max_hp(run)
+
+
+## A card into the arsenal of one of you (0 you, 1 the second player). "" or why not.
+func apply_for(seat: int, card: Dictionary) -> String:
+	if two == null:
+		var e0 := String(SD.apply(run, card))
+		if e0 == "":
+			_remods()
+		return e0
+	if String(card.get("kind", "")) == "weapon" and SD.weapon_level(run, String(card.get("id", ""))) > 0:
+		return "The other one carries that."
+	var v: Dictionary = run_of(seat)
+	var had: int = (v["weapons"] as Array).size()
+	var hp0 := float(v["hp"])
+	var e := String(SD.apply(v, card))
+	if e != "":
+		return e
+	if (v["weapons"] as Array).size() > had:               # a new weapon: into the run, and theirs
+		var nw: Array = v["weapons"][-1]
+		(run["weapons"] as Array).append(nw)
+		if seat == 1:
+			(run["own2"] as Array).append(String(nw[0]))
+	if float(v["hp"]) > hp0:                              # a med cell: for whose card it is
+		if seat == 1:
+			two_hp = minf(two_max(), two_hp + (float(v["hp"]) - hp0))
+		elif not one_down:
+			run["hp"] = float(v["hp"])
+	run["purse"] = int(v.get("purse", run.get("purse", 0)))
+	_remods()
+	return ""
+
+
+## Whose a weapon is: 0 yours, 1 the second player's.
+func owner_of(id: String) -> int:
+	return 1 if id in (run.get("own2", []) as Array) else 0
+
+
+## Is the one who carries this weapon on their feet?
+func owner_up(id: String) -> bool:
+	return two_up() if (two != null and owner_of(id) == 1) else not one_down
+
+
+## Where a weapon is: where its owner stands.
+func wpos(id: String) -> Vector2:
+	if two != null and is_instance_valid(two) and owner_of(id) == 1:
+		return two.pos
+	return view.pilot.pos
+
+
+## The weapons of one of you, as the run holds them ([id, level], the very rows of the run).
+func weapons_of(seat: int) -> Array:
+	return (run["weapons"] as Array).filter(func(w): return owner_of(String(w[0])) == seat)
+
+
+## The run as one of you sees it for their cards: their own weapons and places; what the other carries cannot come
+## to them; their own boni. The level and all else are the run's own. (One player: the run itself.)
+func run_of(seat: int) -> Dictionary:
+	if two == null:
+		return run
+	var v: Dictionary = run.duplicate()
+	v["weapons"] = weapons_of(seat)
+	if seat == 1:
+		if not run.has("boni2"):
+			run["boni2"] = []
+		v["boni"] = run["boni2"]                           # (the very list: a bonus taken goes into it)
+		v["hp"] = two_hp
+	var theirs: Array = weapons_of(1 - seat).map(func(w): return String(w[0]))
+	v["pool_w"] = (run.get("pool_w", SD.WEAPON_ORDER) as Array).filter(func(id): return not (String(id) in theirs))
+	return v
+
+
+## The second player comes into the run: their own pilot's looks, as much health as you have.
+func two_join() -> void:
+	if two != null and is_instance_valid(two):
+		return
+	var lk: Dictionary = (GameState.pilot2.get("look", {}) as Dictionary).duplicate()
+	var at: Vector2 = near_free(view.pilot.pos + Vector2(18.0, 6.0), 30.0)
+	two = Walker.new()
+	two.setup(map, lk, at if at != Vector2.INF else view.pilot.pos, true)
+	two.stays = true
+	view._sorted.add_child(two)
+	two_hp = two_max()
+	two_down = false
+	one_down = false
+	rev_k = 0.0
+	if not run.has("own2"):
+		run["own2"] = []
+	if not run.has("boni2"):
+		run["boni2"] = []
+	if weapons_of(1).is_empty():                           # the weapon they begin with (picked in the fighters' room)
+		var w2: String = SD.second_weapon(GameState.col_state())
+		if SD.weapon_level(run, w2) == 0:
+			(run["weapons"] as Array).append([w2, 1])
+			(run["own2"] as Array).append(w2)
+	_remods()
+	two_hp = two_max()
+
+
+func two_up() -> bool:
+	return two != null and is_instance_valid(two) and not two_down
+
+
+func two_name() -> String:
+	return String(GameState.pilot2.get("name", "Player 2")).get_slice(" ", 0)
+
+
+## Whom the stage is after: you, or the second player while you are down.
+func focus_pos() -> Vector2:
+	return two.pos if one_down and two_up() else view.pilot.pos
+
+
+## A hit on the second player.
+func two_hurt(dmg: float) -> void:
+	if not two_up() or two_hurt_cd > 0.0 or two_dash_t > 0.0 or shield_t > 0.0 or Commands.suit_god:
+		return
+	two_hp -= dmg
+	two_hurt_cd = SD.HURT_GAP
+	two_flash = 0.15
+	two.modulate = Color(1.0, 0.45, 0.45)
+	Audio.play("ui_error", "survivor: the second player is hit", -12.0)
+	if two_hp <= 0.0:
+		two_hp = 0.0
+		two_down = true
+		two.down = true
+		two.moving = false
+		two.modulate = Color.WHITE
+		rev_k = 0.0
+		if not one_down:
+			say("", "%s IS DOWN" % two_name().to_upper())
+		Audio.play("hit_hull", "survivor: the second player is down", -4.0)
+
+
+## You are down and the second player still stands: you lie there, the stage turns to them, the picture too.
+func _one_goes_down() -> void:
+	one_down = true
+	run["hp"] = 0.0
+	rev_k = 0.0
+	dash_t = 0.0
+	kb_t = 0.0
+	view.pilot.down = true
+	view.pilot.moving = false
+	view.pilot.modulate = Color.WHITE
+	say("", "YOU ARE DOWN")
+	Audio.play("hit_hull", "survivor: the first player is down", -4.0)
+
+
+func _one_back() -> void:
+	one_down = false
+	run["hp"] = SD.max_hp(run) * 0.5
+	shield_t = maxf(shield_t, 2.5)
+	hurt_cd = SD.HURT_GAP
+	view.pilot.down = false
+	view.story_cam = Vector2.INF
+	rev_k = 0.0
+	say("", "BACK UP")
+	Audio.play("sv_level", "survivor: the first player is back up", -4.0)
+
+
+func _two_back() -> void:
+	two_down = false
+	two_hp = two_max() * 0.5
+	two_hurt_cd = 2.5
+	two.down = false
+	rev_k = 0.0
+	say("", "%s IS BACK UP" % two_name().to_upper())
+	Audio.play("sv_level", "survivor: the second player is back up", -4.0)
+
+
+## The second player's step: their device walks them (inside the picture), a dodge, a sidearm that fires by itself,
+## what touches them, the shards near them, and the use key held beside whoever is down.
+func _two_step(delta: float) -> void:
+	if two == null or not is_instance_valid(two):
+		return
+	two_hurt_cd = maxf(0.0, two_hurt_cd - delta)
+	two_dash_t = maxf(0.0, two_dash_t - delta)
+	two_dash_cd = maxf(0.0, two_dash_cd - delta)
+	two_cool = maxf(0.0, two_cool - delta)
+	if two_flash > 0.0:
+		two_flash -= delta
+		if two_flash <= 0.0:
+			two.modulate = Color.WHITE
+	var me: Vector2 = view.pilot.pos
+	if one_down:
+		run["hp"] = 0.0                                     # (nothing puts you back on your feet but them)
+		view.story_cam = two.pos                            # the picture goes with the one who still plays
+	if two_up():
+		var mv: Vector2 = Players.move(1) if view.input_enabled or one_down else Vector2.ZERO
+		if Players.just_pressed(1, "foot_dodge") and two_dash_cd <= 0.0 and mv.length() > 0.2:
+			two_dash_t = DASH_TIME
+			two_dash_cd = DASH_BACK * 0.5
+			two_dash_dir = mv.normalized()
+			Audio.play("ui_click", "survivor: the second player's dodge", -8.0)
+		var moved := false
+		if two_dash_t > 0.0:
+			moved = two.step(two_dash_dir, delta, DASH_SPEED)
+		elif mv.length() > 0.15:
+			moved = two.step(mv.limit_length(1.0), delta, (0.55 if _haz[_ti(two.pos)] == 1 else 1.0) * float(mods2.get("speed", 1.0)))
+		if not moved:
+			two.moving = false
+		elif mv.length() > 0.2:
+			two_face = mv.normalized()
+		# inside the picture: its middle is you (or them, while you are down)
+		if not one_down:
+			var hf := _half() - Vector2(16.0, 26.0)
+			var cl := Vector2(clampf(two.pos.x, me.x - hf.x, me.x + hf.x), clampf(two.pos.y, me.y - hf.y, me.y + hf.y))
+			if cl != two.pos:
+				var fr: Vector2 = cl if map.free_at(cl, 3.0) else near_free(cl, 30.0)
+				if fr != Vector2.INF:
+					two.pos = fr
+					two.position = fr * S
+		# what touches them (while you stand; while you are down the stage is after them anyway)
+		if not one_down and not frozen and two_hurt_cd <= 0.0 and two_dash_t <= 0.0:
+			var tc: Array = touching(two.pos, 8.0)
+			if not tc.is_empty():
+				two_hurt(_dmg[fk[tc[0]]] * (1.5 if fal[tc[0]] != 0 else 1.0))
+		if float(mods2.get("regen", 0.0)) > 0.0:
+			two_hp = minf(two_max(), two_hp + float(mods2["regen"]) * delta)      # (their Nanite Weave)
+		# shards near them fly to whoever gathers (what they are worth is for both of you)
+		if not one_down:
+			var mag2: float = pow(SD.MAGNET * float(mods2.get("mag", 1.0)), 2.0)
+			for k in sn:
+				if spull[k] == 0 and sp[k].distance_squared_to(two.pos) < mag2:
+					spull[k] = 1
+	# the use key held beside whoever is down
+	var near: bool = two.pos.distance_to(me) <= TWO_REACH
+	if two_down and not one_down and near and view.input_enabled and Input.is_action_pressed("interact"):
+		rev_k += delta / TWO_REVIVE
+		if rev_k >= 1.0:
+			_two_back()
+	elif one_down and two_up() and near and Players.pressed(1, "interact"):
+		rev_k += delta / TWO_REVIVE
+		if rev_k >= 1.0:
+			_one_back()
+	else:
+		rev_k = 0.0
+
+
+## Over the figures: who they are and how they stand; down, and what brings them back.
+func _two_draw(o: Node2D) -> void:
+	if two == null or not is_instance_valid(two):
+		return
+	var font := ThemeDB.fallback_font
+	var pink := Color(1.0, 0.45, 0.85)
+	var tp: Vector2 = two.pos * S
+	var mxh: float = maxf(two_max(), 1.0)
+	o.draw_set_transform(tp + Vector2(0, -2), 0.0, Vector2(1.0, 0.45))
+	o.draw_arc(Vector2.ZERO, 22.0, 0.0, TAU, 32, Color(pink, 0.85 if not two_down else 0.35), 2.5)
+	o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	o.draw_string(font, tp + Vector2(-50, -112), "P2  %s" % two_name(), HORIZONTAL_ALIGNMENT_CENTER, 100, 12, pink)
+	o.draw_rect(Rect2(tp + Vector2(-26, -106), Vector2(52, 5)), Color(0.08, 0.08, 0.1, 0.85))
+	o.draw_rect(Rect2(tp + Vector2(-26, -106), Vector2(52.0 * clampf(two_hp / mxh, 0.0, 1.0), 5)), Color(1.0, 0.35, 0.3))
+	var who := Vector2.INF
+	var word := ""
+	if two_down and not one_down:
+		who = tp
+		word = "DOWN: hold %s beside them" % Keybinds.key_text("interact")
+	elif one_down:
+		who = view.pilot.pos * S
+		var key2: String = Keybinds.key_text("interact") if Players.on_keys(1) else Pad.binding_text(Pad.binding("ground", "interact"))
+		word = "DOWN: P2 holds %s beside you" % key2
+	if who != Vector2.INF:
+		var ws := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
+		o.draw_rect(Rect2(who + Vector2(-ws.x * 0.5 - 6.0, 16.0), Vector2(ws.x + 12.0, 20.0)), Color(0.02, 0.02, 0.05, 0.75))
+		o.draw_string(font, who + Vector2(-ws.x * 0.5, 31.0), word, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.6, 0.3))
+		if rev_k > 0.0:
+			o.draw_arc(who + Vector2(0, -20), 30.0, -PI / 2, -PI / 2 + TAU * rev_k, 32, Color(0.45, 1.0, 0.6), 4.0)
 
 
 ## The run's nodes outside this one go with it.
 func drop() -> void:
 	_blackout(false)
+	if two != null and is_instance_valid(two):
+		two.queue_free()
+	two = null
+	if one_down and view != null and is_instance_valid(view):
+		view.story_cam = Vector2.INF
+		if view.pilot != null and is_instance_valid(view.pilot):
+			view.pilot.down = false
+	one_down = false
 	if hud != null and is_instance_valid(hud):
 		hud.queue_free()
 	hud = null
@@ -490,6 +807,9 @@ func _process(delta: float) -> void:
 
 ## Your step: thrown back you go where you are thrown; the dodge carries you where it began to go.
 func move(dir: Vector2) -> Vector2:
+	if one_down:
+		_slide = Vector2.ZERO
+		return Vector2.ZERO                               # (split screen: down, you wait for the second player)
 	if kb_t > 0.0:
 		_slide = kb_dir
 		return kb_dir
@@ -517,7 +837,7 @@ func speed() -> float:
 
 ## The dodge: a quick step the way you walk (the way you look, standing); nothing touches you while it lasts.
 func dash(dir: Vector2) -> bool:
-	if dash_charges < 1.0 or dash_t > 0.0 or over:
+	if dash_charges < 1.0 or dash_t > 0.0 or over or one_down:
 		return false
 	if dir.length() < 0.2:
 		dir = FACE[clampi(int(view.pilot.dir), 0, 3)]
@@ -543,6 +863,8 @@ func _ti(p: Vector2) -> int:
 
 ## Can something hurt you now? (Not in a dodge, not under a crate's shield, not right after a hit.)
 func can_hurt() -> bool:
+	if one_down:                                           # (split screen: the stage is after the second player now)
+		return two_up() and two_hurt_cd <= 0.0 and two_dash_t <= 0.0 and shield_t <= 0.0
 	return hurt_cd <= 0.0 and dash_t <= 0.0 and shield_t <= 0.0
 
 
@@ -556,7 +878,7 @@ func say(key: String, text: String = "") -> void:
 func step(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	_frame += 1
-	var pp: Vector2 = view.pilot.pos
+	var pp: Vector2 = focus_pos()                          # (you; split screen: the second player while you are down)
 	if (boss_kind == "" or boss_kind != String(stg.get("end", ""))) and _win_t < 0.0:
 		run["t"] = minf(SD.RUN_TIME, float(run["t"]) + delta)      # (the clock stands at the end of the stage while its last one lives: The Brood, The Core)
 	hurt_cd = maxf(0.0, hurt_cd - delta)
@@ -598,9 +920,12 @@ func step(delta: float) -> void:
 	if not frozen and stasis_t <= 0.0 and _frame % 2 == 0:
 		_separate()
 	_src = 0
-	_weapons(0.0 if emp_t > 0.0 else delta * (2.0 if over_t > 0.0 else 1.0), pp)      # (an EMP: nothing charges)
+	var wdl := 0.0 if emp_t > 0.0 else delta * (2.0 if over_t > 0.0 else 1.0)      # (an EMP: nothing charges; who is down: their weapons rest, see _weapons)
+	_weapons(wdl, pp)
 	_src = int(_wsrc.get("drone", 0))
-	_drones(delta, 0.0 if emp_t > 0.0 else delta * (2.0 if over_t > 0.0 else 1.0), pp)
+	_drones(delta, wdl if owner_up("drone") else 0.0, wpos("drone") if two != null else pp)
+	_src = 0
+	_two_step(delta)
 	_fly(delta, pp)
 	_devices(delta, pp)
 	_src = 0
@@ -635,9 +960,14 @@ func step(delta: float) -> void:
 		_win_t -= delta
 		if _win_t <= 0.0:
 			end(true)                                         # The Brood is out: you held the stage
+	elif one_down:
+		if not two_up():
+			end(false)                                        # (split screen: both of you down)
 	elif float(run["hp"]) <= 0.0:
 		if bool(run.get("revive", false)):
 			_revive(view.pilot.pos)                           # (the last chance, bought at the console: once a run)
+		elif two_up():
+			_one_goes_down()                                  # (split screen: the second player can bring you back)
 		else:
 			end(false)
 	elif pending > 0 and view.minigame == null:
@@ -1522,7 +1852,7 @@ func _orb_at(pp: Vector2, dir: Vector2, r: float) -> Vector2:
 func _sweep_bounce() -> Array:
 	if not walls_on or sweep.is_empty():
 		return []
-	var from: Vector2 = view.pilot.pos
+	var from: Vector2 = wpos("superlaser")
 	var dir := Vector2.from_angle(float(sweep["a"]))
 	var far := float(sweep["reach"])
 	var l := _free_len(from, dir, far)
@@ -2161,7 +2491,7 @@ func _lab_glow(o: Node2D, gt: Texture2D) -> void:
 func _sweep_len() -> float:
 	if sweep.is_empty():
 		return 0.0
-	return _free_len(view.pilot.pos, Vector2.from_angle(float(sweep["a"])), float(sweep["reach"]))
+	return _free_len(wpos("superlaser"), Vector2.from_angle(float(sweep["a"])), float(sweep["reach"]))
 
 
 ## (Part 9a) Is this one a burrower under the ice? (Nothing reaches it there: no hit, no cold, no shock; it is
@@ -2241,6 +2571,9 @@ func _thrown(delta: float, pp: Vector2) -> void:
 		var gone := false
 		if p.distance_squared_to(pp) < float(g.get("r2", 64.0)) and can_hurt():
 			_hurt(float(g.get("dmg", 9.0)))
+			gone = true
+		elif not one_down and two_up() and two_hurt_cd <= 0.0 and two_dash_t <= 0.0 and p.distance_squared_to(two.pos) < float(g.get("r2", 64.0)):
+			two_hurt(float(g.get("dmg", 9.0)))                 # (split screen: it flies into the second player)
 			gone = true
 		elif g.has("ray") and walls_on and _wall[_ti(p)] != 0 and not g.has("b"):      # (part 11b) a trooper's ring of light: a wall turns it back, once
 			var gb: Array = _bounce(p - (g["v"] as Vector2) * delta, g["v"], delta)
@@ -2439,6 +2772,9 @@ func _drop(p: Vector2, value: int) -> void:
 
 
 func _hurt(dmg: float) -> void:
+	if one_down:
+		two_hurt(dmg)                                      # (split screen: you are down; it is the second player it hits)
+		return
 	if shield_t > 0.0:
 		return
 	if float(mods.get("cell", 0.0)) > 0.0 and cell_t <= 0.0:   # the Shield Cell takes this one, then charges again
@@ -3117,7 +3453,7 @@ func _crates(delta: float, pp: Vector2) -> void:
 		var c: Dictionary = crates[q]
 		if float(c["fall"]) > 0.0:
 			c["fall"] = float(c["fall"]) - delta
-		elif (c["pos"] as Vector2).distance_squared_to(pp) < 15.0 * 15.0:
+		elif (c["pos"] as Vector2).distance_squared_to(pp) < 15.0 * 15.0 or (not one_down and two_up() and (c["pos"] as Vector2).distance_squared_to(two.pos) < 15.0 * 15.0):
 			if bool(c.get("ice", false)):                     # (part 9a) frozen in: only the steam of the vent beside it thaws it
 				if _frozen_t <= 0.0:
 					_frozen_t = 6.0
@@ -3219,12 +3555,17 @@ func open_crate(c: Dictionary) -> Dictionary:
 ## the window shows the reels turning while the run stands still. `count` > 0: that many (the debug menu, the tests).
 func open_draw(great: bool, count: int = 0) -> Dictionary:
 	var cnt: int = count if count > 0 else SD.draw_count(run, rng, great)
-	var symbols: Array = (run["weapons"] as Array).map(func(w): return String(w[0])) + (run["boni"] as Array).map(func(b): return String(b[0]))
-	var rewards: Array = SD.draw_rewards(run, rng, cnt)
+	var seat: int = (draw_seat if draw_seat >= 0 else rng.randi() % 2) if two != null else 0      # (split screen: by lot, whose it is)
+	last_draw_seat = seat
+	var rv: Dictionary = run_of(seat)
+	var symbols: Array = (rv["weapons"] as Array).map(func(w): return String(w[0])) + (rv["boni"] as Array).map(func(b): return String(b[0]))
+	var rewards: Array = SD.draw_rewards(rv, rng, cnt)
 	for rw in rewards:
-		SD.apply(run, rw)
-	mods = SD.mods(run)
+		apply_for(seat, rw)
+	_remods()
 	last_draw = rewards
+	if two != null:
+		say("", "THE CRATE GOES TO  P%d  %s" % [seat + 1, (two_name() if seat == 1 else GameState.pilot_name.get_slice(" ", 0)).to_upper()])
 	Audio.play("sv_level", "survivor: a weapon crate", -6.0)
 	if view != null and is_instance_valid(view) and view.minigame == null:
 		var dw = SUI.Draw.new()
@@ -3313,7 +3654,13 @@ func give(id: String) -> void:
 
 # ---------------------------------------------------------------- your weapons
 
-func _weapons(delta: float, pp: Vector2) -> void:
+func _weapons(delta: float, pp_focus: Vector2) -> void:
+	var mine: Dictionary = mods
+	_weapons_run(delta, pp_focus, mine)
+	mods = mine                                           # (yours again, whoever fired last)
+
+
+func _weapons_run(delta: float, pp_focus: Vector2, mods_one: Dictionary) -> void:
 	var area := float(mods["area"])
 	var cdk := float(mods["cd"])
 	var dk := float(mods["dmg"])
@@ -3326,6 +3673,17 @@ func _weapons(delta: float, pp: Vector2) -> void:
 		drones.clear()
 	for w in run["weapons"]:
 		var id := String(w[0])
+		# (split screen) whose it is: it fires from where they stand, the way they look, and rests while they are down
+		var mine2: bool = two != null and owner_of(id) == 1
+		if (mine2 and not two_up()) or (not mine2 and one_down):
+			continue
+		var pp: Vector2 = two.pos if mine2 else (view.pilot.pos if two != null else pp_focus)
+		var fdir: Vector2 = two_face if mine2 else face_dir
+		mods = mods2 if mine2 else mods_one                 # (… and with their own boni)
+		area = float(mods["area"])
+		cdk = float(mods["cd"])
+		dk = float(mods["dmg"])
+		dur = float(mods.get("dur", 1.0))
 		_src = int(_wsrc.get(id, 0))
 		var lv := int(w[1])
 		var st: Dictionary = SD.stats(id, lv)
@@ -3371,7 +3729,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 					_kbk = 1.0
 				else:
 					var r := float(st["r"]) * area
-					rings.append({"r": r, "t": 0.0})
+					rings.append({"r": r, "t": 0.0, "p": pp})
 					Audio.play("sv_pulse", "survivor: the pulse", -18.0)
 					var r2 := r * r
 					for i in range(n - 1, -1, -1):
@@ -3468,7 +3826,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 							mines.append({"p": mp, "arm": 0.5, "life": mlife, "r": mr, "dmg": mdmg, "again": true, "g": _mine_g, "q": q2, "m": mc})
 				else:
 					for q3 in int(st["n"]) + _more():
-						var mp2 := pp - face_dir * 8.0 + (Vector2.ZERO if q3 == 0 else Vector2.from_angle(rng.randf() * TAU) * 16.0)
+						var mp2 := pp - fdir * 8.0 + (Vector2.ZERO if q3 == 0 else Vector2.from_angle(rng.randf() * TAU) * 16.0)
 						if _solid[_ti(mp2)] != 0:
 							mp2 = pp
 						mines.append({"p": mp2, "arm": 0.5, "life": mlife, "r": mr, "dmg": mdmg, "again": false})
@@ -3493,7 +3851,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 			"cryo":                                          # a cone of cold the way you walk (Absolute Zero: a wave all round)
 				var cr := float(st["reach"]) * area * (1.5 if ult else 1.0)
 				var arc := float(SD.WEAPONS["cryo"]["arc"])
-				var fa := face_dir.angle()
+				var fa := fdir.angle()
 				for j in touching(pp, cr):
 					if j >= n or (not ult and absf(wrapf((fp[j] - pp).angle() - fa, -PI, PI)) > arc) or not _sees(pp, fp[j]):
 						continue
@@ -3508,7 +3866,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 			"taser":                                         # a shock into a small field right before you (Chain Lightning: it jumps on from each one, three times)
 				var tr0 := float(st["reach"]) * area
 				var tarc := float(SD.WEAPONS["taser"]["arc"])
-				var tang := face_dir.angle()
+				var tang := fdir.angle()
 				var tdmg := float(st["dmg"]) * dk
 				var tst := float(SD.WEAPONS["taser"]["stun"]) * dur
 				var struck: Array = []
@@ -3544,7 +3902,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 				Audio.play("sv_taser", "survivor: the taser", -16.0)
 			"blackhole":                                     # a black hole the way you look (Event Horizon: three, spread like a fan)
 				for q6 in (3 if ult else 1):
-					var ha := face_dir.angle() + ((q6 - 1) * 0.5 if ult else 0.0)
+					var ha := fdir.angle() + ((q6 - 1) * 0.5 if ult else 0.0)
 					if holes.size() < 6:
 						holes.append({"p": pp + Vector2.from_angle(ha) * 14.0, "v": Vector2.from_angle(ha) * float(SD.WEAPONS["blackhole"]["speed"]), "r": float(st["r"]) * area, "t": 0.0,
 							"tick": 0.0, "dmg": float(SD.WEAPONS["blackhole"]["tough"]) * dk, "u": ult, "tr": PackedVector2Array()})
@@ -3554,7 +3912,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 				_orb_more = _more()
 				Audio.play("sv_pulse", "survivor: the plasma orbs", -14.0)
 			"gravity":                                       # a sphere thrown among them (at the nearest one, or ahead of you)
-				var gp := near_free(_reach(pp, pp + face_dir * 70.0), 20.0)
+				var gp := near_free(_reach(pp, pp + fdir * 70.0), 20.0)
 				var gbest := 150.0 * 150.0
 				for i3 in n:
 					var gd := fp[i3].distance_squared_to(pp)
@@ -3686,18 +4044,19 @@ func _fly(delta: float, pp: Vector2) -> void:
 		sweep["a"] = cur
 		var sgn := -1.0 if cur < prev else 1.0
 		var span := absf(cur - prev)
+		var swp: Vector2 = wpos("superlaser") if two != null else pp      # (split screen: round whose it is)
 		var rr2 := pow(float(sweep["reach"]), 2.0)
 		for i in range(n - 1, -1, -1):
 			if i >= n:
 				continue
-			var d := fp[i] - pp
+			var d := fp[i] - swp
 			var l2 := d.length_squared()
 			if l2 > rr2 or l2 < 1.0:
 				continue
 			var off := wrapf(d.angle() - prev, -PI, PI) * sgn
 			var wide := 0.05 + 7.0 / sqrt(l2)
-			if off >= -wide and off <= span + wide and _sees(pp, fp[i]):
-				_zap(i, pp)
+			if off >= -wide and off <= span + wide and _sees(swp, fp[i]):
+				_zap(i, swp)
 		var sbz: Array = _sweep_bounce()                       # (part 11a) … and who stands in the beam a wall turns back
 		if not sbz.is_empty():
 			for i5 in range(n - 1, -1, -1):
@@ -3796,6 +4155,14 @@ func _ground(delta: float, pp: Vector2) -> void:
 	if _tick < 0.5:
 		return
 	_tick = 0.0
+	if not one_down and two_up() and two_dash_t <= 0.0 and shield_t <= 0.0:      # (split screen: embers, acid and clouds under the second player)
+		if _haz[_ti(two.pos)] == 2:
+			two_hurt(_burn * 0.5)
+		else:
+			for pl3 in pools:
+				if (pl3["pos"] as Vector2).distance_to(two.pos) < float(pl3["r"]):
+					two_hurt(float(pl3["dps"]) * 0.5)
+					break
 	var safe := dash_t > 0.0 or shield_t > 0.0
 	if _haz[_ti(pp)] == 2 and not safe:
 		run["hp"] = float(run["hp"]) - _burn * 0.5
@@ -3846,12 +4213,14 @@ func _fx(delta: float) -> void:
 # ---------------------------------------------------------------- a new level
 
 func _offer() -> void:
-	cards = SD.offers(run, rng)
+	cards = SD.offers(run_of(card_seat), rng)
 	var lu = SUI.LevelUp.new()
-	lu.setup({"cards": cards, "level": int(run["level"]) - pending + 1, "run": run, "game": self})
+	lu.setup({"cards": cards, "level": int(run["level"]) - pending + 1, "run": run, "game": self, "seat": card_seat,
+		"who": ("P%d  %s" % [card_seat + 1, (two_name() if card_seat == 1 else GameState.pilot_name.get_slice(" ", 0))]) if two != null else ""})
 	lu.finished.connect(func(_took: bool):
 		view._close_game()
 		cards = []
+		card_seat = (1 - card_seat) if two != null else 0      # (split screen: the level is one for both; its cards go to the two in turn)
 		pending = maxi(0, pending - 1))
 	view._open_game(lu)
 	Audio.play("sv_level", "survivor: a new level", -4.0)
@@ -3861,10 +4230,7 @@ func _offer() -> void:
 func pick(i: int) -> String:
 	if cards.is_empty() or i < 0 or i >= cards.size():
 		return "There is no card to take."
-	var e := String(SD.apply(run, cards[i]))
-	if e == "":
-		mods = SD.mods(run)                               # (a bonus changes what all your weapons do)
-	return e
+	return apply_for(card_seat, cards[i])
 
 
 ## Overclock: does this volley fire one more? (1 or 0)
@@ -4263,7 +4629,7 @@ func reroll() -> String:
 	if int(run.get("rerolls", 0)) <= 0:
 		return "No reroll left in this run."
 	run["rerolls"] = int(run["rerolls"]) - 1
-	cards = SD.offers(run, rng)
+	cards = SD.offers(run_of(card_seat), rng)
 	Audio.play("sv_item", "survivor: a reroll", -8.0)
 	return ""
 
@@ -4804,11 +5170,11 @@ func _draw() -> void:
 	for hal8 in halos:                                      # … a burst of the halo, running out
 		SFX.halo_ground(self, (hal8["c"] as Vector2) * S, float(hal8["r"]) * S, clampf((float(hal8["r"]) - float(hal8["from"])) / maxf(1.0, float(hal8["to"]) - float(hal8["from"])), 0.0, 1.0), tnow)
 	if not sweep.is_empty() and bool(sweep.get("u", false)):      # the Sunlance: what it burns into the ground where its beam ends
-		SFX.sun_ground(self, pc, float(sweep["a"]), _sweep_len() * S, -1.0 if float(sweep["to"]) < float(sweep["a0"]) else 1.0, float(sweep["a0"]))
+		SFX.sun_ground(self, wpos("superlaser") * S, float(sweep["a"]), _sweep_len() * S, -1.0 if float(sweep["to"]) < float(sweep["a0"]) else 1.0, float(sweep["a0"]))
 	if nova_r > 0.0:                                        # the Nova Field stands
-		SFX.nova_ground(self, pc, nova_r * S, tnow, clampf(float(_wt.get("pulse", 0.0)) / 0.35, 0.0, 1.0))
+		SFX.nova_ground(self, wpos("pulse") * S, nova_r * S, tnow, clampf(float(_wt.get("pulse", 0.0)) / 0.35, 0.0, 1.0))
 	elif plv > 0:
-		draw_arc(pc, float(SD.stats("pulse", plv)["r"]) * float(mods["area"]) * S, 0.0, TAU, 64, Color(0.0, 0.3, 0.75, 0.3) if bright else Color(0.35, 0.8, 1.0, 0.16), 2.0)
+		draw_arc(wpos("pulse") * S, float(SD.stats("pulse", plv)["r"]) * float(mods["area"]) * S, 0.0, TAU, 64, Color(0.0, 0.3, 0.75, 0.3) if bright else Color(0.35, 0.8, 1.0, 0.16), 2.0)
 	for bl in blasts:                                       # a grenade's burst
 		var kb2 := float(bl["t"]) / 0.3
 		draw_circle((bl["pos"] as Vector2) * S, float(bl["r"]) * S * (0.5 + 0.5 * kb2), Color(0.45, 1.0, 0.7, 0.35 * (1.0 - kb2)))
@@ -4822,9 +5188,10 @@ func _draw() -> void:
 	for rg in rings:
 		var k := float(rg["t"]) / 0.35
 		var rr := float(rg["r"]) * S * (0.35 + 0.65 * k)
+		var rpc: Vector2 = (rg["p"] as Vector2) * S if rg.has("p") else pc      # (split screen: round who fired it)
 		if bright:
-			draw_arc(pc, rr, 0.0, TAU, 64, Color(0.0, 0.25, 0.7, 0.55 * (1.0 - k)), 11.0)      # (part 9a: by day a ring of light needs a darker one under it)
-		draw_arc(pc, rr, 0.0, TAU, 64, Color(0.5, 0.9, 1.0, 0.85 * (1.0 - k)), 5.0)
+			draw_arc(rpc, rr, 0.0, TAU, 64, Color(0.0, 0.25, 0.7, 0.55 * (1.0 - k)), 11.0)      # (part 9a: by day a ring of light needs a darker one under it)
+		draw_arc(rpc, rr, 0.0, TAU, 64, Color(0.5, 0.9, 1.0, 0.85 * (1.0 - k)), 5.0)
 		draw_circle(pc, rr, Color(0.35, 0.8, 1.0, 0.1 * (1.0 - k)))
 	for cr in crates:                                       # a crate (one still falling: its shadow, growing)
 		var cp: Vector2 = (cr["pos"] as Vector2) * S
@@ -4891,9 +5258,9 @@ func draw_glow(o: Node2D) -> void:
 	var pc := pp * S
 	for rg in rings:
 		var k := float(rg["t"]) / 0.35
-		o.draw_arc(pc, float(rg["r"]) * S * (0.35 + 0.65 * k), 0.0, TAU, 64, Color(0.3, 0.7, 1.0, 0.5 * (1.0 - k)), 9.0)
+		o.draw_arc((rg["p"] as Vector2) * S if rg.has("p") else pc, float(rg["r"]) * S * (0.35 + 0.65 * k), 0.0, TAU, 64, Color(0.3, 0.7, 1.0, 0.5 * (1.0 - k)), 9.0)
 	if nova_r > 0.0:
-		SFX.nova_glow(o, gt, pc, nova_r * S, tnow, clampf(float(_wt.get("pulse", 0.0)) / 0.35, 0.0, 1.0))
+		SFX.nova_glow(o, gt, wpos("pulse") * S, nova_r * S, tnow, clampf(float(_wt.get("pulse", 0.0)) / 0.35, 0.0, 1.0))
 	var ch8: Vector2 = CHEST * S
 	for bm8 in beams:                                       # (part 7d) the Prism Array's split light, the Chain Lightning
 		var bc8 := int(bm8.get("c", 0))
@@ -5134,6 +5501,7 @@ func draw_glow(o: Node2D) -> void:
 
 func draw_over(o: Node2D) -> void:
 	var tnow := float(run["t"])
+	_two_draw(o)
 	if walls_on:
 		_lab_over(o)
 	if not vents.is_empty() or bright:
@@ -5347,7 +5715,7 @@ func draw_over(o: Node2D) -> void:
 		SFX.drone(o, SArt.drone(int(tnow * 20.0) + dq, drones.size() > 1), (dr["p"] as Vector2) * S, 52.0 + sin(tnow * 3.0 + dq * 2.0) * 4.0, float(dr["a"]), float(dr["flash"]) > 0.0,
 			drones.size() > 1)
 	if not sweep.is_empty() and view != null and is_instance_valid(view) and view.pilot != null:      # the superlaser, sweeping
-		var so: Vector2 = view.pilot.pos * S + ch
+		var so: Vector2 = wpos("superlaser") * S + ch
 		var way := -1.0 if float(sweep["to"]) < float(sweep["a0"]) else 1.0
 		if bool(sweep.get("u", false)):                       # (the Sunlance: a beam like a sun's)
 			SFX.sun_over(o, so, float(sweep["a"]), _sweep_len() * S, way, float(sweep["a0"]), tnow)

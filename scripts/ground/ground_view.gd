@@ -375,6 +375,8 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		_q_sleep = 0
 	if map != null and _mm != null and map.has_meta("poi"):
 		map.set_meta("seen", poi_seen)                  # 0.7.53.3: the minimap of the level you leave stays
+	_split_close()                                        # (split screen: a new place starts as one picture)
+	col_down = false
 	for c in _world.get_children():
 		_world.remove_child(c)
 		c.queue_free()
@@ -2112,6 +2114,11 @@ var _col_cover: ColorRect = null        # … the sheet of black or white over t
 var _col_intro: Dictionary = {}         # part 4: the entrance before a fight: {phase, t, hold, walkers, vs}
 var _col_fight: Dictionary = {}         # … the fight: {state: count / fight / over, t, won}
 var col_lost := false                   # … you are out of the fight (shot down in the hologram, or you gave up)
+# split screen, stage 1: a match for two
+var col_down := false                   # you are down and the second player can bring you back
+var col_down_t := 0.0
+var col_revive_k := 0.0                 # how far the second player is with it (0 … 1)
+var _split := {}                        # the picture in two halves while it is ({} one picture)
 var _col_label: Label = null            # … a word across the picture
 var _col_note: Label = null             # part 5: … and a line at its foot (you are out, your team fights on)
 var _col_vel := Vector2.ZERO            # … how you slide on ice
@@ -3282,6 +3289,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					_say_toast(combat.order(who, pick), 2.5)
 			else:
 				combat.team_sel = (combat.team_sel + 1) % (combat.allies.size() + 1)
+				if combat.team_sel < combat.allies.size() and combat.allies[combat.team_sel].has("p2"):
+					combat.team_sel = (combat.team_sel + 1) % (combat.allies.size() + 1)      # (split screen: nobody you give orders to)
 				_say_toast("Orders to: %s" % ("all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])), 1.5)
 			_team_held = -1.0
 			return
@@ -5463,6 +5472,8 @@ func use(instant: bool = false) -> bool:
 					[["Give up", func(): _col_fight_over(false)], ["Fight on", func(): pass]])
 			return true
 		"sv_giveup":
+			if survivor != null and is_instance_valid(survivor) and survivor.two_down and not survivor.one_down 					and survivor.two.pos.distance_to(pilot.pos) <= survivor.TWO_REACH:
+				return true                                  # (split screen: the use key is bringing the second player back right here)
 			if survivor != null and is_instance_valid(survivor) and not survivor.over:      # package 62a, part 7: out of the run by your own choice
 				ask_window("End the run?", "The run ends here. It pays for the time you held out.", [["End it", func(): survivor.end(false)], ["Go on", func(): pass]])
 			return true
@@ -6291,6 +6302,11 @@ func _col_fight_start() -> void:
 			al["stations"] = map.get_meta("col_stations", [])
 			al["station_cool"] = ColosseumData.STATION_COOL
 			ti += 1
+	col_down = false
+	col_revive_k = 0.0
+	if Players.split and GameState.has_pilot2():         # split screen, stage 1: the second player fights beside you, in a half of their own
+		combat.spawn_p2(true)
+		_split_open()
 	var hz0: Array = map.get_meta("col_hazards", [])
 	if not hz0.is_empty():
 		_say_toast("%s, %s. %s" % [String(map.get_meta("col_vr_name", "")), String({"open": "an open field", "canyon": "a canyon", "fortress": "a fortress", "lanes": "three lanes"}.get(
@@ -6343,8 +6359,15 @@ func _col_fight_step(delta: float) -> void:
 			if t > 0.9:
 				_col_big("")
 			_col_hazard_step(delta)
+			if col_down:                                      # split screen: you lie there until the second player brings you back
+				col_down_t += delta
+				if combat == null or not combat.p2_up() or col_down_t >= GroundCombat.CrewData.DOWN_TIME:
+					col_down = false                          # (nobody left to do it, or too late: out)
+					col_lost = true
 			if combat != null and combat.alive().is_empty():
 				_col_fight_over(true)
+			elif col_down:
+				pass
 			elif col_lost:
 				if combat != null and not combat.allies_up().is_empty():      # part 5 (Luz): your team fights on; lost only when all of you are out
 					_col_fight = {"state": "watch", "t": 0.0}
@@ -6358,7 +6381,10 @@ func _col_fight_step(delta: float) -> void:
 					pilot.down = true
 					pilot.moving = false
 					pilot.aim = Vector2.INF
-					_col_line("You are out. Your team fights on.      [%s] end it here: the rest is worked out" % Keybinds.key_text("interact"))
+					if combat.p2_up():
+						_col_line("You are out. %s fights on." % String(combat.p2()["name"]))
+					else:
+						_col_line("You are out. Your team fights on.      [%s] end it here: the rest is worked out" % Keybinds.key_text("interact"))
 				else:
 					_col_fight_over(false)
 		"watch":
@@ -6371,7 +6397,9 @@ func _col_fight_step(delta: float) -> void:
 				_col_fight_over(false)
 			else:
 				story_cam = (up[0]["w"] as Walker).pos            # the picture stays with your team
-				if t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_accept")):
+				if combat.p2_up():
+					pass                                         # (split screen: the second player plays it out)
+				elif t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_accept")):
 					_col_fight_sim()
 		"over":
 			if t > 1.8 and not bool(_col_fight.get("shown", false)):
@@ -6494,6 +6522,8 @@ func _col_fight_over(won: bool) -> void:
 	story_cam = Vector2.INF
 	_col_fight = {"state": "over", "t": 0.0, "won": won}
 	col_lost = not won
+	col_down = false
+	_split_close()
 	input_enabled = false
 	pilot.moving = false
 	pilot.aim = Vector2.INF
@@ -6501,6 +6531,338 @@ func _col_fight_over(won: bool) -> void:
 	Audio.play("arcade_coin" if won else "ui_error", "colosseum: the fight is over")
 	if won:
 		Audio.play("crowd_applause", "colosseum: the crowd for the winner", ColosseumData.applause_db(GameState.col_state()) + 1.0, 0.0)
+
+
+# ---------------------------------------------------------------- split screen, stage 1: a match for two
+
+## May the second player act right now? (While the fight runs: not in the count, not once it is over.)
+func p2_may_act() -> bool:
+	return not _col_fight.is_empty() and String(_col_fight.get("state", "")) in ["fight", "watch"] and talk == null and minigame == null
+
+
+## You are down in the hologram and the second player still stands: you lie there until they bring you back.
+func col_down_start() -> void:
+	col_down = true
+	col_down_t = 0.0
+	col_revive_k = 0.0
+	input_enabled = false
+	pilot.down = true
+	pilot.moving = false
+	pilot.aim = Vector2.INF
+	var p2a = combat.p2()
+	_say_toast("You are down: %s can bring you back (%d s)." % [String(p2a["name"]) if p2a != null else "your partner", int(GroundCombat.CrewData.DOWN_TIME)], 3.5)
+	Audio.play("hit_hull", "split screen: the first player is down", -4.0)
+
+
+## The second player holds the use key beside you.
+func col_revive_hold(delta: float) -> void:
+	col_revive_k = clampf(col_revive_k + delta / GroundCombat.CrewData.REVIVE_TIME, 0.0, 1.0)
+	if col_revive_k >= 1.0:
+		col_revive()
+
+
+## Back on your feet with a third of your body.
+func col_revive() -> void:
+	if not col_down:
+		return
+	col_down = false
+	col_revive_k = 0.0
+	input_enabled = true
+	pilot.down = false
+	GameState.gear.health = maxf(GameState.gear.health, float(ChibiArt.GearData.HEALTH) * 0.35)
+	_say_toast("You are back on your feet.", 2.0)
+	Audio.play("module_on", "split screen: the first player is back up", -4.0)
+
+
+func split_open() -> bool:
+	return not _split.is_empty()
+
+
+## The width of one half of the picture.
+func _split_half() -> float:
+	return floorf((get_viewport().get_visible_rect().size.x - 4.0) * 0.5)
+
+
+## The picture parts in two: the world moves into a viewport of its own for the left half (yours, as it always was),
+## and a second viewport looks at the same world for the right half, its camera on the second player.
+func _split_open() -> void:
+	if not _split.is_empty() or combat == null or combat.p2() == null:
+		return
+	var at := _world.get_index()
+	var fa := SubViewportContainer.new()
+	fa.stretch = true
+	fa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var va := SubViewport.new()
+	va.transparent_bg = true
+	va.handle_input_locally = false
+	va.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	fa.add_child(va)
+	add_child(fa)
+	move_child(fa, at)
+	remove_child(_world)
+	va.add_child(_world)
+	var fb := SubViewportContainer.new()
+	fb.stretch = true
+	fb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := SubViewport.new()
+	vb.transparent_bg = false
+	vb.handle_input_locally = false
+	vb.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	fb.add_child(vb)
+	add_child(fb)
+	move_child(fb, fa.get_index() + 1)
+	vb.world_2d = va.world_2d
+	var cam := Camera2D.new()
+	vb.add_child(cam)
+	cam.make_current()
+	var line := ColorRect.new()
+	line.color = Color(1.0, 0.45, 0.85, 0.9)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(line)
+	move_child(line, fb.get_index() + 1)
+	var hud := Control.new()
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.z_index = 40
+	add_child(hud)
+	move_child(hud, line.get_index() + 1)
+	hud.draw.connect(_split_hud_draw.bind(hud))
+	_split = {"fa": fa, "va": va, "fb": fb, "vb": vb, "cam": cam, "line": line, "hud": hud}
+	_cam_c = Vector2.INF
+	_split_step()
+
+
+## One picture again: the world back where it was.
+func _split_close() -> void:
+	if _split.is_empty():
+		return
+	var sp := _split
+	_split = {}
+	var fa: Control = sp["fa"]
+	var at := fa.get_index()
+	if _world.get_parent() == sp["va"]:
+		(sp["va"] as Node).remove_child(_world)
+		add_child(_world)
+		move_child(_world, at)
+	for k in ["fa", "fb", "line", "hud"]:
+		(sp[k] as Node).queue_free()
+	_ui.anchor_right = 1.0
+	_ui.offset_right = 0.0
+	_cam_c = Vector2.INF
+
+
+## Each frame: the halves where the window has them, the second camera on the second player.
+func _split_step() -> void:
+	if _split.is_empty():
+		return
+	var p2a = combat.p2() if combat != null else null
+	if p2a == null or not is_instance_valid(p2a["w"]):
+		_split_close()
+		return
+	var vs := get_viewport().get_visible_rect().size
+	var half := _split_half()
+	var fa: Control = _split["fa"]
+	var fb: Control = _split["fb"]
+	fa.position = Vector2.ZERO
+	fa.size = Vector2(half, vs.y)
+	fb.position = Vector2(vs.x - half, 0.0)
+	fb.size = Vector2(half, vs.y)
+	var line: ColorRect = _split["line"]
+	line.position = Vector2(half, 0.0)
+	line.size = Vector2(vs.x - half * 2.0, vs.y)
+	var hud: Control = _split["hud"]
+	hud.position = fb.position
+	hud.size = fb.size
+	hud.queue_redraw()
+	_ui.anchor_right = 0.0                                # what is drawn over your picture keeps to your half
+	_ui.offset_right = half
+	# the camera: what your half shows of you, theirs shows of them (the world is moved and scaled for your half; the
+	# second camera looks at the same moved world)
+	var w: Walker = p2a["w"]
+	var mp := map.size_px() * GroundMap.SCALE * zoom
+	var c := _world.position + (w.position + Vector2(0, -24)) * zoom
+	var hv := Vector2(half, vs.y) * 0.5
+	if mp.x > half:
+		c.x = clampf(c.x, _world.position.x + hv.x, _world.position.x + mp.x - hv.x)
+	else:
+		c.x = _world.position.x + mp.x * 0.5
+	if mp.y > vs.y:
+		c.y = clampf(c.y, _world.position.y + hv.y, _world.position.y + mp.y - hv.y)
+	else:
+		c.y = _world.position.y + mp.y * 0.5
+	(_split["cam"] as Camera2D).position = c.round()
+
+
+## What the second player sees over their half: the same display you have over yours, in their colour: the suit's bars
+## top left with the dodge under them, their target top centre, the fight top right, the belt bottom left, the weapons
+## and grenades as tiles along the bottom, and a word in the middle when the use key does something.
+func _split_key(action: String) -> String:
+	return Keybinds.key_text(action) if Players.on_keys(1) else Pad.binding_text(Pad.binding("ground", action))
+
+
+func _split_hud_draw(hud: Control) -> void:
+	if combat == null:
+		return
+	var a = combat.p2()
+	if a == null:
+		return
+	var GD = ChibiArt.GearData
+	var GI = load("res://scripts/ui/gear_icons.gd")
+	var font := ThemeDB.fallback_font
+	var pink := Color(1.0, 0.45, 0.85)
+	var dim := Color(0.7, 0.72, 0.76)
+	var vs: Vector2 = hud.size
+	var st: Dictionary = a["st"]
+	var mx: Dictionary = a["mx"]
+	var up: bool = not a["down"] and not a["dead"]
+	# ---- top left: who, and the suit's bars
+	var title := "P2  %s" % String(GameState.pilot2.get("name", a["name"]))
+	hud.draw_rect(Rect2(10.0, 10.0, 404.0, 42.0), Color(0.03, 0.04, 0.08, 0.88))
+	hud.draw_rect(Rect2(10.0, 10.0, 4.0, 42.0), pink)
+	hud.draw_string(font, Vector2(22.0, 30.0), title, HORIZONTAL_ALIGNMENT_LEFT, 380.0, 17, pink)
+	hud.draw_string(font, Vector2(22.0, 46.0), "%s walk  •  %s next target  •  %s dodge  •  %s other weapon" % ["W A S D" if Players.on_keys(1) else "stick", _split_key("foot_target"), _split_key("foot_dodge"), _split_key("foot_swap")],
+		HORIZONTAL_ALIGNMENT_LEFT, 388.0, 11, dim)
+	var y := 74.0
+	var rows: Array = [["Health", float(st["health"]), float(mx["health"]), Color(1.0, 0.35, 0.35)], ["Shield", float(st["shield"]), float(mx["shield"]), Color(0.35, 0.85, 1.0)],
+		["Armour", float(st["armor"]), float(mx["armor"]), Color(1.0, 0.8, 0.3)], ["Energy", float(a.get("energy", 0.0)), float(a.get("energy_max", 0.0)), Color(1.0, 0.85, 0.3)],
+		["Ammo", float(a.get("ammo", 0)), float(a.get("ammo_max", 0)), Color(0.75, 0.75, 0.7)]]
+	for rw in rows:
+		hud.draw_rect(Rect2(14.0, y - 13.0, 296.0, 18.0), Color(0.0, 0.0, 0.03, 0.55))
+		hud.draw_string(font, Vector2(20.0, y), String(rw[0]), HORIZONTAL_ALIGNMENT_LEFT, 60.0, 12, Color(0.85, 0.88, 0.92))
+		hud.draw_rect(Rect2(84.0, y - 9.0, 150.0, 9.0), Color(0.12, 0.12, 0.15))
+		if float(rw[2]) > 0.0:
+			hud.draw_rect(Rect2(84.0, y - 9.0, 150.0 * clampf(float(rw[1]) / float(rw[2]), 0.0, 1.0), 9.0), rw[3])
+		hud.draw_string(font, Vector2(242.0, y), "%d" % int(ceil(float(rw[1]))), HORIZONTAL_ALIGNMENT_LEFT, 60.0, 12, rw[3])
+		y += 22.0
+	# out of energy or rounds: a line of its own, where your cover line stands
+	y += 2.0
+	if not combat.foe_power(a) and up:
+		var ot := "OUT OF ENERGY OR ROUNDS: a charging point"
+		hud.draw_rect(Rect2(14.0, y, font.get_string_size(ot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0, 20.0), Color(0.06, 0.0, 0.0, 0.7))
+		hud.draw_string(font, Vector2(21.0, y + 14.0), ot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.5, 0.4))
+		y += 24.0
+	# the dodge: ready, or coming back
+	var dt := "%s  dodge" % _split_key("foot_dodge")
+	var dw := font.get_string_size(dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	hud.draw_rect(Rect2(14.0, y, dw + 40.0, 20.0), Color(0.0, 0.0, 0.03, 0.55))
+	hud.draw_string(font, Vector2(21.0, y + 14.0), dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.88, 0.92))
+	var dk := 1.0 - clampf(float(a.get("dodge_cd", 0.0)) / GroundCombat.P2_DODGE_COOL, 0.0, 1.0)
+	var dc := Vector2(14.0 + dw + 26.0, y + 10.0)
+	if dk >= 1.0:
+		hud.draw_circle(dc, 5.0, Color(0.45, 1.0, 0.6))
+	else:
+		hud.draw_arc(dc, 5.0, 0.0, TAU, 16, Color(0.45, 1.0, 0.6, 0.5), 1.5)
+		hud.draw_arc(dc, 5.0, -PI / 2, -PI / 2 + TAU * dk, 16, Color(0.45, 1.0, 0.6), 2.5)
+	# ---- top centre: their target, as your locked target is shown
+	var tgt = a.get("cur")
+	if tgt != null and not tgt["dead"] and up:
+		var red := Color(1.0, 0.35, 0.3)
+		var r := Rect2(Vector2(vs.x * 0.5 - 95.0, 12.0), Vector2(190.0, 62.0))
+		hud.draw_rect(r, Color(0.03, 0.04, 0.08, 0.88))
+		hud.draw_rect(r, red, false, 2.0)
+		var tcol: Color = GroundCombat.FoeData.TIERS[String(tgt.get("tier", "green"))]["col"]
+		hud.draw_circle(r.position + Vector2(r.size.x - 12.0, 12.0), 5.0, tcol)
+		hud.draw_string(font, r.position + Vector2(8.0, 17.0), String(tgt["name"]).left(24), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.95, 0.95, 0.95))
+		var dm: float = (a["w"] as Walker).pos.distance_to((tgt["w"] as Walker).pos) / 15.0
+		var ch: float = combat._chance_between(a, tgt) if not combat.sight((a["w"] as Walker).pos, (tgt["w"] as Walker).pos)["blocked"] else 0.0
+		hud.draw_string(font, r.position + Vector2(8.0, 33.0), "%d m  •  %s  •  %s" % [int(round(dm)), ("hit %d%%" % int(round(ch * 100.0))) if ch > 0.0 else "no shot",
+			String(GD.base(String(tgt["weapon"])).get("name", ""))], HORIZONTAL_ALIGNMENT_LEFT, 176.0, 11, dim)
+		var k := 0
+		for layer in ["shield", "armor", "health"]:
+			hud.draw_rect(Rect2(r.position + Vector2(8.0, 40.0 + k * 7.0), Vector2(174.0, 5.0)), Color(0.12, 0.12, 0.15))
+			hud.draw_rect(Rect2(r.position + Vector2(8.0, 40.0 + k * 7.0), Vector2(174.0 * clampf(float(tgt["st"][layer]) / maxf(float(tgt["mx"][layer]), 0.001), 0.0, 1.0), 5.0)),
+				[Color(0.35, 0.65, 1.0), Color(1.0, 0.8, 0.3), Color(0.9, 0.3, 0.3)][k])
+			k += 1
+	# ---- top right: the fight
+	if combat.fight:
+		var aware: Array = combat.alive().filter(func(f): return f["aware"])
+		var fr := Rect2(Vector2(vs.x - 230.0, 12.0), Vector2(216.0, 62.0))
+		hud.draw_rect(fr, Color(0.03, 0.04, 0.08, 0.88))
+		hud.draw_rect(fr, Color(1.0, 0.75, 0.2, 0.8), false, 2.0)
+		hud.draw_string(font, fr.position + Vector2(10.0, 18.0), "HOSTILES – %d" % aware.size(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.8, 0.3))
+		var near = null
+		var nd := INF
+		for f2 in aware:
+			var dd: float = (a["w"] as Walker).pos.distance_to((f2["w"] as Walker).pos)
+			if dd < nd and f2 != tgt:
+				nd = dd
+				near = f2
+		var l2 := ("%s nearest, %d m" % [String(near["name"]), int(nd / 15.0)]) if near != null else ("%d down" % combat.kills if combat.kills > 0 else "the last one is yours")
+		hud.draw_string(font, fr.position + Vector2(10.0, 36.0), l2.left(34), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.75, 0.4))
+		hud.draw_string(font, fr.position + Vector2(10.0, 53.0), "%s: the next target" % _split_key("foot_target"), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, dim)
+	# ---- bottom left: the belt on its places
+	var bx := 14.0
+	var by := vs.y - 82.0
+	var bt: Array = a.get("belt", [])
+	for bi in bt.size():
+		var bp: Dictionary = bt[bi]
+		var br := Rect2(Vector2(bx, by), Vector2(74.0, 72.0))
+		var bkey: String = _split_key("foot_belt_%d" % (bi + 1)) if bi < 4 else str(bi + 1)
+		if bp.is_empty() or int(bp.get("n", 0)) <= 0:
+			SuitHud.tile(hud, br, null, bkey, "empty", "", Color(0.5, 0.55, 0.6, 0.35), -1.0, Color.WHITE)
+		else:
+			SuitHud.tile(hud, br, GI.icon(String(bp["id"])), bkey, String(GD.base(String(bp["id"])).get("name", "")), ("×%d" % int(bp["n"])) if int(bp["n"]) > 1 else "",
+				Color(0.55, 0.9, 0.45, 0.6), -1.0, Color.WHITE)
+		bx += 80.0
+	# ---- along the bottom: the weapons (the one in hand framed), a little apart the grenades
+	var ws: Array = a.get("weapons", [])
+	var grs: Array = (a.get("grenades", []) as Array).filter(func(g0): return not (g0 as Dictionary).is_empty())
+	var tile := Vector2(74.0, 72.0)
+	var width: float = (ws.size() + grs.size()) * (tile.x + 6.0) - 6.0 + (22.0 if (not ws.is_empty() and not grs.is_empty()) else 0.0)
+	var tx: float = maxf(vs.x * 0.5 - width * 0.5, bx + 20.0)
+	var ty: float = vs.y - tile.y - 10.0
+	var dtc := {"optical": Color(0.45, 0.85, 1.0), "kinetic": Color(1.0, 0.8, 0.35), "explosive": Color(1.0, 0.55, 0.25)}
+	if not ws.is_empty():
+		_split_label(hud, Vector2(tx, ty - 4.0), "%s  weapon" % _split_key("foot_swap"))
+	for wi in ws.size():
+		var wid := String(ws[wi])
+		var wst: Dictionary = GD.stats(wid)
+		var act: bool = wi == int(a.get("wi", 0))
+		var sub: String = ("%.1f en" % float(wst["energy"])) if wst.has("energy") else ("%d rd" % int(a.get("ammo", 0)))
+		var barv: float = (float(a.get("energy", 0.0)) / maxf(float(a.get("energy_max", 1.0)), 1.0)) if wst.has("energy") else (float(a.get("ammo", 0)) / maxf(float(a.get("ammo_max", 1)), 1.0))
+		SuitHud.tile(hud, Rect2(Vector2(tx, ty), tile), GI.icon(wid), "", String(wst["name"]), sub, pink if act else Color(0.5, 0.55, 0.6, 0.5), barv, dtc.get(String(wst.get("dtype", "kinetic")), Color.WHITE))
+		tx += tile.x + 6.0
+	if not grs.is_empty():
+		tx += 16.0
+		_split_label(hud, Vector2(tx, ty - 4.0), "%s  grenade at the target" % _split_key("foot_grenade"))
+		var first := true
+		for gg in grs:
+			var gn := int(gg.get("n", 0))
+			SuitHud.tile(hud, Rect2(Vector2(tx, ty), tile), GI.icon(String(gg["id"])), "", String(GD.base(String(gg["id"])).get("name", "")), "×%d" % gn,
+				Color(1.0, 0.45, 0.4) if (first and gn > 0) else Color(0.5, 0.55, 0.6, 0.5), -1.0, Color.WHITE)
+			first = first and gn <= 0
+			tx += tile.x + 6.0
+	# ---- the word in the middle: down, out, a charging point, or what the use key does
+	var use_key: String = _split_key("interact")
+	var word := ""
+	var wcol := Color(1.0, 0.6, 0.3)
+	if a["dead"]:
+		word = "YOU ARE OUT"
+	elif a["down"]:
+		word = "DOWN: %s can bring you back (%d s)" % [GameState.pilot_name.get_slice(" ", 0), int(ceil(GroundCombat.CrewData.DOWN_TIME - float(a["down_t"])))]
+	elif col_down:
+		var near_me: bool = (a["w"] as Walker).pos.distance_to(pilot.pos) <= GroundCombat.P2_REACH
+		word = ("Hold %s: bring %s back" % [use_key, GameState.pilot_name.get_slice(" ", 0)]) if near_me else ("%s is down: go to them (%d s)" % [GameState.pilot_name.get_slice(" ", 0), int(ceil(GroundCombat.CrewData.DOWN_TIME - col_down_t))])
+		wcol = Color(0.45, 1.0, 0.6) if near_me else wcol
+	else:
+		var psd: Dictionary = combat.p2_station(a)
+		if not psd.is_empty():
+			word = ("%s: charge" % use_key) if float(psd["cool"]) <= 0.0 else ("Drawn dry: %d s" % int(ceil(float(psd["cool"]))))
+			wcol = Color(0.4, 0.9, 1.0)
+	if word != "":
+		var wsz := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 20)
+		var wp := Vector2((vs.x - wsz.x) * 0.5, vs.y * 0.3)
+		hud.draw_rect(Rect2(wp.x - 14.0, wp.y - 24.0, wsz.x + 28.0, 36.0), Color(0.02, 0.02, 0.05, 0.78))
+		hud.draw_string(font, wp, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, wcol)
+		if col_down and col_revive_k > 0.0:
+			hud.draw_rect(Rect2(wp.x - 14.0, wp.y + 14.0, (wsz.x + 28.0) * col_revive_k, 5.0), Color(0.45, 1.0, 0.6))
+
+
+## A small label on a dark plate, its bottom left at p (as the display over your half has them).
+func _split_label(hud: Control, at: Vector2, t: String) -> void:
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	hud.draw_rect(Rect2(at + Vector2(-3.0, -13.0), Vector2(w + 6.0, 16.0)), Color(0.0, 0.0, 0.03, 0.7))
+	hud.draw_string(font, at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.82, 0.85, 0.9))
 
 
 ## The picture after the fight is closed: back into the lobby (into your own gear), and on a win, if you want, straight
@@ -7631,6 +7993,8 @@ func walk_to_zone(id: String) -> bool:
 
 func _camera(delta: float = -1.0) -> void:
 	var vs := get_viewport().get_visible_rect().size
+	if not _split.is_empty():
+		vs.x = _split_half()                              # split screen: your picture is the left half
 	# 0.7.52.8: zoomed out only while the tactical view is open, as far as chosen there; eased in and out
 	var zw := (tac_zoom if combat.tactics != 0 else near_zoom) if combat != null else 1.0
 	if map != null and map.has_meta("zoom") and (combat == null or combat.tactics == 0):
@@ -7678,6 +8042,7 @@ func _camera(delta: float = -1.0) -> void:
 	else:
 		off.y = (vs.y - mp.y) * 0.5
 	_world.position = off.round()
+	_split_step()
 	# the star and the planet are far away: they stay in the part of the window front you can see, wherever you stand
 	_sky.position = Vector2.ZERO
 	if _window != null and _window.size.x > 0.0 and (_star_spr != null or _planet_spr != null):
