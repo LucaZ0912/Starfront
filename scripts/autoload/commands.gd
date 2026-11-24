@@ -694,6 +694,38 @@ func _c_coins_sell(c: Dictionary) -> String:
 	return ""
 
 
+## {"type":"prize_buy", "hull": id}: package 63 (Luz): a hull the Grand Centauria gives for Coins (its "casino_prize",
+## the Earthworks 190SL). It comes with its standard fit and stands in Centauria's hangar afterwards.
+func _c_prize_buy(c: Dictionary) -> String:
+	var e := _need_service()
+	if e != "":
+		return e
+	var st := docked_station()
+	if not st.get("city", false) or String(st.get("name", "")) != "Centauria":
+		return "There is no cashier here."
+	var hid := String(c.get("hull", ""))
+	var price := int(GameData.hulls.get(hid, {}).get("casino_prize", 0))
+	if price <= 0:
+		return "The house has no such prize."
+	if GameState.coins < price:
+		return "Not enough Coins (%s)." % GameData.fmt_int(price)
+	GameState.coins -= price
+	var preset := "std_" + hid
+	var f: ShipFitting = GameState.create_from_preset(preset, "player") if GameData.presets.has(preset) else GameState.create_fit(hid, {}, "player")
+	var count := 1
+	for o in GameState.fleet:
+		if o.hull_id == hid:
+			count += 1
+	f.ship_name = String(GameData.hulls[hid]["name"]) if count == 1 else "%s %d" % [GameData.hulls[hid]["name"], count]
+	f.system_id = GameState.current_system
+	f.docked_at = st["id"]
+	f.position = st["pos"]
+	GameState.add_ship(f)
+	GameState.crew_fill_required(f)
+	GameState.log_msg("The house hands you the keys: %s stands in Centauria's hangar (Hangar → Board)." % f.ship_name, GameState.COL_GOOD)
+	return ""
+
+
 ## Package 62, part 2 (Luz): {"type":"slot_spin", "stake"}: one pull at the machine you sit at. The stake goes, the
 ## reels are rolled (your Dexterity and the perk Lucky Hand nudge them now and then), the win is paid, the house's
 ## jackpot grows; the machine's window shows it.

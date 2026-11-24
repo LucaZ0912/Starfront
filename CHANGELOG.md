@@ -3,6 +3,39 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.63.1 – 2026-11-24
+
+**Package 63 (Luz): new ships. Four of them.**
+- **Earthworks 190SL**, the pilot's old ship of the intro, no longer built. It keeps its shape (white hull, swept
+  wings with two drive pods, a glass canopy, gold stripes) and has been brought up to date: chrome along the hull,
+  the bow, the wings' leading edges, the pods and the stern. A small ship that is faster than what was built before
+  this package, with a hull far stronger than its size (structure 1,500), fair weapons (three places), next to no
+  shield (a third of what its modules give) and no drones. **A gate jump costs it a fifth of the fuel.**
+- **It is sold at no yard.** It is the house's prize at the cashier of the Grand Centauria: **1,000,000 Coins**. The
+  cashier's window has a new line, "The house's prize". It comes with its standard fit and stands in Centauria's
+  hangar afterwards.
+- **Mistral**, Maison Aurelle's racer (small): a long bow in your colour that fades in dots into ivory; aft the hull
+  splits into two blades and a spine with the machinery open between them, a drive at the end of each. With its
+  standard fit it flies 955 km/s, the fastest ship before it 417. Strong shields for its size, next to no hull
+  (structure 120), two weapon places, no drone hangar. **Three thrust bursts** instead of one.
+- **Soleil** (medium) and **Sovereign** (large), Maison Aurelle's private yachts in obsidian black with **gold lines
+  along which a light runs** from the stern to the bow, and a lot of glass. The Soleil is a flying wing with four
+  drive nacelles, a glass canopy and a glass back. The Sovereign is a long blade; a ring round her stern, held by two
+  spokes, carries her drives; a glass back with a pool, a lounge under glass inside the ring, a row of lights down
+  her bow. Both are the fastest ships of their sizes, well fitted, with **two thrust bursts** and a built-in
+  afterburner; the Sovereign is fast in warp as well.
+- **Thrust bursts by the hull.** A hull may hold more than one. They come back one at a time, 15 seconds each. The
+  HUD shows how many are left on a hull that holds several.
+- **A flame behind every drive** on these four, where a ship had one flame on its centre line before.
+- The three Aurelle ships are sold where Maison Aurelle sells (trade stations of rich systems, by the station's
+  tier): Mistral 380,000 cr, Soleil 900,000 cr, Sovereign 3,500,000 cr.
+- **Debug menu:** "+1,000,000 Coins" beside the casino's buttons. The four hulls are in the list "New ship".
+- **Not in this package:** the "special casino ships" and the news item about the 190SL as a collector's piece, both
+  from the old line of the Roadmap. The yachts do nothing as a sign of rank beyond what they are.
+- **Open:** nothing flown by hand yet. All figures are first guesses. The Mistral with a larger engine than its
+  standard one flies about 1,570 km/s; whether autopilot and docking stay clean at that speed is not checked.
+- Smoke test: the group `ships63`; the groups `drones` and `casino62` know the new ships and the cashier's new line.
+
 ## alpha 0.8.62.31 – 2026-11-24
 
 **Package 62a, part 11c (Luz): the bosses of the Alien Laboratory. The stage is whole now.**

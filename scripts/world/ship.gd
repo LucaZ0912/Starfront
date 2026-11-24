@@ -68,7 +68,8 @@ const BOOST_CAP := 0.2             # share of the capacitor it costs
 const NPC_BOOST_COOLDOWN := 35.0   # NPCs use it rarely – the pilot can catch up or get away
 const NPC_BOOST_CHANCE := 0.06     # per check (every 2 s) while fleeing or chasing a far target
 var boost_t := 0.0                 # seconds of burst left
-var boost_cd := 0.0                # seconds until it is ready again
+var boost_cd := 0.0                # seconds until the next charge is back
+var boost_used := 0                # package 63: charges spent (a hull has "boosts" of them, one unless it says so)
 var boost_glow := 0.0              # the big yellow flame (1 while it burns, fading after)
 var _npc_boost_check := 2.0
 var _bt := 0.0                     # flicker clock of the burst flame
@@ -725,9 +726,13 @@ func _physics_process(delta0: float) -> void:
 	var delta := _lod_skip(delta0)
 	if delta < 0.0:
 		return
-	if boost_t > 0.0 or boost_cd > 0.0 or boost_glow > 0.0:
+	if boost_t > 0.0 or boost_cd > 0.0 or boost_glow > 0.0 or boost_used > 0:
 		boost_t = maxf(0.0, boost_t - delta)
 		boost_cd = maxf(0.0, boost_cd - delta)
+		if boost_cd <= 0.0 and boost_used > 0:
+			boost_used -= 1                              # one charge is back; the next one starts to load
+			if boost_used > 0:
+				boost_cd = BOOST_COOLDOWN if faction == "player" else NPC_BOOST_COOLDOWN
 		boost_glow = 1.0 if boost_t > 0.0 else maxf(0.0, boost_glow - delta * 1.4)
 		_bt += delta
 	if _gas_t > 0.0:
@@ -1167,7 +1172,7 @@ func boost_error() -> String:
 		return "Not while warping or docking."
 	if boost_t > 0.0:
 		return "Thrust already burning."
-	if boost_cd > 0.0:
+	if boost_used >= boost_max():
 		return "Thrust recharging (%.0f s)." % ceilf(boost_cd)
 	var cm := float(fit.stats()["cap_max"])
 	if fit.capacitor < cm * BOOST_CAP:
@@ -1182,7 +1187,9 @@ func boost() -> bool:
 	fit.capacitor -= float(fit.stats()["cap_max"]) * BOOST_CAP
 	boost_t = BOOST_TIME
 	boost_glow = 1.0
-	boost_cd = BOOST_COOLDOWN if faction == "player" else NPC_BOOST_COOLDOWN
+	boost_used += 1
+	if boost_cd <= 0.0:
+		boost_cd = BOOST_COOLDOWN if faction == "player" else NPC_BOOST_COOLDOWN
 	if view != null:
 		var back: Vector2 = position - Vector2.from_angle(heading) * radius * 1.2
 		view.spawn_fx(Fx.flash(back, Color(1.0, 0.75, 0.25), radius * 2.2))
@@ -1192,6 +1199,15 @@ func boost() -> bool:
 		else:
 			Audio.play_at("boost", position, "thrust burst")
 	return true
+
+
+## Package 63 (Luz): how many thrust bursts the hull holds (the racer Mistral three, the yachts two).
+func boost_max() -> int:
+	return maxi(int(fit.hull().get("boosts", 1)), 1)
+
+
+func boost_left() -> int:
+	return maxi(boost_max() - boost_used, 0)
 
 
 func boost_mult() -> float:
@@ -3273,7 +3289,7 @@ func _draw_hatches() -> void:
 	var cn: Color = cols["N"]
 	var cb: Color = cols["B"]
 	if overlay or String(h.get("maker", "")) != "hadrian":
-		var hc: Array = PixelArt.HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"])
+		var hc: Array = h.get("hatch_chars", PixelArt.HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"]))
 		cm = cols[hc[0]]
 		cn = cols[hc[1]]
 		cb = cols[hc[1]]
@@ -4185,6 +4201,11 @@ func _draw() -> void:
 			var idx := clampi(int(round(smoothstep(0.0, 1.0, arm_open) * float(n - 1))), 0, n - 1)
 			for g2 in PixelArt.engine_groups("%s_%d" % [String(arms["art"]), idx]):
 				multi_flames.append([g2[0], maxf(float(g2[1]), 10.0) * flick, glow])
+		elif fit.hull().get("multi_drive", false):
+			# package 63: a flame behind every drive of the picture (the 190SL's and the Mistral's three, the yachts' nacelles)
+			ep = []
+			for g3 in PixelArt.engine_groups(fit.hull_id):
+				multi_flames.append([g3[0], maxf(float(g3[1]), 7.0) * flick, glow])
 		elif ep.is_empty():
 			var ex := -size.x * 0.5
 			if boost_glow > 0.0:

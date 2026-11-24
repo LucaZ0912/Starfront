@@ -309,3 +309,8 @@ func fmt_credits(v: float) -> String:
 		if count % 3 == 0 and i > 0 and s[i - 1] != "-":
 			out = "," + out
 	return out + " cr"
+
+
+## Package 63: a whole number with thousands separators (Coins).
+func fmt_int(v: float) -> String:
+	return fmt_credits(v).trim_suffix(" cr")

@@ -20,7 +20,7 @@ const MAKERS := {
 		"color": Color(0.55, 0.72, 0.9),
 		"crest": {"shape": "round", "field": Color(0.24, 0.31, 0.4), "symbol": Color(0.62, 0.84, 1.0), "rim": Color(0.82, 0.86, 0.9), "symbol_id": "globe"},
 		"text": "Founded on Earth in 12450 HE: the first great starship manufacturer not run by a state. Its ships carried the exploration of the galaxy and the settlement of the Cluster. Until shortly before the Severance it was the only starship manufacturer at all, with a single Shipyard Complex in orbit of Luna, Earth's moon. A second yard was built in the Cluster in 12696 HE; in 12701 HE the government of Earth finally allowed other manufacturers.\n\nIts design is plain and practical: the basic Earth design. Technically improved, it has hardly changed since the 12450s: proof of timeless design and great engineering. Earthworks builds something for everyone, mostly all-rounders, but also specialists such as the Mule and the Longhaul. Today it is an independent megacorp, and its ships are sold at nearly every shipyard.",
-		"ships": ["Dragonfly", "Hornet", "Mule", "Drillhead", "Warden", "Bastion", "Skiff", "Longhaul"],
+		"ships": ["Dragonfly", "Hornet", "Mule", "Drillhead", "Warden", "Bastion", "Skiff", "Longhaul", "190SL"],
 		"yards": "all", "small_yards": {"mining_colony": ["drillhead"]},
 		"see": ["hist_expansion", "hist_severance", "maker_khi"]},
 	"khi": {
@@ -38,7 +38,7 @@ const MAKERS := {
 		"color": Color(0.95, 0.85, 0.55),
 		"crest": {"shape": "oval", "field": Color(0.94, 0.91, 0.84), "symbol": Color(0.8, 0.6, 0.2), "rim": Color(0.85, 0.66, 0.25), "symbol_id": "star_a"},
 		"text": "The youngest manufacturer in the Cluster, founded in 12895 HE by Ivoire Maison and made possible by the economic boom of the Cluster Assembly in recent years. Close to the Assembly, but an independent megacorp.\n\nMaison Aurelle builds luxury liners and passenger ships: sleek, polished and very expensive. Its best customers are the rich oligarchs of the Covenant, where an Aurelle liner is a prized status symbol; that the founder is a citizen of the Assembly is politely left unsaid there.",
-		"ships": ["Pearl", "Boulevard", "Opal", "Empress"],
+		"ships": ["Pearl", "Boulevard", "Opal", "Empress", "Mistral", "Soleil", "Sovereign"],
 		"yards": ["trade"], "rich_only": ["assembly", "covenant"],
 		"see": ["fac_assembly", "fac_covenant"]},
 	"hadrian": {

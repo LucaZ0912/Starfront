@@ -745,6 +745,7 @@ func _process(delta: float) -> void:
 				await _test_collab62a(main.view)         # package 62a, part 11a: Survivor's fourth stage, the Alien Laboratory
 				await _test_collabb62a(main.view)        # package 62a, part 11b: the rest of the Alien Laboratory
 				await _test_collabc62a(main.view)        # package 62a, part 11c: the bosses of the Alien Laboratory
+				await _test_ships63(main.view)           # package 63: the new ships
 				_shooting = false
 				timer = 0.0
 				return
@@ -3740,10 +3741,10 @@ func _test_drones(view: SystemView) -> void:
 	var hull_ok := true
 	for hid in GameData.hulls:
 		var h: Dictionary = GameData.hulls[hid]
-		if h.get("drone_only", false) or (h.get("maker", "") in ["aurelle", "hadrian", "forge"] and int(h.get("drones", 0)) == 0):
-			continue                 # Pearl, Opal (25c), Talon (25d) and the Covenant's ships (25f) carry no drones
+		if h.get("drone_only", false) or ((h.get("maker", "") in ["aurelle", "hadrian", "forge"] or hid == "ew_190sl") and int(h.get("drones", 0)) == 0):
+			continue                 # Pearl, Opal (25c), Talon (25d), the Covenant's ships (25f), the Mistral and the 190SL (63) carry no drones
 		hull_ok = hull_ok and GameData.slot_max_of(h, "hangar") > 0 and int(h.get("drones", 0)) >= 1
-	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl, Opal, Talon and the Covenant ships); drones out at once: S 1 … L 9")
+	check(hull_ok and int(GameData.hulls["dragonfly"]["drones"]) == 1 and int(GameData.hulls["bastion"]["drones"]) == 9, "every ship has a drone hangar slot (except Pearl, Opal, Talon, the Covenant ships, the Mistral and the 190SL); drones out at once: S 1 … L 9")
 	check(int(M["hangar:3:A"]["drone_storage"]) > int(M["hangar:3:C"]["drone_storage"]) and int(M["hangar:3:C"]["drone_storage"]) > int(M["hangar:3:F"]["drone_storage"]), "hangar quality gives more room (%d / %d / %d)" % [int(M["hangar:3:F"]["drone_storage"]), int(M["hangar:3:C"]["drone_storage"]), int(M["hangar:3:A"]["drone_storage"])])
 	var f := GameState.create_from_preset("std_bastion", "player")
 	check(f.can_fit("dweapon_0", "w_pulse:1:C") == "" and f.can_fit("dweapon_0", "w_beam:2:C") != "" and f.can_fit("dweapon_0", "w_pointdef:1:C") != "" and f.can_fit("dtool_0", "t_mining:1:C") == "" and f.can_fit("dtool_0", "t_salvage:1:C") != "" and f.can_fit("dbonus_0", "dr_range:2:C") == "" and f.can_fit("optional_0", "dr_range:1:C") != "", "drone slots: weapon size 1, mining laser size 1, drone modules only in the bonus slot")
@@ -26021,7 +26022,7 @@ func _test_casino62(_view: SystemView) -> void:
 			get_viewport().get_texture().get_image().save_png("res://Claude outputs/cas62_kasse.png")
 			g.story_cam = Vector2.INF
 		g._close_lift_menu()
-		coin_ok = a1 and a2 and a3 and ckeys.size() == 5
+		coin_ok = a1 and a2 and a3 and ckeys.size() == 6          # package 63: the house's prize is the fifth of six
 		if not coin_ok:
 			print("CAS62 coins: ", e1, " | ", e2, " coins ", GameState.coins, " credits ", GameState.credits, " keys ", ckeys.size())
 		# (Luz) part 2: the machines and the wheel. The numbers first: the house keeps its edge, a kind hand (Dexterity,
@@ -28367,6 +28368,211 @@ func _test_collabc62a(_view: SystemView) -> void:
 	if main.ground != null and is_instance_valid(main.ground):
 		main.close_deck(false)
 	main._close_planet_map()
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 63 (Luz): the new ships. The Earthworks 190SL (a prize of the Grand Centauria for a million Coins), the
+## racer Mistral, the yachts Soleil and Sovereign: their pictures, what they are by the numbers, thrust bursts by
+## the hull, the fuel of a gate jump, where they are sold, the cashier's prize.
+func _test_ships63(view: SystemView) -> void:
+	var news := ["ew_190sl", "aur_mistral", "aur_soleil", "aur_sovereign"]
+	# the pictures: all four drawn, no colour missing; the yachts' gold lines move, the others stand still
+	var art_ok := true
+	for hid in news:
+		var im: Image = PixelArt.ship_texture(hid, "player", -1).get_image()
+		var bad := 0
+		for yy in im.get_height():
+			for xx in im.get_width():
+				var px := im.get_pixel(xx, yy)
+				if px.a > 0.5 and px.r > 0.95 and px.b > 0.95 and px.g < 0.05:
+					bad += 1
+		var one: bool = PixelArt.ShipArt.SHIPS.has(hid) and bad == 0 and im.get_width() == int(GameData.hulls[hid]["length"]) + 2
+		if not one:
+			print("SHIPS63 art: ", hid, " magenta ", bad, " width ", im.get_width())
+		art_ok = art_ok and one
+	for yid in ["aur_soleil", "aur_sovereign"]:
+		var i0: Image = PixelArt.ship_texture(yid, "player", 0).get_image()
+		var i8: Image = PixelArt.ship_texture(yid, "player", 8).get_image()
+		art_ok = art_ok and PixelArt.anim_frames(yid) == 24 and i0.get_data() != i8.get_data()
+	art_ok = art_ok and PixelArt.anim_frames("ew_190sl") == 0 and PixelArt.anim_frames("aur_mistral") == 0 \
+		and PixelArt.engine_groups("ew_190sl").size() == 3 and PixelArt.engine_groups("aur_mistral").size() == 3 \
+		and PixelArt.engine_groups("aur_soleil").size() == 5 and PixelArt.engine_groups("aur_sovereign").size() == 3
+	if not art_ok:
+		print("SHIPS63 drives: ", PixelArt.engine_groups("ew_190sl").size(), " ", PixelArt.engine_groups("aur_mistral").size(), " ", PixelArt.engine_groups("aur_soleil").size(), " ", PixelArt.engine_groups("aur_sovereign").size())
+	# by the numbers, each with its standard fit against every other standard fit
+	var st := {}
+	var old_fast := 0.0
+	var old_fast_l := 0.0
+	var s_shield_min := 1.0e9
+	var s_struct_max := 0.0
+	var jump_min := 1.0e9
+	var struct_min := 1.0e9
+	for pid in GameData.presets:
+		if not String(pid).begins_with("std_"):
+			continue
+		var hid2 := String(GameData.presets[pid]["hull"])
+		var sd: Dictionary = GameState.create_from_preset(pid, "player").stats()
+		if hid2 in news:
+			st[hid2] = sd
+			continue
+		old_fast = maxf(old_fast, float(sd["speed"]))
+		jump_min = minf(jump_min, float(sd["jump_fuel"]))
+		struct_min = minf(struct_min, float(sd["structure_max"]))
+		if int(GameData.hulls[hid2]["size"]) == 3:
+			old_fast_l = maxf(old_fast_l, float(sd["speed"]))
+		if int(GameData.hulls[hid2]["size"]) == 1:
+			s_shield_min = minf(s_shield_min, float(sd["shield_max"]))
+			s_struct_max = maxf(s_struct_max, float(sd["structure_max"]))
+	var num_ok := false
+	if st.size() == 4:
+		var sl: Dictionary = st["ew_190sl"]
+		var mi: Dictionary = st["aur_mistral"]
+		num_ok = float(mi["speed"]) >= 2.0 * old_fast and float(mi["speed"]) > float(sl["speed"]) \
+			and float(sl["speed"]) > old_fast and float(sl["structure_max"]) > s_struct_max and float(sl["shield_max"]) < s_shield_min \
+			and float(sl["jump_fuel"]) < jump_min and float(sl["dps_total"]) > 0.0 \
+			and float(mi["structure_max"]) < struct_min and float(mi["shield_max"]) > float(GameState.create_from_preset("std_aur_pearl", "player").stats()["shield_max"]) \
+			and float(mi["dps_total"]) > 0.0 and int(GameData.hulls["aur_mistral"]["drones"]) == 0 and int(GameData.hulls["aur_mistral"]["slot_sizes"]["hangar"]) == 0 \
+			and float(st["aur_soleil"]["speed"]) > old_fast and float(st["aur_sovereign"]["speed"]) > old_fast_l \
+			and int(GameData.hulls["aur_soleil"]["size"]) == 2 and int(GameData.hulls["aur_sovereign"]["size"]) == 3
+		if not num_ok:
+			print("SHIPS63 numbers: old fastest ", old_fast, " L ", old_fast_l, " | mistral ", mi["speed"], " struct ", mi["structure_max"], " shield ", mi["shield_max"],
+				" | 190sl ", sl["speed"], " struct ", sl["structure_max"], " (S max ", s_struct_max, ") shield ", sl["shield_max"], " (S min ", s_shield_min, ") jump ", sl["jump_fuel"], " (min ", jump_min, ")",
+				" | soleil ", st["aur_soleil"]["speed"], " sovereign ", st["aur_sovereign"]["speed"])
+	# where they are sold: the three at Maison Aurelle's yards, the 190SL at none
+	var yard_ok: bool = "aur_mistral" in Universe.maker_hulls("aurelle") and "aur_soleil" in Universe.maker_hulls("aurelle") and "aur_sovereign" in Universe.maker_hulls("aurelle") \
+		and not "ew_190sl" in Universe.maker_hulls("earthworks") and int(GameData.hulls["ew_190sl"]["casino_prize"]) == 1000000
+	# thrust bursts: the Mistral holds three, one comes back at a time
+	var pl: Ship = view.player
+	var keep_fit = pl.fit
+	var one_ok: bool = pl.boost_max() == 1
+	pl.fit = GameState.create_from_preset("std_aur_mistral", "player")
+	pl.boost_used = 0
+	pl.boost_cd = 0.0
+	var fired := 0
+	for b in 4:
+		pl.boost_t = 0.0
+		pl.fit.capacitor = float(pl.fit.stats()["cap_max"])
+		if pl.boost():
+			fired += 1
+	var empty_err: String = pl.boost_error() if pl.boost_t <= 0.0 else ""
+	pl.boost_t = 0.0
+	var left0: int = pl.boost_left()
+	var err3: String = pl.boost_error()
+	pl.boost_cd = 0.02
+	for f0 in 8:
+		await get_tree().physics_frame
+	var boost_ok: bool = one_ok and fired == 3 and left0 == 0 and err3.contains("recharging") and pl.boost_max() == 3 and pl.boost_left() == 1 and pl.boost_cd > 1.0 \
+		and int(GameData.hulls["aur_soleil"]["boosts"]) == 2 and int(GameData.hulls["aur_sovereign"]["boosts"]) == 2
+	if not boost_ok:
+		print("SHIPS63 boost: one ", one_ok, " fired ", fired, " left0 ", left0, " err ", err3, " ", empty_err, " left ", pl.boost_left(), " cd ", pl.boost_cd)
+	if OS.get_environment("SHIPS63_SHOTS") != "":
+		# pictures: each of the four under way, the Mistral in a thrust burst
+		for wl5 in 900:
+			if main.loading == null or not is_instance_valid(main.loading):
+				break
+			await get_tree().process_frame
+		for f4 in 60:
+			await get_tree().process_frame
+		for hs in news:
+			pl.fit = GameState.create_from_preset("std_" + hs, "player")
+			pl.heading = 0.0
+			pl.boost_used = 0
+			pl.boost_cd = 0.0
+			pl.boost_t = 0.0
+			pl.boost_glow = 0.0
+			for f5 in 30:
+				pl.velocity = Vector2(400.0, 0.0)
+				pl.heading = 0.0
+				pl.queue_redraw()
+				if hs == "aur_mistral" and f5 == 12:
+					pl.fit.capacitor = float(pl.fit.stats()["cap_max"])
+					pl.boost()
+				await get_tree().process_frame
+			var shot: Image = get_viewport().get_texture().get_image()
+			var sz := shot.get_size()
+			shot.get_region(Rect2i(sz.x / 2 - 700, sz.y / 2 - 400, 1400, 800)).save_png("res://Claude outputs/schiffe_63_flug_%s.png" % hs.split("_")[1])
+	pl.fit = keep_fit
+	pl.boost_used = 0
+	pl.boost_cd = 0.0
+	pl.boost_t = 0.0
+	pl.boost_glow = 0.0
+	# the cashier's prize: in Centauria, for a million Coins, into the city's hangar
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var no_cashier: bool = String(Commands.execute({"type": "prize_buy", "hull": "ew_190sl"})) != ""
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i0 in 40:
+		await get_tree().process_frame
+	for wl0 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	var err := String(Commands.execute({"type": "debug_land", "body": pel, "kind": "city"}))
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var prize_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		var n0: int = GameState.fleet.size()
+		GameState.coins = 999999
+		var e_poor := String(Commands.execute({"type": "prize_buy", "hull": "ew_190sl"}))
+		var e_none := String(Commands.execute({"type": "prize_buy", "hull": "aur_mistral"}))
+		var e_what := String(Commands.execute({"type": "prize_buy", "hull": "nothing"}))
+		var poor_ok: bool = e_poor != "" and e_none != "" and e_what != "" and GameState.fleet.size() == n0 and GameState.coins == 999999
+		# the counter itself: without the Coins only the way back, with them the prize; taken through the window
+		g._ctr_prize()
+		var keys0: int = (g._lift_menu.get_meta("keys") as Array).size() if g._lift_menu != null else -1
+		g._close_lift_menu()
+		GameState.coins = 1000250
+		g._ctr_cashier()
+		var cash_n: int = (g._lift_menu.get_meta("keys") as Array).size() if g._lift_menu != null else -1
+		g._close_lift_menu()
+		g._ctr_prize()
+		var keys1: Array = g._lift_menu.get_meta("keys") if g._lift_menu != null else []
+		if keys1.size() == 2:
+			(keys1[0] as Callable).call()
+		for f1 in 4:
+			await get_tree().process_frame
+		var back_open: bool = g._lift_menu != null
+		g._close_lift_menu()
+		var got = null
+		for fs in GameState.fleet:
+			if String(fs.hull_id) == "ew_190sl":
+				got = fs
+		prize_ok = poor_ok and keys0 == 1 and cash_n == 6 and keys1.size() == 2 and back_open and GameState.coins == 250 and GameState.fleet.size() == n0 + 1 and got != null \
+			and String(got.docked_at) == String(Commands.docked_station().get("id", "?")) and String(got.ship_name) == "190SL" and float(got.stats()["speed"]) > 0.0 \
+			and (GameState.to_dict()["fleet"] as Array).size() == n0 + 1
+		if not prize_ok:
+			print("SHIPS63 prize: poor ", e_poor, " | ", e_none, " | ", e_what, " keys ", keys0, " ", cash_n, " ", keys1.size(), " back ", back_open, " coins ", GameState.coins, " fleet ", GameState.fleet.size() - n0, " got ", got != null)
+	else:
+		print("SHIPS63 land: ", err)
+	check(art_ok and num_ok and yard_ok and boost_ok and no_cashier and prize_ok,
+		"63: the new ships: the Earthworks 190SL, the Mistral, the Soleil and the Sovereign are drawn (the yachts' gold lines pulse, a flame behind every drive); with their standard fits the Mistral flies at least twice as fast as the fastest ship before it (%.0f against %.0f km/s), has the weakest hull of all and no drones; the 190SL is faster than the ships before it, has the strongest hull and the weakest shield of the small ships and needs the least fuel for a gate jump; the yachts are the fastest of their sizes; the Mistral holds three thrust bursts and gets them back one at a time, the yachts two; the three are sold at Maison Aurelle's yards, the 190SL only at the cashier of the Grand Centauria for a million Coins, into Centauria's hangar" % [float(st.get("aur_mistral", {}).get("speed", 0.0)), old_fast])
+	# the game as it was
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
 	main.station_panel.close()
 	if Commands.world != null and is_instance_valid(Commands.world):
 		Commands.world.remove_player()

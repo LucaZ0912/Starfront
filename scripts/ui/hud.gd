@@ -872,10 +872,14 @@ func _process(delta: float) -> void:
 			if pl.boost_t > 0.0:
 				_w["boost"].text = "  ▶▶ THRUST"
 				_w["boost"].modulate = Color(1, 1, 1, 1)
-			elif pl.boost_cd > 0.0:
+			elif pl.boost_left() <= 0:
 				var n := int(round((1.0 - pl.boost_cd / pl.BOOST_COOLDOWN) * 8.0))
 				_w["boost"].text = "  thrust " + "▮".repeat(n) + "▯".repeat(8 - n)
 				_w["boost"].modulate = Color(1, 1, 1, 0.55)
+			elif pl.boost_max() > 1:
+				# package 63: a hull with several bursts shows how many are left
+				_w["boost"].text = "  thrust ready [%s] %s" % [key, "●".repeat(pl.boost_left()) + "○".repeat(pl.boost_max() - pl.boost_left())]
+				_w["boost"].modulate = Color(1, 1, 1, 0.85)
 			else:
 				_w["boost"].text = "  thrust ready [%s]" % key
 				_w["boost"].modulate = Color(1, 1, 1, 0.85)

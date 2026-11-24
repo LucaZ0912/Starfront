@@ -41,6 +41,11 @@ const PALETTE := {
 	# the Empress' park deck under glass: lawn, trees, pool, glass ribs
 	"n": Color(0.4, 0.66, 0.46), "T": Color(0.15, 0.42, 0.3), "t": Color(0.3, 0.6, 0.36),
 	"P": Color(0.2, 0.62, 0.92), "p": Color(0.72, 0.94, 1.0), "q": Color(0.66, 0.84, 0.92),
+	# package 63 (Luz): obsidian (base, panel, edge), a gold line that pulses (its resting colour; "<" is the dim
+	# end of the pulse), chrome (bright, mid, dark) – they stay whoever owns the ship
+	"i": Color(0.085, 0.085, 0.12), "%": Color(0.15, 0.155, 0.21), "W": Color(0.36, 0.38, 0.48),
+	"=": Color(0.7, 0.5, 0.16), "<": Color(0.5, 0.33, 0.08),
+	"+": Color(0.94, 0.97, 1.0), "-": Color(0.66, 0.73, 0.82), "_": Color(0.4, 0.46, 0.56),
 }
 const FACTION := {
 	"player": {"h": Color(0.62, 0.68, 0.77), "H": Color(0.85, 0.89, 0.95), "d": Color(0.42, 0.47, 0.57), "D": Color(0.27, 0.3, 0.38),
@@ -59,7 +64,7 @@ const FACTION := {
 	"neutral": {"h": Color(0.66, 0.64, 0.56), "H": Color(0.86, 0.84, 0.74), "d": Color(0.45, 0.43, 0.37), "D": Color(0.3, 0.29, 0.25),
 		"a": Color(1.0, 0.85, 0.3), "f": Color(1.0, 0.85, 0.5)},
 }
-const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N", "A": "F", "F": "l", "6": "3", "3": "2", "2": "1"}
+const SHADE_DOWN := {"H": "h", "h": "d", "d": "D", "L": "Y", "Y": "Q", "J": "I", "I": "j", "u": "U", "B": "M", "M": "N", "A": "F", "F": "l", "6": "3", "3": "2", "2": "1", "+": "-", "-": "_"}
 ## Pirate copies of Hadrian ships are worn out: rusty steel, a dim orange light (package 25d)
 const HDY_WORN := {"B": Color(0.56, 0.44, 0.34), "M": Color(0.38, 0.3, 0.24), "N": Color(0.26, 0.2, 0.17),
 	"X": Color(0.13, 0.1, 0.09), "R": Color(1.0, 0.5, 0.18)}
@@ -445,7 +450,7 @@ static func _paint_hatches(hull_id: String, rows: Array) -> Array:
 	var h: Dictionary = GameData.hulls.get(hull_id, {})
 	if not h.get("hatch_overlay", false):
 		return rows
-	var hc: Array = HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"])
+	var hc: Array = h.get("hatch_chars", HATCH_CHARS.get(String(h.get("maker", "")), ["d", "D"]))
 	var out: Array = rows.duplicate()
 	var mid := (rows.size() - 1) / 2
 	for n in h.get("hatches", {}):
@@ -599,6 +604,10 @@ static func _animate(rows: Array, f: int, n: int) -> Array:
 				ch = "p"
 			elif ch == "R" and glow > 0.55:
 				ch = "E"                 # Goliath: the red slits glow up (package 25d)
+			elif ch == "=":
+				# package 63: a light runs along every gold line, from the stern to the bow
+				var pk := pow(0.5 + 0.5 * sin(float(x) * 0.3 - float(f) * TAU / float(n)), 3.0)
+				ch = "<" if pk < 0.12 else ("=" if pk < 0.35 else ("U" if pk < 0.6 else ("u" if pk < 0.85 else "9")))
 			row += ch
 		out.append(row)
 	return out

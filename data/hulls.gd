@@ -43,6 +43,10 @@ extends RefCounted
 ## drones (package 23): how many drones the ship can have out at once (S 1 … L 9). Every hull has
 ## a drone hangar slot ("hangar", size = storage, quality = more room) and the three drone
 ## equipment slots dweapon (weapon size 1), dtool (mining laser size 1) and dbonus (drone module).
+## Package 63 (Luz): boosts (thrust bursts the hull holds, one unless it says so), jump_fuel_mult (× fuel per gate
+## jump), multi_drive (a flame behind every drive of the picture), hatch_chars [panel, frame] (palette chars of a
+## drawn-on drone hatch, where the maker's would not suit the paint), casino_prize (Coins it costs at the cashier
+## of the Grand Centauria; such a hull is sold nowhere else).
 ## slot_sizes (phase 0.5 package 19): maximum module size of every single slot – weapon/tool/optional
 ## lists in slot order (weapon_0, weapon_1 …), core slots one number each. "slots" holds the counts.
 const HULLS := {
@@ -364,6 +368,49 @@ const HULLS := {
 		"turn_mult": 0.7, "align_mult": 0.6, "warp_mult": 1.35, "shield_mult": 1.6, "cargo_mod_mult": 0.5, "luxury_pay": 1.25,
 		"drone_paint": "aurelle_drone", "drone_bonus": {"shield": 60.0, "shield_regen": 5.0, "shield_mult": 1.5},
 		"desc": "Maison Aurelle's cruise megaliner: slow to turn, but quick to align and fast in warp, with strong shields. Luxury contracts pay 25 % more; cargo racks give only half their room. Its white drones carry their own shield.",
+	},
+	# ---------------- Package 63 (Luz): new ships ----------------
+	# the pilot's old ship of the intro, no longer built: a prize of the Grand Centauria for Coins
+	"ew_190sl": {
+		"maker": "earthworks", "name": "190SL", "class": "Classic Scout", "size": 1, "price": 250000, "buyable": false, "casino_prize": 1000000,
+		"structure": 1500, "mass": 700, "signature": 28, "cargo": 20,
+		"slots": {"weapon": 3, "tool": 1, "optional": 3, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [2, 2, 1], "tool": [1], "optional": [2, 2, 1], "hull": 4, "engine": 5, "reactor": 4, "distributor": 4, "tank": 3, "hyperdrive": 2, "sensors": 3, "hangar": 0},
+		"drones": 0, "shape": "ew_190sl", "length": 32,
+		"speed_mult": 1.6, "shield_mult": 0.3, "jump_fuel_mult": 0.2, "multi_drive": true,
+		"desc": "An Earthworks classic from before the Severance, no longer built. Faster than what is built today, with a hull far stronger than its size and next to no shield. A gate jump costs it a fifth of the fuel.",
+	},
+	"aur_mistral": {
+		"maker": "aurelle", "name": "Mistral", "class": "Racer", "size": 1, "price": 380000, "buyable": true,
+		"structure": 120, "mass": 380, "signature": 20, "cargo": 5,
+		"slots": {"weapon": 2, "tool": 0, "optional": 3, "dweapon": 0, "dtool": 0, "dbonus": 0},
+		"slot_sizes": {"weapon": [2, 1], "tool": [], "optional": [3, 2, 2], "hull": 1, "engine": 5, "reactor": 4, "distributor": 4, "tank": 2, "hyperdrive": 3, "sensors": 2, "hangar": 0},
+		"drones": 0, "shape": "aur_mistral", "length": 47,
+		"speed_mult": 3.0, "align_mult": 0.7, "shield_mult": 1.6, "boosts": 3, "multi_drive": true,
+		"afterburner": {"boost": 1.5, "energy_rate": 6, "power": 6}, "builtin": ["afterburner"],
+		"desc": "Maison Aurelle's racer: three drives, three thrust bursts and nothing that weighs. By far the fastest ship there is, with strong shields for its size, next to no hull and no drones.",
+	},
+	"aur_soleil": {
+		"maker": "aurelle", "name": "Soleil", "class": "Private Yacht", "size": 2, "price": 900000, "buyable": true,
+		"structure": 1100, "mass": 1500, "signature": 60, "cargo": 50,
+		"slots": {"weapon": 3, "tool": 1, "optional": 5, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [3, 2, 2], "tool": [2], "optional": [5, 5, 4, 4, 3], "hull": 5, "engine": 7, "reactor": 6, "distributor": 6, "tank": 5, "hyperdrive": 4, "sensors": 5, "hangar": 2, "dweapon": [1], "dtool": [1], "dbonus": [1]},
+		"drones": 1, "shape": "aur_soleil", "length": 52,
+		"hatches": {"drones": [16, 12, 4, 1]}, "hatch_overlay": true, "hatch_chars": ["%", "U"],
+		"speed_mult": 1.55, "align_mult": 0.6, "shield_mult": 1.3, "boosts": 2, "multi_drive": true,
+		"afterburner": {"boost": 1.45, "energy_rate": 12, "power": 12}, "builtin": ["afterburner"],
+		"desc": "A private yacht of Maison Aurelle: a flying wing of obsidian and gold with four drive nacelles. Very fast, quick to align, well fitted, with two thrust bursts and a built-in afterburner.",
+	},
+	"aur_sovereign": {
+		"maker": "aurelle", "name": "Sovereign", "class": "Grand Yacht", "size": 3, "price": 3500000, "buyable": true,
+		"structure": 4000, "mass": 6800, "signature": 200, "cargo": 180,
+		"slots": {"weapon": 4, "tool": 1, "optional": 6, "dweapon": 1, "dtool": 1, "dbonus": 1},
+		"slot_sizes": {"weapon": [3, 3, 3, 2], "tool": [2], "optional": [9, 9, 8, 8, 7, 6], "hull": 8, "engine": 9, "reactor": 9, "distributor": 9, "tank": 8, "hyperdrive": 6, "sensors": 6, "hangar": 4, "dweapon": [1], "dtool": [1], "dbonus": [2]},
+		"drones": 3, "shape": "aur_sovereign", "length": 112,
+		"hatches": {"drones": [34, 14, 4, 3]}, "hatch_overlay": true, "hatch_chars": ["%", "U"],
+		"speed_mult": 1.4, "align_mult": 0.6, "warp_mult": 1.35, "shield_mult": 1.4, "boosts": 2, "multi_drive": true,
+		"afterburner": {"boost": 1.4, "energy_rate": 24, "power": 24}, "builtin": ["afterburner"],
+		"desc": "Maison Aurelle's grand yacht: a long blade of obsidian and gold, its drives on a ring round the stern. Fast for its size and fast in warp, well fitted, with two thrust bursts and a built-in afterburner.",
 	},
 	# ---------------- Civilian NPC hulls (phase 0.5 package 11) ----------------
 	"shuttle": {

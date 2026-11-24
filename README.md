@@ -417,6 +417,13 @@ Slanted, cosy top-down view since 0.7.49.2.
   with walls), `_lock_wait`, `_lock_reg`, `_apex()`, `_mastermind()`, `_mind_ring()`, `_hurl()`, `hurls`,
   `_boss_pull`, `_remove_object()`, `_alarm()`; a thrown `mind` passes what stands in a hall; `lab_art.gd`: the
   great tank burst (`seed` 9); `survivor_art.gd` `_apex`, `_mastermind`; smoke test group `collabc62a`.
+- 0.8.63.1 (package 63): hulls `ew_190sl`, `aur_mistral`, `aur_soleil`, `aur_sovereign` (`data/hulls.gd`) with the new
+  traits `boosts`, `jump_fuel_mult`, `multi_drive`, `hatch_chars`, `casino_prize`; standard fits `std_<hull>`; their
+  pictures come from `tools/art/package63_art.py` (writes into `data/pixel_art.gd` before `# PACKAGE63_END`; `--show`
+  prints, `--mock` renders sheets into `Claude outputs`); palette chars `i % W` (obsidian), `=` and `<` (the pulsing
+  gold line, animated in `PixelArt._animate`), `+ - _` (chrome); `Ship.boost_used`, `boost_max()`, `boost_left()`;
+  command `prize_buy` and `GroundView._ctr_prize()`; `GameData.fmt_int()`; smoke group `ships63` (pictures of the
+  four in flight with `SHIPS63_SHOTS=1`).
 - 0.8.62.30 (package 62a, part 11b): `data/survivor.gd`: the kinds `trooper` ("beh" 16), `brain` ("beh" 17), `saucer`,
   `LAB_EVENTS`, `LOCK_TIME`, `PURGE_*`, `BREACH_TANKS`, `GRID_*`, `SEAL_FOES`, the item `seal`; `survivor_lab.gd`: the
   map meta `sv_grids`; `survivor_game.gd`: `lock_t`, `lock_r`, `lock_doors`, `seal_t`, `seal_r`, `seal_doors`,

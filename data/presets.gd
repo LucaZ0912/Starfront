@@ -311,6 +311,28 @@ const PRESETS := {
 		"weapon_0": "w_beam_m", "weapon_1": "w_beam_m", "weapon_2": "w_pulse_s", "tool_0": "t_repair_s",
 		"optional_0": "o_cabin_luxury:9:C", "optional_1": "o_cabin_luxury:9:C", "optional_2": "o_cabin_business:8:C",
 		"optional_3": "o_cabin_bulk:8:C", "optional_4": "o_shield_l", "optional_5": "o_shield_l"}},
+	# package 63 (Luz): the new ships
+	"std_ew_190sl": {"hull": "ew_190sl", "modules": {
+		"hull": "pl_standard:4:C", "engine": "eng_ion:5:C", "distributor": "dist_basic_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c2_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse:2:C", "weapon_1": "w_autocannon:2:C", "weapon_2": "w_pulse_s",
+		"optional_0": "o_armor:2:C", "optional_1": "o_shield:2:C"}},
+	"std_aur_mistral": {"hull": "aur_mistral", "modules": {
+		"hull": "hull_std_s", "engine": "eng_ion_s", "distributor": "dist_basic_s", "reactor": "rea_fusion:4:C",
+		"tank": "tank_s", "hyperdrive": "hyp_c2_s", "sensors": "sen_basic_s",
+		"weapon_0": "w_pulse:2:C", "weapon_1": "w_pulse_s",
+		"optional_0": "o_shield:2:C", "optional_1": "o_shield_s"}},
+	"std_aur_soleil": {"hull": "aur_soleil", "modules": {
+		"hull": "hull_composite_m", "engine": "eng_ion:7:C", "distributor": "dist_m", "reactor": "rea_fusion:6:C",
+		"tank": "tank_m", "hyperdrive": "hyp_c3_m", "sensors": "sen_grav_m",
+		"weapon_0": "w_beam_m", "weapon_1": "w_pulse:2:C", "weapon_2": "w_pulse:2:C", "tool_0": "t_scanner_s",
+		"optional_0": "o_shield_m", "optional_1": "o_cabin_luxury:5:C", "optional_2": "o_shield_m", "optional_3": "o_cabin_luxury:4:C"}},
+	"std_aur_sovereign": {"hull": "aur_sovereign", "modules": {
+		"hull": "hull_heavy_l", "engine": "eng_fusion_l", "distributor": "dist_l", "reactor": "rea_antimatter_l",
+		"tank": "tank_l", "hyperdrive": "hyp_c3_l", "sensors": "sen_deep_l",
+		"weapon_0": "w_beam_m", "weapon_1": "w_beam_m", "weapon_2": "w_railgun_m", "weapon_3": "w_pulse:2:C", "tool_0": "t_repair_s",
+		"optional_0": "o_shield_l", "optional_1": "o_shield_l", "optional_2": "o_cabin_luxury:8:C", "optional_3": "o_cabin_luxury:8:C",
+		"optional_4": "o_shield_m"}},
 	"civ_boulevard": {"hull": "aur_boulevard", "modules": {
 		"hull": "hull_composite_m", "engine": "eng_ion_m", "distributor": "dist_m", "reactor": "rea_fusion_m",
 		"tank": "tank_m", "hyperdrive": "hyp_c2_m", "sensors": "sen_basic_s",

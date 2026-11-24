@@ -92,6 +92,7 @@ const SHIP_CREW := {
 	"cfw_quirinus": [["drone_op", true], ["gunner", false], ["engineer", false]],
 	"aur_boulevard": [["copilot", true], ["quartermaster", false], ["engineer", false]],
 	"aur_opal": [["copilot", true], ["quartermaster", false], ["engineer", false]],
+	"aur_soleil": [["copilot", true], ["engineer", false], ["quartermaster", false]],               # package 63
 	"bastion": [["gunner", true], ["engineer", true], ["copilot", false], ["gunner", false], ["science", false], ["quartermaster", false]],
 	"iwakudaki": [["foreman", true], ["engineer", true], ["foreman", false], ["copilot", false], ["quartermaster", false], ["drone_op", false]],
 	"kanayama": [["foreman", true], ["engineer", true], ["quartermaster", true], ["foreman", false], ["foreman", false], ["engineer", false],
@@ -103,6 +104,7 @@ const SHIP_CREW := {
 		["copilot", false], ["engineer", false], ["science", false], ["quartermaster", false]],
 	"hdy_citadel": [["drone_op", true], ["gunner", true], ["engineer", true], ["drone_op", false], ["gunner", false], ["gunner", false],
 		["copilot", false], ["engineer", false], ["science", false], ["quartermaster", false], ["wing_pilot", false]],
+	"aur_sovereign": [["copilot", true], ["engineer", true], ["quartermaster", false], ["copilot", false], ["gunner", false], ["drone_op", false]],   # package 63
 	"aur_empress": [["copilot", true], ["quartermaster", true], ["engineer", true], ["quartermaster", false], ["engineer", false],
 		["copilot", false], ["science", false], ["drone_op", false], ["gunner", false], ["quartermaster", false]],
 }

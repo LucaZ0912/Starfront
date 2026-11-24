@@ -6539,11 +6539,39 @@ func _ctr_cashier() -> void:
 	if GameState.coins > 0:
 		var all: int = GameState.coins
 		opts.append(["Cash out all %d Coins for %s" % [all, GameData.fmt_credits(all * GameState.COIN_SELL)], func(): _ctr_coins({"type": "coins_sell", "n": all})])
+	opts.append(["The house's prize", func(): _ctr_prize()])           # package 63: the Earthworks 190SL
 	opts.append(["Leave the counter", func(): pass])
 	var cst: Dictionary = GameState.casino_stats
 	ask_window("The cashier", "Coins are the money of the Grand Centauria. One Coin costs %s and pays back %s. You hold %d Coins and %s.\n\nThe house's books on you: %d Coins staked, %d got back, your best single win %d." % [
 		GameData.fmt_credits(GameState.COIN_BUY), GameData.fmt_credits(GameState.COIN_SELL), GameState.coins, GameData.fmt_credits(GameState.credits),
 		int(cst["staked"]), int(cst["back"]), int(cst["best"])], opts)
+
+
+## Package 63 (Luz): the house's prize behind the counter: the Earthworks 190SL for a million Coins.
+func _ctr_prize() -> void:
+	_ctr_title()
+	var hid := "ew_190sl"
+	var h: Dictionary = GameData.hulls[hid]
+	var price := int(h["casino_prize"])
+	var opts: Array = []
+	if GameState.coins >= price:
+		opts.append(["Take it for %s Coins" % GameData.fmt_int(price), func(): _ctr_prize_buy(hid)])
+	opts.append(["Back to the counter", func(): _ctr_cashier()])
+	var s: Dictionary = GameState.create_from_preset("std_" + hid, "player").stats()
+	ask_window("The house's prize", "Earthworks %s, %s. %s\n\nIt comes fitted: %.0f km/s, structure %.0f, shield %.0f, %.0f fuel for a gate jump. It is sold at no yard. The house gives it for %s Coins, and you hold %s.%s" % [
+		String(h["name"]), String(h["class"]).to_lower(), String(h["desc"]), float(s["speed"]), float(s["structure_max"]), float(s["shield_max"]), float(s["jump_fuel"]),
+		GameData.fmt_int(price), GameData.fmt_int(GameState.coins), "" if GameState.coins >= price else "\n\nThe cashier smiles: \"Come back when the tables have been kind to you.\""], opts)
+
+
+func _ctr_prize_buy(hid: String) -> void:
+	var e: String = Commands.execute({"type": "prize_buy", "hull": hid})
+	if e != "":
+		_say_toast(e, 4.0)
+	else:
+		Audio.play("ui_open", "casino: the prize")
+		_say_toast("The 190SL is yours. It stands in Centauria's hangar.", 6.0)
+	_ctr_title()
+	_ctr_cashier()
 
 
 func _ctr_coins(cmd: Dictionary) -> void:

@@ -509,7 +509,7 @@ func _compute() -> Dictionary:
 	s["shield_regen"] *= ratio
 	s["sensor_range"] *= (0.5 + 0.5 * ratio) * float(h.get("sensor_mult", 1.0))
 	s["scan_strength"] *= float(h.get("sensor_mult", 1.0))         # Axiom (package 25g)
-	s["jump_fuel"] = s["jump_fuel_base"] * sqrt(s["mass"] / 1500.0)
+	s["jump_fuel"] = s["jump_fuel_base"] * sqrt(s["mass"] / 1500.0) * float(h.get("jump_fuel_mult", 1.0))   # package 63: the 190SL
 	s["signature"] += s["mass"] * 0.004
 	s["signature"] *= float(h.get("signature_mult", 1.0))
 	for dt in s["res"]:
