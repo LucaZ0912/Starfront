@@ -44,7 +44,8 @@ const STAGES := [
 		"need_text": "put out The Foreman on Outbreak", "col": Color(1.0, 0.42, 0.42)},
 	{"id": "whiteout", "name": "Whiteout", "text": "A moon of ice, by day. What moves is a dark shape in the snow.", "open": true, "need": "warden",
 		"need_text": "put out The Warden on AI Takeover", "col": Color(0.6, 0.92, 1.0)},
-	{"id": "stage4", "name": "Stage 4", "text": "", "open": false},
+	{"id": "lab", "name": "Alien Laboratory", "text": "A laboratory that is not ours: vast halls, wide corridors, and what they keep in the tanks.", "open": true, "need": "worm",
+		"need_text": "put out The Ice Worm on Whiteout", "col": Color(0.55, 1.0, 0.35)},
 ]
 
 ## The weapons (Luz). "levels": what it does at level 1 … 5; "up": what a level brings, in words; "bonus": the
@@ -216,9 +217,35 @@ const FOES := {
 		"warn": 0.95, "erupt": 22.0, "erupt_r": 30.0, "needle": 8.0},
 	"heart": {"name": "The Storm Heart", "hp": 5400.0, "speed": 0.0, "dmg": 18.0, "r": 16.0, "xp": 420, "tough": true, "beh": 26, "mass": 0.0, "boss": true,
 		"needle": 8.0, "strike": 18.0, "strike_r": 24.0},
+	# part 11a: the Alien Laboratory: little green men as the swarm; the Grey ("beh" 15: it walks straight at you
+	# through the walls; inside a wall nothing reaches it and it touches nobody); the specimen, out of a tank: slow,
+	# and it takes a great deal
+	"lgm": {"name": "Little Green Man", "hp": 6.0, "speed": 26.0, "dmg": 5.0, "r": 4.5, "xp": 1, "tough": false, "beh": 0, "mass": 1.1},
+	"grey": {"name": "Grey", "hp": 12.0, "speed": 22.0, "dmg": 7.0, "r": 4.5, "xp": 3, "tough": false, "beh": 15, "mass": 0.9},
+	"specimen": {"name": "Specimen", "hp": 170.0, "speed": 13.0, "dmg": 14.0, "r": 9.5, "xp": 10, "tough": true, "beh": 0, "mass": 0.1},
+	# part 11b: the trooper ("beh" 16: it keeps its distance and fires a slow ring of light, "ray" what it costs you;
+	# a wall turns the ring back once); the brain ("beh" 17: it hovers at a distance and, while it is in the hall
+	# with you and within "pull_r", pulls you to it by "pull" of your pace); the saucer (it flies along a line shown
+	# first, its tractor beam under it: who stands in it ("beam_r") is hurt ("beam") and held for "hold" seconds; a
+	# dodge frees you)
+	"trooper": {"name": "Trooper", "hp": 16.0, "speed": 21.0, "dmg": 5.0, "r": 5.0, "xp": 3, "tough": false, "beh": 16, "mass": 1.0, "ray": 9.0},
+	"brain": {"name": "Brain", "hp": 34.0, "speed": 17.0, "dmg": 4.0, "r": 6.0, "xp": 6, "tough": false, "beh": 17, "mass": 0.7, "pull": 0.42, "pull_r": 230.0},
+	"saucer": {"name": "Saucer", "hp": 26.0, "speed": 105.0, "dmg": 0.0, "r": 12.0, "xp": 4, "tough": false, "beh": 5, "mass": 0.0, "fly": true, "beam": 9.0, "beam_r": 20.0, "hold": 0.9},
+	# part 11c: the bosses of the Alien Laboratory. The Apex ("beh" 27), the hunter they bred: faster than you; it
+	# leaps at you along a line shown first ("pounce": what that costs you), from two thirds of its health three
+	# times in a row from wall to wall and then strikes a ring out of its tail ("tail" within "tail_r"), in its last
+	# third it spits a fan that leaves pools ("spit" each) and is faster still. The Mastermind ("beh" 28), what
+	# slept in the great tank: it does not move; rings of thought with gaps in them ("wave" each); from two thirds
+	# it hurls what stands in its hall onto marks ("hurl" within "hurl_r"); in its last third it pulls you to it
+	# ("pull" of your pace), a round about it wears you down ("ring" twice a second within "ring_r"), and Greys
+	# come in through the walls.
+	"apex": {"name": "The Apex", "hp": 3200.0, "speed": 66.0, "dmg": 18.0, "r": 13.0, "xp": 180, "tough": true, "beh": 27, "mass": 0.0, "boss": true,
+		"pounce": 24.0, "tail": 18.0, "tail_r": 120.0, "spit": 8.0},
+	"mastermind": {"name": "The Mastermind", "hp": 5600.0, "speed": 0.0, "dmg": 18.0, "r": 20.0, "xp": 440, "tough": true, "beh": 28, "mass": 0.0, "boss": true,
+		"wave": 9.0, "hurl": 22.0, "hurl_r": 30.0, "ring": 12.0, "ring_r": 78.0, "pull": 0.45},
 }
 const FOE_ORDER := ["shambler", "runner", "hauler", "spitter", "bloater", "shieldbearer", "howler", "screecher", "foreman", "brood", "enforcer", "scout", "gunner", "bulwark", "seeker",
-	"jammer", "hunter", "warden", "core", "pylon", "mite", "burrower", "rimeback", "shardthrower", "glider", "worm", "heart"]
+	"jammer", "hunter", "warden", "core", "pylon", "mite", "burrower", "rimeback", "shardthrower", "glider", "worm", "heart", "lgm", "grey", "specimen", "trooper", "brain", "saucer", "apex", "mastermind"]
 
 ## (Part 10a, Luz) The collection in the pilot's window: where each kind is at home, and a few words about it. A kind
 ## counts once you have put one of it out; the record keeps how many of each ("slain").
@@ -226,6 +253,7 @@ const FOE_HOME := {
 	"outbreak": ["shambler", "runner", "hauler", "spitter", "bloater", "shieldbearer", "howler", "screecher", "foreman", "brood"],
 	"takeover": ["enforcer", "scout", "gunner", "bulwark", "seeker", "jammer", "hunter", "warden", "core", "pylon"],
 	"whiteout": ["mite", "burrower", "rimeback", "shardthrower", "glider", "worm", "heart"],
+	"lab": ["lgm", "grey", "specimen", "trooper", "brain", "saucer", "apex", "mastermind"],
 }
 const FOE_INFO := {
 	"shambler": "What the outbreak made of the people here. Slow and weak alone, but it never comes alone.",
@@ -255,6 +283,14 @@ const FOE_INFO := {
 	"glider": "It flies along a line shown first and lets chunks of ice fall onto it. It does not touch you.",
 	"worm": "Comes at 7:30, inside walls of light. Under the ice nothing reaches it. Red marks show where it breaks out, and only while it is above can it be hurt.",
 	"heart": "Waits at the end of Whiteout: a crystal in the eye of a storm. Outside the eye the storm wears you down, and the eye closes as the Heart weakens.",
+	"lgm": "Small, green, a large head, two antennae. They come down every corridor at once and have to go round the walls, as you do.",
+	"grey": "Thin and grey, with large black eyes. It walks straight through the walls. Inside a wall nothing reaches it, and it cannot touch you from there.",
+	"specimen": "Something out of one of the tanks. Slow, and it takes a great deal before it goes down.",
+	"trooper": "A green one in a suit and a glass helmet, with a ray gun. It keeps its distance and fires a slow ring of light that a wall turns back once.",
+	"brain": "A brain under a dome of glass, hovering. While it is in the hall with you it pulls you towards it. Leave the hall, or put it out.",
+	"saucer": "It flies along a line shown first, its tractor beam under it. Who stands in the beam is hurt and held. A dodge frees you.",
+	"apex": "Comes at 7:30: the hunter they bred, faster than you. It leaps along a line shown first, later three times in a row from wall to wall. The doors of the hall you stand in shut behind you both.",
+	"mastermind": "What slept in the great tank of the Core Hall. Rings of thought with gaps in them, then what stands in the hall flies at you, and at the last it pulls you to it while Greys come in through the walls.",
 }
 
 
@@ -297,7 +333,8 @@ const BANNERS := {"flock": "THE FLOCK", "ring": "THE RING CLOSES", "sleepers": "
 	"searchlight": "SEARCHLIGHTS", "reinforce": "REINFORCEMENTS", "killline": "KILL LINE", "emp": "EMP",
 	"warden": "THE WARDEN", "core": "THE CORE", "shield": "THE SHIELD FALLS", "flood": "THE FLOOD",
 	"frozen": "FROZEN IN: STEP ON THE VENT", "blizzard": "BLIZZARD", "icebreak": "THE ICE BREAKS", "avalanche": "AVALANCHE",
-	"worm": "THE ICE WORM", "heart": "THE STORM HEART"}
+	"worm": "THE ICE WORM", "heart": "THE STORM HEART",
+	"lockdown": "LOCKDOWN", "purge": "PURGE", "breach": "CONTAINMENT BREACH", "apex": "THE APEX", "mastermind": "THE MASTERMIND WAKES", "sealed": "THE DOORS SHUT"}
 ## Part 8c: The Core. Its cross of laser arms reaches CROSS_LEN; from CORE_LAST of its health down the floor of its
 ## field lights up in squares FIELD_CELL wide, FIELD_WARN seconds before they burst.
 const CROSS_LEN := 360.0
@@ -330,8 +367,10 @@ const ITEMS := {
 	"override": {"name": "Override", "text": "The machines near you fight for you for a while.", "time": 8.0, "r": 110.0, "w": 3, "stage": "takeover", "col": Color(0.4, 1.0, 0.55)},      # (part 8b: on AI Takeover only)
 	"thermal": {"name": "Thermal Charge", "text": "Melts all round you: a shell of ice, the ice over a crate, the ice over a burrower.", "r": 120.0, "dmg": 50.0, "w": 3, "stage": "whiteout",
 		"col": Color(1.0, 0.88, 0.45)},                        # (part 9b: on Whiteout only)
+	"seal": {"name": "Containment Seal", "text": "Fields of force close every doorway of the hall you stand in: nobody comes in, and what touches a field burns.", "time": 10.0, "w": 3, "stage": "lab",
+		"col": Color(0.55, 1.0, 0.75)},                        # (part 11b: in the Alien Laboratory only)
 }
-const ITEM_ORDER := ["shield", "magnet", "medkit", "bomb", "stasis", "overdrive", "override", "thermal"]
+const ITEM_ORDER := ["shield", "magnet", "medkit", "bomb", "stasis", "overdrive", "override", "thermal", "seal"]
 const DRAW_ODDS := {"alpha": [0.16, 0.04], "boss": [0.75, 0.25]}
 const DRAW_LUCK := [0.03, 0.01]
 
@@ -387,7 +426,43 @@ const VENT_R := 46.0
 const VENT_DMG := 45.0
 const VENT_TIME := 1.2
 const VENT_REST := 16.0
+## Part 11a (Luz, 24 Nov 2026): the Alien Laboratory: the first stage with walls: nine halls in a grid of three by
+## three, wide corridors between them. They find their way to you through the doors (the game's `_steer`); a Grey
+## walks through the walls. What you fire is turned back by a wall or ends at it; what looks for a target needs a
+## free line to it. Its events, its item and its two bosses come with parts 11b and 11c.
+const LAB_WAVES := [
+	{"kind": "grey", "from": 90.0, "every": 12.0, "n": [2, 3], "cap": 14},
+	{"kind": "specimen", "from": 180.0, "every": 24.0, "n": [1, 1], "cap": 5},
+	{"kind": "trooper", "from": 270.0, "every": 15.0, "n": [1, 2], "cap": 8},
+	{"kind": "brain", "from": 360.0, "every": 30.0, "n": [1, 1], "cap": 3},
+]
+## Part 11b: what happens in the Alien Laboratory. A lockdown: for LOCK_TIME seconds fields of force close the
+## doorways of the hall (or corridor) you stand in: nobody passes them, you neither; a Grey walks through the wall
+## as ever. A purge: after PURGE_WARN seconds the hall you stand in burns for PURGE_BURN seconds: PURGE_DMG to you
+## as it lights and PURGE_TICK twice a second while you stay; PURGE_FOES to them twice a second (growing with the
+## time, as what they can take does). A containment breach: in the hall nearest to you that still has whole tanks,
+## the BREACH_TANKS nearest to you burst, a specimen out of each. The laser grids across some doorways are on for
+## GRID_ON seconds and off for GRID_OFF (the last GRID_WARN of that they flicker): GRID_DMG to you, GRID_FOES to
+## them four times a second. A Containment Seal's fields cost them SEAL_FOES four times a second.
+const LAB_EVENTS := [{"t": 150.0, "kind": "breach"}, {"t": 240.0, "kind": "lockdown"}, {"t": 330.0, "kind": "purge"}, {"t": 420.0, "kind": "breach"}, {"t": 510.0, "kind": "lockdown"},
+	{"t": 600.0, "kind": "purge"}, {"t": 690.0, "kind": "breach"}, {"t": 750.0, "kind": "purge"}, {"t": 810.0, "kind": "lockdown"}, {"t": 860.0, "kind": "purge"}]
+const LOCK_TIME := 15.0
+const PURGE_WARN := 4.0
+const PURGE_BURN := 1.6
+const PURGE_DMG := 40.0
+const PURGE_TICK := 10.0
+const PURGE_FOES := 90.0
+const BREACH_TANKS := 4
+const GRID_ON := 2.4
+const GRID_OFF := 2.8
+const GRID_WARN := 0.7
+const GRID_DMG := 14.0
+const GRID_FOES := 16.0
+const SEAL_FOES := 22.0
 const STAGE_DATA := {
+	"lab": {"swarm": "lgm", "waves": LAB_WAVES, "alpha": ["lgm", "grey", "trooper"], "events": LAB_EVENTS, "soft": "apex", "end": "mastermind", "flock": "saucer",
+		"banners": {"flood": "FULL INVASION", "alpha": "A COMMANDER", "flock": "SAUCERS"},
+		"dangers": ["Swarms in every corridor", "Greys walk through walls", "Walls turn your fire back", "Nutrient slows you"]},
 	"outbreak": {"swarm": "shambler", "waves": WAVES, "alpha": ALPHA_KINDS, "events": EVENTS, "soft": "foreman", "end": "brood", "flock": "screecher",
 		"dangers": ["Swarms from all sides", "Burning wrecks", "Spilled coolant"]},
 	"takeover": {"swarm": "enforcer", "waves": TK_WAVES, "alpha": ["enforcer", "scout", "gunner"], "events": TK_EVENTS, "soft": "warden", "end": "core", "flock": "hunter",
@@ -817,7 +892,7 @@ const REROLL_COST := [30, 60, 120] # the first, the second, the third reroll a r
 const REVIVE_COST := 300
 const CORE_SECS := 20.0            # a core for every so many seconds held out
 const CORE_ALPHA := 2
-const CORE_BOSS := {"foreman": 12, "brood": 30, "warden": 12, "core": 30, "worm": 12, "heart": 30}
+const CORE_BOSS := {"foreman": 12, "brood": 30, "warden": 12, "core": 30, "worm": 12, "heart": 30, "apex": 12, "mastermind": 30}
 
 
 ## What stays of Survivor in the Colosseum's state: {"best": {stage: seconds}, "runs", "kills", "weapon": the one

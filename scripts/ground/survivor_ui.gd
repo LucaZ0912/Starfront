@@ -222,6 +222,11 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, r: float, col: Color) -
 			for qth in 3:
 				var xth := (qth - 1) * r * 0.6
 				ci.draw_polyline(PackedVector2Array([c + Vector2(xth, r * 0.05), c + Vector2(xth + r * 0.2, -r * 0.3), c + Vector2(xth - r * 0.14, -r * 0.65), c + Vector2(xth + r * 0.1, -r)]), col, 2.0)
+		"seal":                                             # (part 11b) a doorway, a field across it
+			ci.draw_line(c + Vector2(-r * 0.85, -r), c + Vector2(-r * 0.85, r), col, 2.5)
+			ci.draw_line(c + Vector2(r * 0.85, -r), c + Vector2(r * 0.85, r), col, 2.5)
+			for qse in 3:
+				ci.draw_line(c + Vector2(-r * 0.6, (qse - 1) * r * 0.6), c + Vector2(r * 0.6, (qse - 1) * r * 0.6), Color(col, 0.8), 1.5)
 		"lock":
 			ci.draw_rect(Rect2(c + Vector2(-r * 0.65, -r * 0.1), Vector2(r * 1.3, r * 0.95)), col)
 			ci.draw_arc(c + Vector2(0.0, -r * 0.1), r * 0.45, PI, TAU, 10, col, 2.5)
@@ -393,7 +398,7 @@ class Hud extends Control:
 					RED if (3 - ph) >= int(bi["phase"]) else Color(0.25, 0.14, 0.16))
 		var its: Array = [["shield", float(game.shield_t), float(SD.ITEMS["shield"]["time"]), CYAN], ["stasis", float(game.stasis_t), float(SD.ITEMS["stasis"]["time"]), Color(0.6, 0.8, 1.0)],
 			["overdrive", float(game.over_t), float(SD.ITEMS["overdrive"]["time"]), GOLD], ["magnet", float(game.magnet_t), 3.0, GREEN],
-			["override", float(game.ovr_t), float(SD.ITEMS["override"]["time"]), Color(0.4, 1.0, 0.55)]]
+			["override", float(game.ovr_t), float(SD.ITEMS["override"]["time"]), Color(0.4, 1.0, 0.55)], ["seal", float(game.seal_t), float(game.seal_len), Color(0.55, 1.0, 0.75)]]
 		if float(game.emp_t) > 0.0:                             # (part 8b) an EMP: nothing charges: a plate over your weapons' places
 			var er := Rect2(12.0, vs.y - 156.0, 284.0, 62.0)
 			draw_rect(er, Color(0.2, 0.3, 0.5, 0.5 + 0.2 * absf(sin(_t * 20.0))))
@@ -410,6 +415,36 @@ class Hud extends Control:
 			draw_rect(ar, Color(0.02, 0.05, 0.03, 0.8) if safe else Color(0.05, 0.02, 0.03, 0.8))
 			draw_rect(ar, Color(GREEN if safe else RED, 0.75 + 0.25 * absf(sin(_t * 10.0))), false, 2.0)
 			draw_string(font, ar.position + Vector2(0.0, 24.0), "IN COVER" if safe else "AVALANCHE: GET BEHIND SOMETHING SOLID", HORIZONTAL_ALIGNMENT_CENTER, ar.size.x, 20, Color(0.8, 1.0, 0.85) if safe else Color(1.0, 0.85, 0.82))
+		if bool(game.walls_on):                                 # (part 11b) the Alien Laboratory: a purge, a lockdown, a saucer's hold
+			var note := ""
+			var safe9 := false
+			if not (game.purge as Dictionary).is_empty():
+				var in_it: bool = (game.purge["r"] as Rect2).has_point(game.view.pilot.pos)
+				var where := String(game.purge["name"])
+				safe9 = not in_it
+				if bool(game.purge["lit"]):
+					note = "THE PURGE: GET OUT" if in_it else "%s BURNS" % where
+				else:
+					var secs := int(ceil(SD.PURGE_WARN - float(game.purge["t"])))
+					note = ("PURGE IN %d: GET OUT OF %s" % [secs, where]) if in_it else ("PURGE IN %d: %s WILL BURN" % [secs, where])
+			elif float(game.hold_t) > 0.0:
+				note = "HELD: DODGE TO BREAK FREE"
+			elif bool(game._lock_wait) and String(game.boss_kind) == "mastermind":      # (part 11c) it wakes: the way to its hall
+				note = "THE MASTERMIND WAKES: TO THE CORE HALL"
+				if int(game._lock_reg) >= 0 and int(game._lock_reg) < (game._regs as Array).size():
+					var rel9: Vector2 = ((game._regs[int(game._lock_reg)] as Rect2).get_center() - game.view.pilot.pos) * float(GroundMap.SCALE) * maxf(0.2, float(game.view.zoom))
+					if absf(rel9.x) > vs.x * 0.5 - 80.0 or absf(rel9.y) > vs.y * 0.5 - 80.0:
+						var dv9 := rel9.normalized()
+						var ap9 := vs * 0.5 + dv9 * minf((vs.x * 0.5 - 90.0) / maxf(0.001, absf(dv9.x)), (vs.y * 0.5 - 90.0) / maxf(0.001, absf(dv9.y)))
+						var sd9 := dv9.orthogonal()
+						draw_colored_polygon(PackedVector2Array([ap9 + dv9 * 28.0, ap9 - dv9 * 10.0 + sd9 * 18.0, ap9 - dv9 * 10.0 - sd9 * 18.0]), GOLD)
+			elif float(game.lock_t) > 0.0 and String(game.boss_kind) == "":
+				note = "LOCKDOWN: %d" % int(ceil(float(game.lock_t)))
+			if note != "":
+				var nr := Rect2(vs.x * 0.5 - 260.0, vs.y * 0.5 + 126.0, 520.0, 34.0)
+				draw_rect(nr, Color(0.02, 0.05, 0.03, 0.8) if safe9 else Color(0.05, 0.02, 0.03, 0.8))
+				draw_rect(nr, Color(GREEN if safe9 else RED, 0.75 + 0.25 * absf(sin(_t * 10.0))), false, 2.0)
+				draw_string(font, nr.position + Vector2(0.0, 24.0), note, HORIZONTAL_ALIGNMENT_CENTER, nr.size.x, 20, Color(0.8, 1.0, 0.85) if safe9 else Color(1.0, 0.85, 0.82))
 		if float(game.lit_t) > 0.25:                            # you stand in a searchlight
 			var lr := Rect2(vs.x * 0.5 - 150.0, vs.y * 0.5 + 126.0, 300.0, 34.0)      # (on a dark plate: the swarm stands behind it)
 			draw_rect(lr, Color(0.05, 0.02, 0.03, 0.8))
@@ -1087,6 +1122,115 @@ class Intro extends Control:
 		draw_rect(r, Color(ice, 0.8), false, 2.0)
 		ui.brackets(self, r.grow(3.0), ice, 20.0, 3.0)
 
+	## (Part 11a) A picture of the Alien Laboratory: a long corridor running in to a great tank that glows, strips of
+	## light along its walls, small shapes with large heads coming down it, two tall thin ones, a saucer drifting by.
+	func _vista_lab(r: Rect2) -> void:
+		var lab := Color(0.55, 1.0, 0.35)
+		var glow := Color(0.3, 1.0, 0.5)
+		draw_rect(r, Color(0.09, 0.12, 0.15))                   # the wall: pale panels in a dim light
+		var gy := r.position.y + r.size.y * 0.74
+		for sx in range(int(r.position.x) + 40, int(r.end.x), 86):
+			draw_rect(Rect2(sx, r.position.y, 2.0, gy - r.position.y), Color(0.05, 0.07, 0.09))
+		var ly := r.position.y + r.size.y * 0.13                # a strip of light along it, a pulse running down it
+		draw_rect(Rect2(r.position.x, ly, r.size.x, 3.0), Color(0.45, 1.0, 0.75, 0.9))
+		draw_rect(Rect2(r.position.x, ly + 3.0, r.size.x, 8.0), Color(0.45, 1.0, 0.75, 0.08))
+		draw_circle(Vector2(r.position.x + fposmod(_t * 220.0, r.size.x), ly + 1.5), 5.0, Color(0.9, 1.0, 0.95))
+		draw_rect(Rect2(r.position.x, gy, r.size.x, r.end.y - gy), Color(0.04, 0.06, 0.08))      # the floor
+		draw_rect(Rect2(r.position.x, gy, r.size.x, 2.0), Color(0.2, 0.6, 0.62, 0.7))
+		var mid := r.position.x + r.size.x * 0.5
+		var count := maxi(4, int(r.size.x / 150.0))
+		var th := r.size.y * 0.46
+		for q in count:                                         # tanks along the wall, something in each
+			var tx := r.position.x + (q + 0.5) * r.size.x / count
+			if absf(tx - mid) < 130.0:
+				continue
+			var beat := 0.5 + 0.5 * sin(_t * 1.3 + q * 1.7)
+			draw_circle(Vector2(tx, gy - th * 0.5), th * (0.72 + 0.06 * beat), Color(glow, 0.07))
+			draw_set_transform(Vector2(tx, gy + 12.0), 0.0, Vector2(1.0, 0.25))
+			draw_circle(Vector2.ZERO, 40.0, Color(glow, 0.1))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			draw_rect(Rect2(tx - 22.0, gy - 8.0, 44.0, 8.0), Color(0.16, 0.19, 0.23))
+			draw_rect(Rect2(tx - 18.0, gy - 8.0 - th, 36.0, th), Color(0.08, 0.42, 0.24))
+			draw_rect(Rect2(tx - 18.0, gy - 8.0 - th, 36.0, 3.0), Color(0.3, 0.9, 0.5))
+			draw_rect(Rect2(tx - 21.0, gy - 14.0 - th, 42.0, 7.0), Color(0.16, 0.19, 0.23))
+			var dk := Color(0.02, 0.14, 0.08)
+			var cy := gy - 8.0 - th * 0.5 + sin(_t * 0.9 + q) * 3.0
+			match q % 3:
+				0:                                              # curled up, a large head
+					draw_circle(Vector2(tx - 1.0, cy - 9.0), 8.0, dk)
+					draw_circle(Vector2(tx + 2.0, cy + 6.0), 7.0, dk)
+				1:                                              # one of them, hanging in it
+					draw_circle(Vector2(tx, cy - 12.0), 7.5, dk)
+					draw_rect(Rect2(tx - 3.0, cy - 6.0, 6.0, 20.0), dk)
+					draw_rect(Rect2(tx - 7.0, cy - 4.0, 2.0, 14.0), dk)
+					draw_rect(Rect2(tx + 5.0, cy - 4.0, 2.0, 14.0), dk)
+				_:                                              # a bell, its arms trailing
+					draw_circle(Vector2(tx, cy - 8.0), 9.0, dk)
+					for ar in 4:
+						draw_line(Vector2(tx - 6.0 + ar * 4.0, cy - 2.0), Vector2(tx - 7.0 + ar * 4.0 + sin(_t * 2.0 + ar + q) * 3.0, cy + 16.0), dk, 2.0)
+			draw_rect(Rect2(tx - 15.0, gy - 4.0 - th, 2.0, th * 0.7), Color(0.75, 1.0, 0.9, 0.55))
+		var bt := Rect2(mid - 74.0, r.position.y + r.size.y * 0.1, 148.0, gy - 10.0 - r.position.y - r.size.y * 0.1)      # the great tank, and what sleeps in it
+		var bb := 0.5 + 0.5 * sin(_t * 1.6)
+		draw_circle(bt.get_center(), bt.size.y * (0.9 + 0.08 * bb), Color(glow, 0.07))
+		draw_circle(bt.get_center(), bt.size.y * 0.62, Color(glow, 0.08 + 0.04 * bb))
+		draw_rect(Rect2(bt.position.x - 12.0, gy - 12.0, bt.size.x + 24.0, 12.0), Color(0.16, 0.19, 0.23))
+		for wl in 6:
+			draw_rect(Rect2(bt.position.x - 8.0 + wl * (bt.size.x + 8.0) / 5.0, gy - 6.0, 10.0, 4.0), Color(0.95, 0.78, 0.2))
+		draw_rect(bt, Color(0.06, 0.3, 0.2))
+		draw_rect(Rect2(bt.position.x, bt.position.y, bt.size.x, 3.0), Color(0.3, 0.9, 0.5))
+		draw_rect(Rect2(bt.position.x - 6.0, bt.position.y - 10.0, bt.size.x + 12.0, 11.0), Color(0.16, 0.19, 0.23))
+		var brain := bt.get_center() + Vector2(0.0, -bt.size.y * 0.1 + sin(_t * 0.8) * 2.0)
+		var mass := Color(0.16, 0.44, 0.3)
+		draw_set_transform(brain, 0.0, Vector2(1.0, 0.72))
+		draw_circle(Vector2(-14.0, 0.0), 34.0, mass)
+		draw_circle(Vector2(16.0, 2.0), 32.0, mass.darkened(0.08))
+		for fo in 7:
+			draw_arc(Vector2(-34.0 + fo * 11.0, -4.0), 13.0, 0.4 + fo * 0.3, 2.6 + fo * 0.3, 8, mass.darkened(0.35), 2.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_rect(Rect2(brain.x - 1.0, brain.y - 22.0, 2.0, 44.0), mass.darkened(0.4))
+		draw_colored_polygon(PackedVector2Array([brain + Vector2(-7.0, 18.0), brain + Vector2(7.0, 18.0), Vector2(brain.x + 2.0, bt.end.y), Vector2(brain.x - 2.0, bt.end.y)]), mass.darkened(0.15))
+		draw_rect(Rect2(bt.position.x + 5.0, bt.position.y + 8.0, 3.0, bt.size.y * 0.6), Color(0.75, 1.0, 0.9, 0.5))
+		for g in 2:                                             # two tall thin ones by the wall: one half inside it
+			var gx := r.position.x + r.size.x * (0.3 if g == 0 else 0.71)
+			var gc := Color(0.03, 0.05, 0.07, 0.42 if g == 0 else 1.0)
+			var gb := gy + (0.0 if g == 0 else 10.0)
+			draw_rect(Rect2(gx - 3.0, gb - 52.0, 6.0, 52.0), gc)
+			draw_rect(Rect2(gx - 7.0, gb - 50.0, 2.0, 34.0), gc)
+			draw_rect(Rect2(gx + 5.0, gb - 50.0, 2.0, 34.0), gc)
+			draw_set_transform(Vector2(gx, gb - 64.0), 0.0, Vector2(1.0, 1.25))
+			draw_circle(Vector2.ZERO, 11.0, gc)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			draw_rect(Rect2(gx - 8.0, gb - 66.0, 6.0, 3.0), Color(0.7, 0.8, 0.95, gc.a))
+			draw_rect(Rect2(gx + 2.0, gb - 66.0, 6.0, 3.0), Color(0.7, 0.8, 0.95, gc.a))
+		for z in 12:                                            # the small ones, coming along the hall: large heads, antennae, eyes of light
+			var way := 1.0 if z % 2 == 0 else -1.0
+			var zx := r.position.x + 6.0 + fposmod(_h(z, 41) * r.size.x + _t * (16.0 + 12.0 * _h(z, 42)) * way, r.size.x - 30.0)
+			var deep := _h(z, 43)
+			var zy := gy + 16.0 + deep * (r.end.y - gy - 20.0)
+			var sc := 0.8 + deep * 0.5
+			var bob := absf(sin(_t * 5.0 + z)) * 2.0
+			var zc := Color(0.01, 0.03, 0.03)
+			draw_rect(Rect2(zx - 4.0 * sc, zy - 13.0 * sc + bob, 8.0 * sc, 13.0 * sc - bob), zc)
+			draw_circle(Vector2(zx, zy - 19.0 * sc + bob), 8.0 * sc, zc)
+			draw_line(Vector2(zx - 4.0 * sc, zy - 25.0 * sc + bob), Vector2(zx - 6.0 * sc, zy - 34.0 * sc + bob), zc, 2.0)
+			draw_line(Vector2(zx + 4.0 * sc, zy - 25.0 * sc + bob), Vector2(zx + 6.0 * sc, zy - 34.0 * sc + bob), zc, 2.0)
+			draw_circle(Vector2(zx - 6.0 * sc, zy - 35.0 * sc + bob), 1.6, Color(1.0, 1.0, 0.5))
+			draw_circle(Vector2(zx + 6.0 * sc, zy - 35.0 * sc + bob), 1.6, Color(1.0, 1.0, 0.5))
+			draw_rect(Rect2(zx - 5.0 * sc + way * sc, zy - 21.0 * sc + bob, 3.0 * sc, 4.0 * sc), lab)
+			draw_rect(Rect2(zx + 2.0 * sc + way * sc, zy - 21.0 * sc + bob, 3.0 * sc, 4.0 * sc), lab)
+		var sp := Vector2(r.position.x + fposmod(_t * 34.0, r.size.x + 200.0) - 100.0, r.position.y + r.size.y * 0.3 + sin(_t * 1.3) * 5.0)      # a saucer drifting through the hall
+		if sp.x > r.position.x + 60.0 and sp.x < r.end.x - 60.0:
+			draw_colored_polygon(PackedVector2Array([sp + Vector2(-9.0, 6.0), sp + Vector2(9.0, 6.0), Vector2(sp.x + 30.0, gy), Vector2(sp.x - 30.0, gy)]), Color(0.5, 1.0, 0.6, 0.1))
+			draw_set_transform(sp, 0.0, Vector2(1.0, 0.3))
+			draw_circle(Vector2.ZERO, 44.0, Color(0.5, 0.56, 0.62))
+			draw_set_transform(sp + Vector2(0.0, -7.0), 0.0, Vector2(1.0, 0.75))
+			draw_circle(Vector2.ZERO, 17.0, Color(0.45, 0.85, 0.8))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			for sl in 6:
+				draw_rect(Rect2(sp.x - 34.0 + sl * 13.0, sp.y + 3.0, 4.0, 4.0), lab if (sl + int(_t * 4.0)) % 2 == 0 else Color(1.0, 0.8, 0.3))
+		draw_rect(r, Color(lab, 0.8), false, 2.0)
+		ui.brackets(self, r.grow(3.0), lab, 20.0, 3.0)
+
 	## (Part 8) A picture of the stage AI Takeover: what is left of a skyline against a red night, searchlights in
 	## the clouds, tracers of a far fight, rubble before it, a wreck that burns, and red eyes in the dark.
 	func _vista_takeover(r: Rect2) -> void:
@@ -1158,7 +1302,7 @@ class Intro extends Control:
 		var snow := stage == "whiteout"                         # (part 9) the third: by day
 		var stage_col: Color = SD.stage(stage).get("col", GREEN)
 		draw_colored_polygon(PackedVector2Array([Vector2(rx + vs.x * top, 0.0), Vector2(rx + vs.x, 0.0), Vector2(rx + vs.x, my - 3.0), Vector2(rx + vs.x * mid, my - 3.0)]),
-			Color(0.22, 0.07, 0.09) if machines else (Color(0.1, 0.24, 0.36) if snow else Color(0.06, 0.22, 0.16)))
+			Color(0.22, 0.07, 0.09) if machines else (Color(0.1, 0.24, 0.36) if snow else (Color(0.09, 0.2, 0.07) if stage == "lab" else Color(0.06, 0.22, 0.16))))
 		draw_colored_polygon(PackedVector2Array([Vector2(rx2 + vs.x * mid, my + 3.0), Vector2(rx2 + vs.x, my + 3.0), Vector2(rx2 + vs.x, vs.y), Vector2(rx2 + vs.x * foot, vs.y)]), Color(0.05, 0.17, 0.24))
 		for sl in range(0, int(vs.y), 8):
 			draw_rect(Rect2(0.0, sl, vs.x, 2.0), Color(0, 0, 0, 0.14))
@@ -1179,7 +1323,9 @@ class Intro extends Control:
 		draw_string(font, Vector2(px, 124.0), String(sd["name"]).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 62, stage_col)
 		draw_string(font, Vector2(px + pw - 300.0, 104.0), SD.time_text(SD.RUN_TIME), HORIZONTAL_ALIGNMENT_RIGHT, 300.0, 44, Color(1, 1, 1))
 		draw_string(font, Vector2(px + pw - 300.0, 126.0), "to hold out", HORIZONTAL_ALIGNMENT_RIGHT, 300.0, 15, Color(0.75, 0.85, 0.9))
-		if machines:
+		if stage == "lab":                                      # (part 11a) the fourth: indoors
+			_vista_lab(Rect2(px, 150.0, pw, 250.0))
+		elif machines:
 			_vista_takeover(Rect2(px, 150.0, pw, 250.0))
 		elif snow:
 			_vista_whiteout(Rect2(px, 150.0, pw, 250.0))

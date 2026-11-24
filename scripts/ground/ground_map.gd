@@ -347,6 +347,9 @@ func _shade_x(x: int, y: int, rw: int, rh: int, k: float) -> void:
 
 
 func _floor_tile(x: int, y: int, px: int, py: int, fk: int) -> void:
+	if fk == 51 or fk == 52:
+		_lab().floor_tile(self, x, y, px, py, fk)        # 62a part 11a: the Alien Laboratory's halls and corridors
+		return
 	if fk == 46:
 		return                                       # 53f-2: the wild – scripts/ground/wild_gen.gd paints it all
 	var f: Color = pal["floor"]
@@ -1297,6 +1300,9 @@ func _precursor_face(x: int, y: int, px: int, py: int) -> void:
 
 
 func _cap_tile(x: int, y: int, px: int, py: int) -> void:
+	if style == "lab":
+		_lab().cap_tile(self, x, y, px, py)                 # 62a part 11a: the solid mass between the halls
+		return
 	if style == "skymaint":
 		_sky_cap(x, y, px, py)                         # 0.7.54.3: under a cloud city – the void, rails at the edges
 		return
@@ -1377,6 +1383,9 @@ func _duct_tile(x: int, y: int, px: int, py: int) -> void:
 
 ## The front face of a wall, lit, with a trim and a skirting board.
 func _face_tile(x: int, y: int, px: int, py: int) -> void:
+	if style == "lab":
+		_lab().face_tile(self, x, y, px, py)                # 62a part 11a: pale panels, a strip of light
+		return
 	if style == "precursor":
 		_precursor_face(x, y, px, py)
 		return
@@ -1463,7 +1472,20 @@ func _glass_tile(x: int, y: int, px: int, py: int) -> void:
 			_px(px + 3 + k, py + 10 - k, Color(1, 1, 1, 0.14))
 
 
+var _lab_art = null
+
+
+## 62a part 11a: what the Alien Laboratory is drawn with (loaded when a map first needs it).
+func _lab():
+	if _lab_art == null:
+		_lab_art = load("res://scripts/ground/lab_art.gd")
+	return _lab_art
+
+
 func _decal(d: Dictionary) -> void:
+	if String(d["kind"]).begins_with("lab_"):
+		_lab().decal(self, d)
+		return
 	var px := int(d["x"]) * TILE
 	var py := int(d["y"]) * TILE
 	var pw := int(d.get("w", 1)) * TILE

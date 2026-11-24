@@ -742,6 +742,9 @@ func _process(delta: float) -> void:
 				await _test_colwhitec62a(main.view)      # package 62a, part 9c: the bosses of Whiteout
 				await _test_colcoll62a(main.view)        # package 62a, part 10a: the collection's Survivor
 				await _test_colrig62a(main.view)         # package 62a, parts 10b and 10c: the Survivor rig, the Champion's Regalia
+				await _test_collab62a(main.view)         # package 62a, part 11a: Survivor's fourth stage, the Alien Laboratory
+				await _test_collabb62a(main.view)        # package 62a, part 11b: the rest of the Alien Laboratory
+				await _test_collabc62a(main.view)        # package 62a, part 11c: the bosses of the Alien Laboratory
 				_shooting = false
 				timer = 0.0
 				return
@@ -20067,10 +20070,10 @@ func _test_colstage62a(_view: SystemView) -> void:
 	var scr: Array = sm.get_meta("sv_crates", [])
 	var ssl: Array = sm.get_meta("sv_sleepers", [])
 	var snd = Audio.stream("sv_pulse")
-	var rule_ok: bool = SV.FOE_ORDER.size() == 27 and (SV.FOE_ORDER as Array).all(func(k): return SV.FOES.has(k) and SV.FOES[k].has("beh") and SV.FOES[k].has("mass") and not String(SV.FOES[k]["name"]).contains("–")) \
+	var rule_ok: bool = SV.FOE_ORDER.size() >= 27 and (SV.FOE_ORDER as Array).all(func(k): return SV.FOES.has(k) and SV.FOES[k].has("beh") and SV.FOES[k].has("mass") and not String(SV.FOES[k]["name"]).contains("–")) \
 		and SV.kinds_at(0.0) == ["shambler"] and SV.kinds_at(200.0) == ["shambler", "runner", "hauler"] and SV.kinds_at(899.0).size() == 7 \
 		and SV.foe_hp("foreman", 0.0) == SV.foe_hp("foreman", 800.0) and SV.foe_hp("hauler", 600.0) > SV.foe_hp("hauler", 0.0) and SV.foe_hp("screecher", 600.0) == SV.foe_hp("screecher", 0.0) \
-		and ev_sorted and SV.SOFT_BOSS == 450.0 and SV.ITEM_ORDER.size() == 8 and (SV.ITEM_ORDER as Array).all(func(it): return SV.ITEMS.has(it) and String(SV.ITEMS[it]["name"]) != "") \
+		and ev_sorted and SV.SOFT_BOSS == 450.0 and SV.ITEM_ORDER.size() >= 8 and (SV.ITEM_ORDER as Array).all(func(it): return SV.ITEMS.has(it) and String(SV.ITEMS[it]["name"]) != "") \
 		and great.size() == 1 and String(great[0]["kind"]) == "up" and String(great[0]["id"]) == "pulse" and int(great[0]["level"]) == 2 and ups == 0 and seen.size() == 6 \
 		and String(SV.draw_rewards(rfull, rng, 1)[0]["kind"]) == "coins" and SV.MAX_FOES == 600 \
 		and tex_ok and SA.texture("shieldbearer", 0, 0, 0) != SA.texture("shieldbearer", 2, 0, 0) and SA.crate(false, false) != null and SA.crate(true, false) != SA.crate(false, false) \
@@ -20821,8 +20824,8 @@ func _test_colmeta62a(_view: SystemView) -> void:
 			prep.pick_sv_weapon(11)
 			picked = picked and String(prep.msg).contains("end of a run") and SV.first_weapon(GameState.col_state()) == "drone"
 			SV.record(GameState.col_state())["own"] = ["drone", "taser", "blackhole"]      # (for the picture: some yours, some locked, one that comes late)
-			prep.pick_sv_stage(3)                                  # (part 9: the third stage is built now; the fourth is the one still to come)
-			var soon: bool = String(prep.msg) == "That stage is still to come." and String(SV.record(GameState.col_state())["stage"]) == "outbreak"
+			prep.pick_sv_stage(3)                                  # (part 11a: the fourth stage is built now too: shut until The Ice Worm is put out)
+			var soon: bool = String(prep.msg) == "Alien Laboratory opens once you have put out The Ice Worm on Whiteout." and String(SV.record(GameState.col_state())["stage"]) == "outbreak"
 			prep.pick_sv_stage(0)
 			var st_ok: bool = String(prep.msg) == "The stage: Outbreak."
 			if shots:
@@ -21351,7 +21354,7 @@ func _test_coltake62a(_view: SystemView) -> void:
 	var data_ok: bool = String(sd["swarm"]) == "enforcer" and SV.kinds_at(0.0, "takeover") == ["enforcer"] and SV.kinds_at(200.0, "takeover") == ["enforcer", "scout", "gunner"] \
 		and SV.kinds_at(200.0) == ["shambler", "runner", "hauler"] and String(SV.stage_data("outbreak")["end"]) == "brood" and String(SV.stage_data("outbreak")["soft"]) == "foreman" \
 		and String(sd["end"]) == "core" and String(sd["soft"]) == "warden" and (sd["alpha"] as Array).size() == 3 and SV.stage_data("nope") == SV.stage_data("outbreak") \
-		and SV.FOE_ORDER.size() == 27 and ["enforcer", "scout", "gunner"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not bool(SV.FOES[k].get("boss", false))) \
+		and SV.FOE_ORDER.size() >= 27 and ["enforcer", "scout", "gunner"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not bool(SV.FOES[k].get("boss", false))) \
 		and int(SV.FOES["foreman"]["beh"]) >= SV.BOSS_BEH and int(SV.FOES["brood"]["beh"]) >= SV.BOSS_BEH and (SV.FOE_ORDER as Array).all(func(k): return bool(SV.FOES[k].get("boss", false)) == (int(SV.FOES[k]["beh"]) >= SV.BOSS_BEH)) \
 		and String(SV.stage("takeover")["name"]) == "AI Takeover" and not String(SV.stage("takeover")["text"]).contains("–") and String(SV.stage("takeover")["need"]) == "foreman" \
 		and tex_ok and SA.texture("enforcer", 0, 0, 0) != SA.texture("enforcer", 1, 0, 0) and SA.texture("gunner", 0, 2, 0) != SA.texture("enforcer", 0, 2, 0) \
@@ -23330,7 +23333,7 @@ func _test_colwhite62a(_view: SystemView) -> void:
 	var data_ok: bool = String(sd["swarm"]) == "mite" and SV.kinds_at(0.0, "whiteout") == ["mite"] and SV.kinds_at(100.0, "whiteout") == ["mite", "burrower"] \
 		and SV.kinds_at(200.0, "whiteout") == ["mite", "burrower", "rimeback"] and String(sd["soft"]) == "worm" and String(sd["end"]) == "heart" and String(sd["flock"]) == "glider" \
 		and (sd["events"] as Array).size() == 9 and (sd["alpha"] as Array).size() == 4 and (sd["dangers"] as Array).size() >= 3 \
-		and SV.FOE_ORDER.size() == 27 and ["mite", "burrower", "rimeback"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not String(SV.FOES[k]["name"]).contains("–")) \
+		and SV.FOE_ORDER.size() >= 27 and ["mite", "burrower", "rimeback"].all(func(k): return SV.FOES.has(k) and int(SV.FOES[k]["beh"]) < SV.BOSS_BEH and not String(SV.FOES[k]["name"]).contains("–")) \
 		and int(SV.FOES["burrower"]["beh"]) == 13 and float(SV.FOES["rimeback"]["shield"]) > 0.0 and float(SV.FOES["mite"]["speed"]) > float(SV.FOES["shambler"]["speed"]) \
 		and float(SV.FOES["mite"]["hp"]) < float(SV.FOES["shambler"]["hp"]) and float(SV.FOES["rimeback"]["speed"]) < float(SV.FOES["mite"]["speed"]) \
 		and String(SV.stage("whiteout")["name"]) == "Whiteout" and not String(SV.stage("whiteout")["text"]).contains("–") and SV.stage("whiteout").has("col") and SV.stage("outbreak").has("col") \
@@ -24514,10 +24517,10 @@ func _test_colwhiteb62a(_view: SystemView) -> void:
 			for f in 3:
 				var tx: Texture2D = SA.texture(String(kind), 1, d, f)
 				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and not tx.get_image().is_invisible()
-	var rule_ok: bool = int(SV.FOES["shardthrower"]["beh"]) == 14 and bool(SV.FOES["glider"].get("fly", false)) and float(SV.FOES["glider"]["dmg"]) == 0.0 and SV.FOE_ORDER.size() == 27 \
+	var rule_ok: bool = int(SV.FOES["shardthrower"]["beh"]) == 14 and bool(SV.FOES["glider"].get("fly", false)) and float(SV.FOES["glider"]["dmg"]) == 0.0 and SV.FOE_ORDER.size() >= 27 \
 		and evs.size() == 9 and sorted and (["blizzard", "icebreak", "avalanche"] as Array).all(func(k): return evs.any(func(e): return String(e["kind"]) == k) and SV.BANNERS.has(k)) \
 		and String(sd["flock"]) == "glider" and SV.kinds_at(300.0, "whiteout") == ["mite", "burrower", "rimeback", "shardthrower"] and String(sd["end"]) == "heart" \
-		and String(SV.ITEMS["thermal"]["stage"]) == "whiteout" and th_wo > 20 and th_out == 0 and SV.ITEM_ORDER.size() == 8 and not String(SV.ITEMS["thermal"]["text"]).contains("–") and tex_ok
+		and String(SV.ITEMS["thermal"]["stage"]) == "whiteout" and th_wo > 20 and th_out == 0 and SV.ITEM_ORDER.size() >= 8 and not String(SV.ITEMS["thermal"]["text"]).contains("–") and tex_ok
 	if not rule_ok:
 		print("COLWHITEB62A rules: events ", evs.size(), " ", sorted, " thermal ", th_wo, " ", th_out, " tex ", tex_ok, " kinds ", SV.kinds_at(300.0, "whiteout"))
 	# ---- down to Centauria, into the lobby, a run on Whiteout
@@ -24821,7 +24824,7 @@ func _test_colwhitec62a(_view: SystemView) -> void:
 			for f in 3:
 				var tx: Texture2D = SA.texture(String(kind), 0, d, f)
 				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
-	var rule_ok: bool = String(sd["soft"]) == "worm" and String(sd["end"]) == "heart" and SV.FOE_ORDER.size() == 27 and bool(SV.FOES["worm"]["boss"]) and bool(SV.FOES["heart"]["boss"]) \
+	var rule_ok: bool = String(sd["soft"]) == "worm" and String(sd["end"]) == "heart" and SV.FOE_ORDER.size() >= 27 and bool(SV.FOES["worm"]["boss"]) and bool(SV.FOES["heart"]["boss"]) \
 		and int(SV.FOES["worm"]["beh"]) == 25 and int(SV.FOES["heart"]["beh"]) == 26 and int(SV.CORE_BOSS["worm"]) == 12 and int(SV.CORE_BOSS["heart"]) == 30 \
 		and String(SV.BANNERS["worm"]) == "THE ICE WORM" and String(SV.BANNERS["heart"]) == "THE STORM HEART" and float(SV.EYE_MAX) > float(SV.EYE_MIN) * 2.0 and tex_ok \
 		and SA.texture("worm", 0, 0, 0).get_image().get_data() != SA.texture("worm", 0, 1, 0).get_image().get_data() \
@@ -25173,7 +25176,7 @@ func _test_colcoll62a(_view: SystemView) -> void:
 			run_ok = counted and kept and named
 			if not run_ok:
 				print("COLCOLL62A the run: ", [counted, kept, named], " slain ", sl, " kills ", sv.run.get("kills"), " kept ", rec["slain"], " said ", said)
-			# ---- the pilot's window: twenty-seven tiles by stage, three of them open, with their counts
+			# ---- the pilot's window: a tile for every kind by stage, three of them open, with their counts
 			var pw = main.pilot_window
 			pw.sub = 3
 			pw.coll_cat = "survivor"
@@ -25184,9 +25187,9 @@ func _test_colcoll62a(_view: SystemView) -> void:
 			var open_n: int = tiles.filter(func(nd): return bool((nd as Node).get_meta("sv_got"))).size()
 			var labels: Array = pw.body.find_children("*", "Label", true, false).map(func(nd): return String((nd as Label).text))
 			var buttons: Array = pw.body.find_children("*", "Button", true, false).map(func(nd): return String((nd as Button).text))
-			win_ok = tiles.size() == SV.FOE_ORDER.size() and open_n == 3 and labels.has("SURVIVOR  3 / 27") and labels.has("Put out: 4") and labels.has("Put out: 3") and labels.has("OUTBREAK  3 / 10") \
-				and labels.has("AI TAKEOVER  0 / 10") and labels.has("WHITEOUT  0 / 7") and labels.filter(func(t): return String(t) == "???").size() == 24 and labels.has("Shambler") \
-				and not labels.has("Hauler") and buttons.has("Survivor   3 / 27") and String(pw._count_text(12480)) == "12 480" and String(pw._count_text(999)) == "999"
+			win_ok = tiles.size() == SV.FOE_ORDER.size() and open_n == 3 and labels.has("SURVIVOR  3 / %d" % SV.FOE_ORDER.size()) and labels.has("Put out: 4") and labels.has("Put out: 3") and labels.has("OUTBREAK  3 / 10") \
+				and labels.has("AI TAKEOVER  0 / 10") and labels.has("WHITEOUT  0 / 7") and labels.has("ALIEN LABORATORY  0 / %d" % (SV.FOE_HOME["lab"] as Array).size()) and labels.filter(func(t): return String(t) == "???").size() == SV.FOE_ORDER.size() - 3 and labels.has("Shambler") \
+				and not labels.has("Hauler") and buttons.has("Survivor   3 / %d" % SV.FOE_ORDER.size()) and String(pw._count_text(12480)) == "12 480" and String(pw._count_text(999)) == "999"
 			if shots:
 				for f15 in 6:
 					await get_tree().process_frame
@@ -25197,14 +25200,14 @@ func _test_colcoll62a(_view: SystemView) -> void:
 			for f16 in 6:
 				await get_tree().process_frame
 			var labels2: Array = pw.body.find_children("*", "Label", true, false).map(func(nd): return String((nd as Label).text))
-			win_ok = win_ok and labels2.has("SURVIVOR  27 / 27") and labels2.has("Put out: 12 480") and labels2.has("★ The Storm Heart") and labels2.has("Boss  •  Put out: 10") and not labels2.has("???")
+			win_ok = win_ok and labels2.has("SURVIVOR  %d / %d" % [SV.FOE_ORDER.size(), SV.FOE_ORDER.size()]) and labels2.has("Put out: 12 480") and labels2.has("★ The Storm Heart") and labels2.has("Boss  •  Put out: 10") and not labels2.has("???")
 			if shots:
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a16_sammlung_alle.png")
 			if not win_ok:
 				print("COLCOLL62A the window: tiles ", tiles.size(), " open ", open_n, " labels ", labels.slice(0, 14), " buttons ", buttons, " then ", labels2.slice(0, 8))
 			pw.close()
 	check(rule_ok and run_ok and win_ok,
-		"62a, part 10a: the collection's Survivor: every kind has a home and a few words; a run counts what it puts out kind by kind; at its end the count goes into the record and the kinds met for the first time are named; the pilot's window shows twenty-seven tiles by stage, a silhouette until one is put out, then its picture, its count and its words  [%s %s %s]" % [rule_ok, run_ok, win_ok])
+		"62a, part 10a: the collection's Survivor: every kind has a home and a few words; a run counts what it puts out kind by kind; at its end the count goes into the record and the kinds met for the first time are named; the pilot's window shows a tile for every kind by stage, a silhouette until one is put out, then its picture, its count and its words  [%s %s %s]" % [rule_ok, run_ok, win_ok])
 	CD.force.clear()
 	GameState.col_gear_off()
 	CG.gate_open = 0.0
@@ -27116,3 +27119,1264 @@ func _test_w58h(_view: SystemView) -> void:
 	if main.view != null and is_instance_valid(main.view):
 		main.view.input_enabled = true
 		main.view.story_cam = Vector2.INF
+
+
+## Package 62a, part 11a (Luz, 24 Nov 2026): Survivor's fourth stage, the Alien Laboratory, the first with walls: nine
+## halls in a grid of three by three, a corridor between each two; every wall north of a floor shows its face two
+## rows high; the halls' furniture; the stage opens with The Ice Worm; little green men as the swarm, the Grey from
+## 1:30, the specimen from 3:00; they find their way to you through the doorways (two of them by two ways where both
+## are as short); a Grey walks through the walls, and inside one nothing reaches it; the laser fires only at whom it
+## sees; a shot, a blade and a black hole are turned back by a wall, a grenade comes down this side of it; spilled
+## nutrient holds you back.
+func _test_collab62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SS = load("res://scripts/ground/survivor_stage.gd")
+	var SL = load("res://scripts/ground/survivor_lab.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var SU = load("res://scripts/ground/survivor_ui.gd")
+	var OA = load("res://scripts/ground/obj_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	var TT := GroundMap.T
+	# ---- the rules: when the stage opens, what it is made of, the three that live there
+	var c0: Dictionary = CD.fresh()
+	var shut: bool = not SV.stage_open(c0, "lab")
+	(SV.record(c0)["beaten"] as Array).append_array(["foreman", "warden"])
+	shut = shut and not SV.stage_open(c0, "lab") and SV.stage_open(c0, "whiteout")
+	var s3: Dictionary = SV.settle(c0, {"t": 500.0, "kills": 5, "level": 3, "stage": "whiteout", "bosses": ["worm"]}, false)
+	var opens: bool = str(s3["opened"]) == str(["Alien Laboratory"]) and SV.stage_open(c0, "lab") and String(SV.stage("lab")["need"]) == "worm"
+	var sd: Dictionary = SV.stage_data("lab")
+	var tex_ok := true
+	for kind in ["lgm", "grey", "specimen"]:
+		for d in 4:
+			for f in 3:
+				for vq in 4:
+					var tx: Texture2D = SA.texture(String(kind), vq, d, f)
+					tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	var looks: bool = SA.texture("lgm", 0, 0, 0).get_image().get_data() != SA.texture("lgm", 1, 0, 0).get_image().get_data() \
+		and SA.texture("grey", 0, 0, 0).get_image().get_data() != SA.texture("grey", 0, 1, 0).get_image().get_data() \
+		and SA.texture("specimen", 0, 2, 0).get_image().get_data() != SA.texture("specimen", 0, 2, 1).get_image().get_data() \
+		and SA.size_of("specimen").y > SA.size_of("grey").y and SA.size_of("grey").y > SA.size_of("lgm").y
+	var data_ok: bool = String(sd["swarm"]) == "lgm" and SV.kinds_at(0.0, "lab") == ["lgm"] and SV.kinds_at(100.0, "lab") == ["lgm", "grey"] and SV.kinds_at(200.0, "lab") == ["lgm", "grey", "specimen"] \
+		and (sd["dangers"] as Array).size() == 4 \
+		and SV.FOE_ORDER.size() >= 27 and int(SV.FOES["grey"]["beh"]) == 15 and bool(SV.FOES["specimen"]["tough"]) and float(SV.FOES["specimen"]["hp"]) > 100.0 \
+		and float(SV.FOES["lgm"]["hp"]) < float(SV.FOES["shambler"]["hp"]) and str((SV.FOE_HOME["lab"] as Array).slice(0, 3)) == str(["lgm", "grey", "specimen"]) \
+		and ["lgm", "grey", "specimen"].all(func(k): return SV.FOE_INFO.has(k) and not String(SV.FOE_INFO[k]).contains("–") and not String(SV.FOES[k]["name"]).contains("–") and String(SV.foe_home(k)) == "lab") \
+		and String(SV.stage("lab")["name"]) == "Alien Laboratory" and not String(SV.stage("lab")["text"]).contains("–") and SV.STAGES.size() == 4 and SV.stage("lab").has("col") and tex_ok and looks
+	# ---- the ground: nine halls, the corridors, the walls, what stands in the halls
+	var sm: GroundMap = SS.build("lab", 1)
+	var kinds := {}
+	var species := {}
+	for o in sm.objects:
+		kinds[String(o.get("kind", ""))] = int(kinds.get(String(o.get("kind", "")), 0)) + 1
+		if String(o.get("kind", "")) == "stasis":
+			species[String(o.get("species", ""))] = true
+	var regs: Array = sm.get_meta("sv_regions", [])
+	var links: Array = sm.get_meta("sv_links", [])
+	var faces := true                                           # every wall north of a floor shows its face two rows high; no floor right under a wall's top
+	var face_n := 0
+	for y in range(2, sm.h - 2):
+		for x in sm.w:
+			var t := sm.t_at(x, y)
+			if (GroundMap.walkable_t(t) or t == TT.BLOCK) and sm.t_at(x, y - 1) == TT.CAP:
+				faces = false
+			if t == TT.FACE and sm.t_at(x, y - 1) != TT.FACE:
+				face_n += 1
+				faces = faces and sm.t_at(x, y + 1) == TT.FACE and sm.t_at(x, y + 2) != TT.FACE and sm.t_at(x, y + 2) != TT.CAP and sm.t_at(x, y - 1) == TT.CAP
+	var doors := true                                           # a doorway is free floor on both its sides, across its whole width
+	for l in links:
+		var la: Vector2 = l[2]
+		var lb: Vector2 = l[3]
+		var nrm := (lb - la).orthogonal().normalized() * 10.0
+		for q in 9:
+			var lp: Vector2 = la.lerp(lb, (q + 0.5) / 9.0)
+			doors = doors and sm.free_at(lp + nrm, 3.0) and sm.free_at(lp - nrm, 3.0)
+	var rooms_ok: bool = regs.size() == 21 and links.size() == 24
+	if rooms_ok:
+		for q2 in 9:
+			rooms_ok = rooms_ok and (regs[q2] as Rect2i) == SL.room(q2 % 3, q2 / 3) and (regs[q2] as Rect2i).size == Vector2i(int(SL.RW), int(SL.RH))
+		for q3 in range(9, 21):
+			var cs: Vector2i = (regs[q3] as Rect2i).size
+			rooms_ok = rooms_ok and mini(cs.x, cs.y) == int(SL.CW) and maxi(cs.x, cs.y) == int(SL.CL)
+	var hall_px := func(q: int) -> Rect2:
+		return Rect2(Vector2((regs[q] as Rect2i).position) * TL, Vector2((regs[q] as Rect2i).size) * TL)
+	var crs: Array = sm.get_meta("sv_crates", [])
+	var crates_ok: bool = rooms_ok and crs.size() == 18 and crs.all(func(c): return sm.free_at(c, 5.0) and sm.path(sm.spawn, c).size() > 0 and range(9).any(func(q): return (hall_px.call(q) as Rect2).has_point(c)))
+	var hz: Array = sm.get_meta("col_hazards", [])
+	var again: GroundMap = SS.build("lab", 1)
+	var other: GroundMap = SS.build("lab", 2)
+	var listed := func(m9: GroundMap) -> String:
+		return str((m9.objects as Array).map(func(o): return [o["kind"], o["x"], o["y"], o.get("seed", 0)]))
+	var art_ok := true
+	for ok9 in [["spec_tank", 2, 1, 28], ["big_tank", 8, 4, 64], ["op_table", 3, 2, 26], ["instr_cart", 1, 1, 10], ["saucer", 14, 6, 44], ["cryo_pod", 2, 1, 30], ["pen_cell", 5, 3, 26], ["stasis", 3, 2, 36]]:
+		var oi: Image = OA.make({"kind": ok9[0], "x": 0, "y": 0, "w": ok9[1], "h": ok9[2], "rise": ok9[3], "species": "cow"}, sm.pal)["image"]
+		art_ok = art_ok and oi.get_width() == int(ok9[1]) * 16 and oi.get_height() == int(ok9[2]) * 16 + int(ok9[3]) and not oi.is_invisible()
+	art_ok = art_ok and (OA.make({"kind": "spec_tank", "x": 0, "y": 0, "w": 2, "h": 1, "rise": 28, "seed": 9}, sm.pal)["image"] as Image).get_data() != (OA.make({"kind": "spec_tank", "x": 0, "y": 0, "w": 2, "h": 1, "rise": 28, "seed": 2}, sm.pal)["image"] as Image).get_data() \
+		and (OA.make({"kind": "stasis", "x": 0, "y": 0, "w": 3, "h": 2, "rise": 36, "species": "cow"}, sm.pal)["image"] as Image).get_data() != (OA.make({"kind": "stasis", "x": 0, "y": 0, "w": 3, "h": 2, "rise": 36, "species": "empty"}, sm.pal)["image"] as Image).get_data()
+	var dn := func(kd: String) -> int:
+		return (sm.decals as Array).filter(func(d9): return String(d9["kind"]) == kd).size()
+	var mtex: Texture2D = sm.texture()
+	var ground_ok: bool = sm.w == int(SL.LW) and sm.h == int(SL.LH) and sm.w == 284 and sm.h == 190 and String(sm.style) == "lab" and rooms_ok and faces and face_n > 600 and doors and crates_ok \
+		and sm.free_at(sm.spawn, 4.0) and (hall_px.call(4) as Rect2).has_point(sm.spawn) and String(sm.get_meta("sv_stage", "")) == "lab" and String(sm.get_meta("col_vr_name", "")) == "Alien Laboratory" \
+		and bool(sm.get_meta("sv_walls", false)) and (sm.get_meta("dark") as Color).v < 0.85 and not sm.has_meta("sv_sleepers") and not sm.has_meta("sv_bright") \
+		and int(kinds.get("spec_tank", 0)) == 84 and int(kinds.get("big_tank", 0)) == 1 and int(kinds.get("op_table", 0)) == 32 and int(kinds.get("saucer", 0)) == 1 and int(kinds.get("cryo_pod", 0)) == 50 \
+		and int(kinds.get("pen_cell", 0)) == 40 and int(kinds.get("stasis", 0)) == 15 and species.has("tractor") and species.has("cow") and species.has("sign") and int(kinds.get("console_row", 0)) == 6 \
+		and int(kinds.get("instr_cart", 0)) >= 10 and hz.size() == 1 and String(hz[0]["kind"]) == "slow" and String(hz[0]["look"]) == "nutrient" and (hz[0]["rects"] as Array).size() >= 2 \
+		and int(dn.call("lab_sign")) == 9 and int(dn.call("lab_line")) == 24 and int(dn.call("lab_door")) == 24 and int(dn.call("lab_ring")) == 3 and int(dn.call("lab_cable")) == 4 and int(dn.call("lab_frost")) >= 10 \
+		and (sm.zones as Array).any(func(z): return String(z.get("kind", "")) == "sv_giveup") and art_ok and mtex != null and mtex.get_width() == sm.w * 16 \
+		and String(listed.call(sm)) == String(listed.call(again)) and String(listed.call(sm)) != String(listed.call(other))
+	if not (shut and opens and data_ok and ground_ok):
+		print("COLLAB62A rules: shut ", shut, " opens ", opens, " ", s3.get("opened"), " data ", data_ok, " tex ", tex_ok, " looks ", looks, " ground ", ground_ok, " ", sm.w, "x", sm.h, " rooms ", rooms_ok, " ", regs.size(), " ", links.size(),
+			" faces ", faces, " ", face_n, " doors ", doors, " crates ", crates_ok, " ", crs.size(), " kinds ", kinds, " species ", species.keys(), " hazards ", hz.map(func(h): return [h["kind"], (h["rects"] as Array).size()]),
+			" decals ", [dn.call("lab_sign"), dn.call("lab_line"), dn.call("lab_door"), dn.call("lab_ring"), dn.call("lab_cable"), dn.call("lab_frost")], " art ", art_ok,
+			" same ", String(listed.call(sm)) == String(listed.call(again)), " other ", String(listed.call(sm)) != String(listed.call(other)))
+	# ---- down to Centauria, into the lobby
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var pick_ok := false
+	var run_ok := false
+	var way_ok := false
+	var grey_ok := false
+	var fire_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		# ---- the fighters' room: the stage is shut until The Ice Worm is put out, then it can be picked
+		CD.switch_mode(GameState.col_state(), "survivor")
+		g._col_prep_open()
+		for f1 in 4:
+			await get_tree().process_frame
+		var prep = g.minigame
+		if prep != null and prep.has_method("is_col_prep"):
+			(SV.record(GameState.col_state())["beaten"] as Array).append_array(["foreman", "warden"])
+			prep.pick_sv_stage(3)
+			var no: bool = String(prep.msg) == "Alien Laboratory opens once you have put out The Ice Worm on Whiteout." and SV.cur_stage(GameState.col_state()) == "outbreak"
+			(SV.record(GameState.col_state())["beaten"] as Array).append("worm")
+			prep.pick_sv_stage(3)
+			var yes: bool = String(prep.msg) == "The stage: Alien Laboratory." and SV.cur_stage(GameState.col_state()) == "lab"
+			if shots:
+				for f2 in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a18_vorbereitung.png")
+			Commands.execute({"type": "debug_casino", "sv": "lock"})
+			var locked: bool = not SV.stage_open(GameState.col_state(), "lab")
+			pick_ok = no and yes and locked and String(Commands.execute({"type": "debug_casino", "sv": "stage:lab"})) == "" and SV.cur_stage(GameState.col_state()) == "lab"
+			if not pick_ok:
+				print("COLLAB62A the fighters' room: no ", no, " yes ", yes, " locked ", locked, " ", prep.msg, " stage ", SV.cur_stage(GameState.col_state()))
+		g._close_game()
+		for f3 in 3:
+			await get_tree().process_frame
+		if shots:                                               # (a picture of what stands before a run)
+			var intro = SU.Intro.new()
+			intro.setup({"you_tex": ChibiArt.frame(g.pilot_look(), 0, 0), "you": GameState.pilot_name.to_upper(), "weapon": "pulse", "stage": "lab"})
+			g._ui.add_child(intro)
+			for f4 in 110:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/col62a18_einlauf.png")
+			intro.queue_free()
+			for f5 in 3:
+				await get_tree().process_frame
+		# ---- a run on it
+		Commands.execute({"type": "debug_casino", "sv": "stage:lab"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int, dt: float) -> void:
+				for k3 in count:
+					sv.step(dt)
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+				sv._lead = Vector2.ZERO
+				sv._slide = Vector2.ZERO
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["weapons"] = []
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.sn = 0
+				sv.banner_t = 0.0
+				sv.frozen = false
+				sv.shots.clear()
+				sv.blades.clear()
+				sv.holes.clear()
+				stand.call(pp)
+			var picture := func(cam: Vector2, zoom: float, frames: int, file: String) -> void:
+				g.story_cam = cam
+				g.story_zoom = zoom
+				g._cam_c = cam * GroundMap.SCALE
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/%s.png" % file)
+			var REG := func(q: int) -> Rect2:
+				return sv._regs[q]
+			var core: Rect2 = REG.call(4)
+			var a1: Rect2 = REG.call(0)
+			var here: bool = String(g.map.get_meta("sv_stage", "")) == "lab" and String(sv.run["stage"]) == "lab" and String(sv.stg["swarm"]) == "lgm" and String(g._title.text).contains("Alien Laboratory") \
+				and bool(sv.walls_on) and (sv._regs as Array).size() == 21 and (sv._links as Array).size() == 24 and core.has_point(pp) and g.map.free_at(pp, 4.0) and (sv.crates as Array).size() == 18 \
+				and int(sv._swarm_k) == int(KI["lgm"])
+			sv.run["weapons"] = []
+			sv.run["t"] = 0.0
+			sv._acc = 0.0
+			run_steps.call(260, 0.016)                              # the swarm of this stage, from outside the picture, on free floor
+			var came: bool = int(sv.n) >= 3 and int(sv._cnt[KI["lgm"]]) == int(sv.n) and range(int(sv.n)).all(func(q): return int(sv._solid[sv._ti(sv.fp[q])]) == 0)
+			sv.run["t"] = 200.0
+			sv._alpha_at = 9999.0
+			sv.step(0.016)                                          # … and by then its other kinds
+			var others: bool = int(sv._cnt[KI["grey"]]) >= 2 and int(sv._cnt[KI["specimen"]]) >= 1 and int(sv._cnt[KI["shambler"]]) == 0 and int(sv._cnt[KI["mite"]]) == 0
+			sv.quiet = true
+			sv.grids = []                                           # (part 11b: the laser grids have their own group; here nothing shall burn those on their way)
+			# what holds you back: spilled nutrient
+			calm.call()
+			var pool: Rect2 = (g.map.get_meta("col_hazards")[0]["rects"] as Array)[0]
+			stand.call(pool.get_center())
+			var slowed: bool = int(sv._haz[sv._ti(pool.get_center())]) == 1 and is_equal_approx(float(sv.speed()), 0.55 * float(sv.mods["speed"]))
+			stand.call(pp)
+			slowed = slowed and is_equal_approx(float(sv.speed()), float(sv.mods["speed"]))
+			run_ok = here and came and others and slowed
+			if not run_ok:
+				print("COLLAB62A the run: here ", here, " ", g._title.text, " walls ", sv.walls_on, " crates ", (sv.crates as Array).size(), " came ", came, " n ", sv.n, " others ", others, " counts ", sv._cnt, " slowed ", slowed)
+			# ---- the way: two of them from the hall A1, diagonally across from you: each through the doorways, never through a wall, and not both the same way
+			calm.call()
+			sv.run["t"] = 10.0
+			sv.add_foe(KI["lgm"], a1.get_center())
+			sv.add_foe(KI["lgm"], a1.get_center() + Vector2(12.0, 0.0))
+			var seen: Array = [{}, {}]
+			var in_wall := false
+			var arrived := false
+			var steps_n := 0
+			for st in 3000:
+				sv.step(0.05)
+				sv.run["hp"] = 1000.0
+				steps_n += 1
+				if int(sv.n) < 2:
+					break
+				for q4 in 2:
+					(seen[q4] as Dictionary)[int(sv._reg[sv._ti(sv.fp[q4])]) - 1] = true
+					in_wall = in_wall or int(sv._wall[sv._ti(sv.fp[q4])]) != 0
+				if core.has_point(sv.fp[0]) and core.has_point(sv.fp[1]):
+					arrived = true
+					break
+			var two_ways: bool = (seen[0] as Dictionary).has(1) != (seen[1] as Dictionary).has(1) and (seen[0] as Dictionary).has(3) != (seen[1] as Dictionary).has(3)
+			way_ok = arrived and not in_wall and two_ways and (seen[0] as Dictionary).size() == 5 and (seen[1] as Dictionary).size() == 5
+			if not way_ok:
+				print("COLLAB62A the way: arrived ", arrived, " after ", steps_n, " in a wall ", in_wall, " two ways ", two_ways, " ", (seen[0] as Dictionary).keys(), " ", (seen[1] as Dictionary).keys(), " n ", sv.n)
+			# ---- the Grey: straight at you through the wall; inside it nothing reaches it, out of it everything does
+			calm.call()
+			sv.add_foe(KI["grey"], a1.get_center() + Vector2(600.0, 340.0))
+			var was_in := false
+			var safe := true
+			var out_again := false
+			var wall_steps := 0
+			for st2 in 3000:
+				sv.step(0.05)
+				sv.run["hp"] = 1000.0
+				if int(sv.n) < 1:
+					break
+				var gp: Vector2 = sv.fp[0]
+				if int(sv._wall[sv._ti(gp)]) != 0:
+					was_in = true
+					wall_steps += 1
+					var hp0 := float(sv.fhp[0])
+					sv._hit(0, 5.0, pp)
+					safe = safe and float(sv.fhp[0]) == hp0 and int(sv.fst[0]) == 0 and bool(sv._under(0)) and (sv.touching(gp, 30.0) as Array).is_empty()
+				elif was_in:
+					var hp1 := float(sv.fhp[0])
+					sv._grid()
+					sv._hit(0, 1.0, pp)
+					out_again = int(sv.fst[0]) == 2 and core.has_point(gp) and float(sv.fhp[0]) < hp1 and not (sv.touching(gp, 30.0) as Array).is_empty()
+					break
+			grey_ok = was_in and safe and out_again and wall_steps > 100
+			if not grey_ok:
+				print("COLLAB62A the Grey: in a wall ", was_in, " for ", wall_steps, " safe ", safe, " out again ", out_again, " n ", sv.n)
+			# ---- what you fire, and the walls
+			calm.call()
+			var north: Rect2 = REG.call(16)                         # the corridor from the Core Hall north to the Hangar
+			var sees_ok: bool = bool(sv._sees(pp, pp + Vector2(200.0, 60.0))) and not bool(sv._sees(pp, a1.get_center())) and bool(sv._sees(pp, (REG.call(1) as Rect2).get_center() + Vector2(0.0, 300.0))) \
+				and absf(float(sv._free_len(pp, Vector2.LEFT, 4000.0)) - (pp.x - core.position.x)) < 8.0 and float(sv._free_len(pp, Vector2.RIGHT, 100.0)) == 100.0
+			var corner := Vector2(north.position.x - 44.0, core.position.y + 20.0)      # under the hall's north wall, left of the doorway
+			stand.call(corner)
+			var near_at: float = minf(130.0, float(SV.WEAPONS["laser"]["reach"]) * 0.8)
+			var hid: int = sv.add_foe(KI["specimen"], Vector2(north.position.x + 20.0, north.end.y - 44.0))      # round the corner, in the corridor: nearer, but not to be seen
+			var open: int = sv.add_foe(KI["specimen"], corner + Vector2(0.0, near_at))
+			for hq in [hid, open]:
+				sv.fhp[hq] = 1000.0
+				sv.fmx[hq] = 1000.0
+			var hidden: bool = not bool(sv._sees(corner, sv.fp[hid])) and bool(sv._sees(corner, sv.fp[open])) and corner.distance_to(sv.fp[hid]) < corner.distance_to(sv.fp[open])
+			sv.frozen = true
+			sv.run["weapons"] = [["laser", 1]]
+			sv._wt = {}
+			run_steps.call(80, 0.016)
+			var laser_ok: bool = hidden and float(sv.fhp[hid]) == 1000.0 and float(sv.fhp[open]) < 1000.0
+			calm.call()                                             # a shot, a blade, a black hole at the hall's west wall: each is turned back
+			var west := Vector2(core.position.x + 30.0, pp.y)
+			stand.call(west + Vector2(40.0, 0.0))
+			sv.frozen = true
+			sv.shots.append({"p": west, "v": Vector2(-300.0, 0.0), "life": 5.0, "dmg": 5.0, "pierce": false})
+			sv.blades.append({"p": west + Vector2(0.0, 30.0), "v": Vector2(-320.0, 0.0), "life": 5.0, "dmg": 1.0, "tr": PackedVector2Array()})
+			sv.holes.append({"p": west + Vector2(0.0, 60.0), "v": Vector2(-200.0, 0.0), "r": 30.0, "t": 0.0, "tick": 0.0, "dmg": 1.0, "u": false, "tr": PackedVector2Array()})
+			run_steps.call(20, 0.016)
+			var shot_ok: bool = (sv.shots as Array).size() == 1 and (sv.shots[0]["v"] as Vector2).x > 0.0 and int(sv.shots[0].get("b", 0)) == 1 and int(sv._wall[sv._ti(sv.shots[0]["p"])]) == 0
+			var blade_ok: bool = (sv.blades as Array).size() == 1 and (sv.blades[0]["v"] as Vector2).x > 0.0 and int(sv._wall[sv._ti(sv.blades[0]["p"])]) == 0
+			var hole_ok: bool = (sv.holes as Array).size() == 1 and (sv.holes[0]["v"] as Vector2).x > 0.0 and int(sv._wall[sv._ti(sv.holes[0]["p"])]) == 0
+			var thrown: Vector2 = sv._reach(west, west + Vector2(-100.0, 0.0))      # a grenade thrown at the wall comes down this side of it
+			var reach_ok: bool = int(sv._wall[sv._ti(thrown)]) == 0 and absf(thrown.x - core.position.x - 76.0) < 12.0 and (sv._reach(west, west + Vector2(40.0, 0.0)) as Vector2) == west + Vector2(40.0, 0.0)
+			var orb: Vector2 = sv._orb_at(west, Vector2.LEFT, 60.0)             # an orb on its round is drawn in at the wall
+			var orb_ok: bool = orb.x > core.position.x and orb.x < west.x and (sv._orb_at(west, Vector2.RIGHT, 60.0) as Vector2) == west + Vector2(60.0, 0.0)
+			sv.sweep = {"a0": PI, "a": PI, "to": PI, "reach": 2000.0, "t": 0.0, "len": 1.0, "u": false}      # the superlaser's beam ends at the wall
+			var back: Array = sv._sweep_bounce()
+			var beam_ok: bool = absf(float(sv._sweep_len()) - 70.0) < 9.0 and back.size() == 2 and (back[1] as Vector2).x > (back[0] as Vector2).x + 1000.0 and absf((back[1] as Vector2).y - (back[0] as Vector2).y) < 1.0
+			var zi: int = sv.add_foe(KI["lgm"], west + Vector2(400.0, 4.0))      # (one standing in the beam the wall turns back is out)
+			sv._grid()
+			sv._src = 0
+			sv._fly(0.016, west + Vector2(40.0, 0.0))
+			beam_ok = beam_ok and zi == 0 and int(sv.n) == 0
+			sv.sweep = {}
+			fire_ok = sees_ok and laser_ok and shot_ok and blade_ok and hole_ok and reach_ok and orb_ok and beam_ok
+			if not fire_ok:
+				print("COLLAB62A what you fire: sees ", sees_ok, " laser ", laser_ok, " hidden ", hidden, " ", sv.fhp[hid] if hid < sv.n else -1.0, " shot ", shot_ok, " ", sv.shots, " blade ", blade_ok, " hole ", hole_ok,
+					" reach ", reach_ok, " ", thrown.x - core.position.x, " orb ", orb_ok, " beam ", beam_ok, " ", sv._sweep_len())
+			# ---- a step with a full swarm, half of it beyond a doorway
+			calm.call()
+			var mouth: Rect2 = REG.call(9 + 2 + 1)
+			stand.call(Vector2(mouth.position.x - 30.0, mouth.get_center().y))
+			sv.swarm(300, "lgm")
+			for sq0 in 300:
+				sv.add_foe(KI["grey"] if sq0 % 6 == 0 else KI["lgm"], sv.near_free(Vector2(mouth.end.x + 30.0 + sv.rng.randf() * 600.0, mouth.position.y - 200.0 + sv.rng.randf() * 600.0), 24.0))
+			sv.run["weapons"] = [["pulse", 5], ["laser", 5], ["blade", 5], ["drone", 5], ["taser", 5]]
+			sv._wt = {}
+			var full_n: int = sv.n
+			var tp0 := Time.get_ticks_usec()
+			for k9 in 60:
+				sv.step(0.016)
+				sv.run["hp"] = 1000.0
+			var ms := float(Time.get_ticks_usec() - tp0) / 60000.0
+			print("COLLAB62A a step with %d of them, half beyond a doorway: %.2f ms" % [full_n, ms])
+			fire_ok = fire_ok and full_n >= 550 and ms < 14.0
+			calm.call()
+			if shots:
+				sv.frozen = true
+				await picture.call(Vector2(g.map.w, g.map.h) * TL * 0.5, 0.15, 200, "col62a18_karte")
+				for hq2 in [[4, "core", Vector2(0, 0)], [0, "specimen", Vector2(0, 0)], [2, "theatre", Vector2(0, 0)], [1, "hangar", Vector2(0, 0)], [7, "cryo", Vector2(0, 0)], [3, "pens", Vector2(0, 0)], [5, "trophy", Vector2(0, 0)]]:
+					await picture.call((REG.call(int(hq2[0])) as Rect2).get_center(), 0.6, 50, "col62a18_halle_%s" % String(hq2[1]))
+				await picture.call(pp + Vector2(0.0, -110.0), 1.0, 40, "col62a18_start")
+				for ri in 4:                                        # the three kinds side by side, an alpha
+					var fi0: int = sv.add_foe(KI["lgm"], pp + Vector2(-150.0 + ri * 30.0, 24.0))
+					sv.fv[fi0] = ri
+					sv.fface[fi0] = [0, 2, 3, 1][ri]
+					var fi1: int = sv.add_foe(KI["grey"], pp + Vector2(10.0 + ri * 34.0, 24.0))
+					sv.fv[fi1] = ri
+					sv.fst[fi1] = 2
+					sv.fface[fi1] = [0, 2, 3, 1][ri]
+				for ri3 in 3:
+					var fi2: int = sv.add_foe(KI["specimen"], pp + Vector2(-110.0 + ri3 * 70.0, 84.0))
+					sv.fv[fi2] = ri3
+					sv.fface[fi2] = [0, 2, 1][ri3]
+				sv.make_alpha(sv.add_foe(KI["lgm"], pp + Vector2(120.0, 84.0)))
+				await picture.call(pp + Vector2(0.0, 30.0), 1.9, 60, "col62a18_gegner")
+				# they come through a doorway, Greys through the wall beside it
+				calm.call()
+				var east: Rect2 = REG.call(9 + 2 + 1)               # the corridor from the Core Hall east to the Trophy Room
+				stand.call(Vector2(east.position.x - 150.0, east.get_center().y))
+				sv.frozen = false
+				for sq in 130:
+					sv.add_foe(KI["lgm"], sv.near_free(Vector2(east.end.x + 20.0 + sv.rng.randf() * 520.0, east.position.y - 160.0 + sv.rng.randf() * 520.0), 24.0))
+				for sq2 in 7:
+					sv.add_foe(KI["grey"], Vector2(east.position.x + 60.0 + sq2 * 26.0, east.position.y - 150.0 - (sq2 % 3) * 30.0))
+				sv.add_foe(KI["specimen"], Vector2(east.end.x + 10.0, east.get_center().y))
+				sv.run["hp"] = 1000000.0
+				await picture.call(Vector2(east.position.x + 40.0, east.get_center().y - 30.0), 1.0, 620, "col62a18_tuer")
+				# what you fire is turned back
+				calm.call()
+				stand.call(Vector2(core.position.x + 150.0, core.position.y + 110.0))
+				sv.run["weapons"] = [["blade", 4], ["drone", 4], ["superlaser", 1], ["laser", 3]]
+				sv._wt = {"superlaser": 2.0}
+				sv.run["hp"] = 1000000.0
+				for sq3 in 60:
+					sv.add_foe(KI["lgm"], Vector2(core.position.x + 60.0 + (sq3 % 10) * 30.0, core.position.y + 260.0 + (sq3 / 10) * 22.0))
+				await picture.call(Vector2(core.position.x + 230.0, core.position.y + 150.0), 1.0, 150, "col62a18_waffen")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				calm.call()
+			sv.end(false)
+			for f12 in 20:
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(shut and opens and data_ok and ground_ok and pick_ok and run_ok and way_ok and grey_ok and fire_ok,
+		"62a, part 11a (Luz): the Alien Laboratory: nine halls in a grid with corridors between them, walls two rows high, the halls' furniture; it opens with The Ice Worm; little green men, the Grey, the specimen; they come through the doorways by two ways, a Grey through the wall where nothing reaches it; the laser fires at whom it sees; a shot, a blade and a black hole are turned back by a wall; nutrient holds you back  " + str([shut and opens, data_ok, ground_ok, pick_ok, run_ok, way_ok, grey_ok, fire_ok]))
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main._close_planet_map()
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 11b (Luz, 24 Nov 2026): the rest of the Alien Laboratory: the trooper (it takes aim and fires a
+## slow ring of light; a wall turns the ring back once), the brain (in the hall with you it pulls you to it), the
+## saucers (along a line shown first; their beam hurts and holds you, a dodge frees you); a lockdown (nobody passes
+## the doorways, you neither; a Grey walks in through the wall), a purge (a warning, then the hall burns: you, and
+## them; out in the corridor nothing), a containment breach (tanks burst, specimens out of them; with none left whole
+## in your hall, in the nearest hall that has some), the laser grids in their beat, the Containment Seal (nobody
+## comes in, what touches a field burns, you may leave); the seal lies in this stage's crates only.
+func _test_collabb62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SS = load("res://scripts/ground/survivor_stage.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var OA = load("res://scripts/ground/obj_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# ---- the rules
+	var sd: Dictionary = SV.stage_data("lab")
+	var tex_ok := true
+	for kind in ["trooper", "brain", "saucer"]:
+		for d in 4:
+			for f in 3:
+				for vq in 4:
+					var tx: Texture2D = SA.texture(String(kind), vq, d, f)
+					tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	var evs: Array = sd["events"]
+	var ev_ok: bool = evs.size() == 10 and evs.all(func(e): return String(e["kind"]) in ["breach", "lockdown", "purge"]) and range(1, evs.size()).all(func(q): return float(evs[q]["t"]) > float(evs[q - 1]["t"])) \
+		and ["breach", "lockdown", "purge"].all(func(kd): return evs.any(func(e): return String(e["kind"]) == kd) and SV.BANNERS.has(kd) and not String(SV.BANNERS[kd]).contains("–"))
+	var rngr := RandomNumberGenerator.new()
+	rngr.seed = 11
+	var rolls := {}
+	for q0 in 400:
+		var got: Dictionary = SV.crate_roll({"stage": "lab"}, rngr)
+		rolls[String(got["id"])] = int(rolls.get(String(got["id"]), 0)) + 1
+	var out_n := 0
+	for q1 in 300:
+		if String(SV.crate_roll({"stage": "outbreak"}, rngr)["id"]) == "seal" or String(SV.crate_roll({"stage": "whiteout"}, rngr)["id"]) == "seal":
+			out_n += 1
+	var item_ok: bool = SV.ITEMS.has("seal") and String(SV.ITEMS["seal"]["stage"]) == "lab" and "seal" in (SV.ITEM_ORDER as Array) and not String(SV.ITEMS["seal"]["text"]).contains("–") and SV.ITEMS["seal"].has("col") \
+		and int(rolls.get("seal", 0)) > 20 and not rolls.has("override") and not rolls.has("thermal") and out_n == 0
+	var sm: GroundMap = SS.build("lab", 1)
+	var links: Array = sm.get_meta("sv_links", [])
+	var gm: Array = sm.get_meta("sv_grids", [])
+	var grid_map: bool = gm.size() == 6 and gm.all(func(gq): return links.any(func(l): return (l[2] as Vector2) == (gq["a"] as Vector2) and (l[3] as Vector2) == (gq["b"] as Vector2) and int(l[0]) != 4 and int(l[1]) != 4)) \
+		and (sm.decals as Array).filter(func(d9): return String(d9["kind"]) == "lab_emitter").size() == 12
+	var data_ok: bool = str(SV.kinds_at(300.0, "lab")) == str(["lgm", "grey", "specimen", "trooper"]) and str(SV.kinds_at(400.0, "lab")) == str(["lgm", "grey", "specimen", "trooper", "brain"]) and String(sd["flock"]) == "saucer" \
+		and int(SV.FOES["trooper"]["beh"]) == 16 and int(SV.FOES["brain"]["beh"]) == 17 and bool(SV.FOES["saucer"].get("fly", false)) and float(SV.FOES["saucer"]["dmg"]) == 0.0 and int(SV.FOES["saucer"]["beh"]) == 5 \
+		and str((SV.FOE_HOME["lab"] as Array).slice(0, 6)) == str(["lgm", "grey", "specimen", "trooper", "brain", "saucer"]) and "trooper" in (sd["alpha"] as Array) \
+		and ["trooper", "brain", "saucer"].all(func(k): return SV.FOE_INFO.has(k) and not String(SV.FOE_INFO[k]).contains("–") and String(SV.foe_home(k)) == "lab" and (SV.FOE_ORDER as Array).has(k)) \
+		and tex_ok and ev_ok and item_ok and grid_map
+	if not data_ok:
+		print("COLLABB62A rules: tex ", tex_ok, " events ", ev_ok, " item ", item_ok, " rolls ", rolls, " elsewhere ", out_n, " grids ", grid_map, " ", gm.size(), " kinds ", SV.kinds_at(400.0, "lab"))
+	# ---- down to Centauria, into the lobby, a run
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var kinds_ok := false
+	var lock_ok := false
+	var purge_ok := false
+	var breach_ok := false
+	var grid_ok := false
+	var seal_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		CD.switch_mode(GameState.col_state(), "survivor")
+		Commands.execute({"type": "debug_casino", "sv": "stage:lab"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int, dt: float) -> void:
+				for k3 in count:
+					sv.step(dt)
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+				sv._lead = Vector2.ZERO
+				sv._slide = Vector2.ZERO
+			var calm := func() -> void:
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["weapons"] = []
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.dash_charges = 2.0
+				sv.shield_t = 0.0
+				sv.hold_t = 0.0
+				sv.pull = Vector2.ZERO
+				sv.sn = 0
+				sv.banner_t = 0.0
+				sv.frozen = false
+				sv.globs.clear()
+				sv.tele.clear()
+				sv.lock_t = 0.0
+				sv.seal_t = 0.0
+				sv.purge = {}
+				sv.flock_warn = {}
+				stand.call(pp)
+			var picture := func(cam: Vector2, zoom: float, frames: int, file: String) -> void:
+				g.story_cam = cam
+				g.story_zoom = zoom
+				g._cam_c = cam * GroundMap.SCALE
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/%s.png" % file)
+			var REG := func(q: int) -> Rect2:
+				return sv._regs[q]
+			var core: Rect2 = REG.call(4)
+			var east: Rect2 = REG.call(12)                          # the corridor from the Core Hall east to the Trophy Room
+			var door := Vector2(core.end.x, east.get_center().y)     # the middle of the doorway between them
+			sv.quiet = true
+			# ---- the trooper: it takes aim, fires a ring that costs you; a wall turns a ring back once; not in your hall it comes first
+			calm.call()
+			var ti: int = sv.add_foe(KI["trooper"], pp + Vector2(150.0, 0.0))
+			sv.ftm[ti] = 0.0
+			sv.step(0.016)
+			var aims: bool = int(sv.fst[ti]) == 1 and (sv._marks as Array).any(func(m9): return String(m9[0]) == "aim")
+			run_steps.call(60, 0.016)
+			var fired: bool = (sv.globs as Array).size() == 1 and sv.globs[0].has("ray") and (sv.globs[0]["v"] as Vector2).x < 0.0 and absf((sv.globs[0]["v"] as Vector2).length() - 62.0) < 0.5
+			run_steps.call(170, 0.016)
+			var struck: bool = float(sv.run["hp"]) < 1000.0 and float(sv.run["hp"]) > 980.0 and (sv.globs as Array).is_empty()
+			calm.call()
+			var west := Vector2(core.position.x + 30.0, pp.y)
+			sv.globs.append({"p": west, "v": Vector2(-62.0, 0.0), "life": 9.0, "clean": true, "ray": true, "r2": 110.0, "dmg": 9.0})
+			run_steps.call(50, 0.016)
+			var turned: bool = (sv.globs as Array).size() == 1 and (sv.globs[0]["v"] as Vector2).x > 0.0 and int(sv.globs[0].get("b", 0)) == 1
+			if turned:
+				sv.globs[0]["p"] = west
+				sv.globs[0]["v"] = Vector2(-62.0, 0.0)
+				run_steps.call(50, 0.016)
+			turned = turned and (sv.globs as Array).is_empty()        # (… and the second wall is its end)
+			calm.call()
+			var far_t: int = sv.add_foe(KI["trooper"], east.get_center())
+			sv.ftm[far_t] = 0.0
+			run_steps.call(90, 0.016)
+			var comes: bool = (sv.fp[far_t] as Vector2).x < east.get_center().x - 20.0 and (sv.globs as Array).is_empty() and int(sv.fst[far_t]) == 0
+			# ---- the brain: in the hall with you it pulls you to it; from the corridor it does not; put out, it lets go
+			calm.call()
+			var bi: int = sv.add_foe(KI["brain"], pp + Vector2(140.0, 0.0))
+			sv.step(0.016)
+			var pulled: bool = absf((sv.pull as Vector2).length() - float(SV.FOES["brain"]["pull"])) < 0.01 and (sv.pull as Vector2).x > 0.0 and (sv.move(Vector2.ZERO) as Vector2).x > 0.3 \
+				and (sv.move(Vector2.LEFT) as Vector2).x > -0.7 and (sv.move(Vector2.LEFT) as Vector2).x < -0.4 and (sv._marks as Array).any(func(m9): return String(m9[0]) == "pull")
+			stand.call(east.get_center())
+			sv.step(0.016)
+			var lets_go: bool = (sv.pull as Vector2) == Vector2.ZERO and (sv.move(Vector2.LEFT) as Vector2) == Vector2.LEFT
+			stand.call(pp)
+			sv.step(0.016)
+			var again: bool = (sv.pull as Vector2).length() > 0.3
+			sv._hit(bi, 1000.0, pp)
+			sv.step(0.016)
+			lets_go = lets_go and again and int(sv.n) == 0 and (sv.pull as Vector2) == Vector2.ZERO
+			# ---- the saucers: announced, then two abreast; a beam hurts and holds you; a dodge frees you
+			calm.call()
+			sv.run["t"] = 200.0
+			sv.event("flock")
+			var warned: bool = not (sv.flock_warn as Dictionary).is_empty() and String(sv.banner) == "SAUCERS"
+			run_steps.call(100, 0.016)
+			var two: bool = int(sv._cnt[KI["saucer"]]) == 2 and (sv.tele as Array).any(func(t9): return String(t9["kind"]) == "strafe")
+			calm.call()
+			var si: int = sv.add_foe(KI["saucer"], pp + Vector2(-40.0, 0.0))
+			sv.fvel[si] = Vector2(105.0, 0.0)
+			sv.ftm[si] = 3.0
+			run_steps.call(16, 0.016)
+			var beamed: bool = float(sv.run["hp"]) < 1000.0 and float(sv.hold_t) > 0.5 and (sv.move(Vector2.RIGHT) as Vector2) == Vector2.ZERO and (sv._marks as Array).any(func(m9): return String(m9[0]) == "tractor")
+			var freed: bool = bool(sv.dash(Vector2.UP)) and float(sv.hold_t) == 0.0 and (sv.move(Vector2.RIGHT) as Vector2) == Vector2.UP
+			kinds_ok = aims and fired and struck and turned and comes and pulled and lets_go and warned and two and beamed and freed
+			if not kinds_ok:
+				print("COLLABB62A the three: aims ", aims, " fired ", fired, " struck ", struck, " ", sv.run["hp"], " turned ", turned, " comes ", comes, " pulled ", pulled, " ", sv.pull, " lets go ", lets_go, " again ", again,
+					" warned ", warned, " ", sv.banner, " two ", two, " ", sv._cnt[KI["saucer"]], " beamed ", beamed, " ", sv.hold_t, " freed ", freed)
+			# ---- a lockdown: nobody through the doorways, you neither; a Grey comes in through the wall; then it ends
+			calm.call()
+			sv.event("lockdown")
+			var locked: bool = is_equal_approx(float(sv.lock_t), float(SV.LOCK_TIME)) and (sv.lock_doors as Array).size() == 4 and (sv.lock_r as Rect2) == core and String(sv.banner) == "LOCKDOWN"
+			var out_i: int = sv.add_foe(KI["lgm"], door + Vector2(12.0, 0.0))
+			var grey_i: int = sv.add_foe(KI["grey"], Vector2(core.end.x + 30.0, core.position.y + 60.0))
+			stand.call(door + Vector2(-60.0, 0.0))
+			run_steps.call(400, 0.016)
+			sv.run["hp"] = 1000.0
+			var kept_out: bool = not core.has_point(sv.fp[out_i]) and (sv.fp[out_i] as Vector2).distance_to(door) < 110.0 and (sv.fp[out_i] as Vector2).x < core.end.x + 14.0 and core.has_point(sv.fp[grey_i]) and float(sv.lock_t) > 5.0
+			stand.call(door + Vector2(40.0, 0.0))
+			sv.step(0.016)
+			var kept_in: bool = core.has_point(g.pilot.pos) and (g.pilot.pos as Vector2).x < core.end.x
+			for cq in 60:                                          # (a crowd pressing at the field: none of them is pushed through)
+				sv.add_foe(KI["lgm"], sv.near_free(door + Vector2(8.0 + sv.rng.randf() * 60.0, -70.0 + sv.rng.randf() * 140.0), 8.0))
+			stand.call(door + Vector2(-60.0, 0.0))
+			run_steps.call(240, 0.016)
+			sv.run["hp"] = 1000.0
+			kept_out = kept_out and range(int(sv.n)).filter(func(q): return int(sv.fk[q]) == int(KI["lgm"]) and core.has_point(sv.fp[q])).is_empty() and float(sv.lock_t) > 1.0
+			sv.lock_t = 0.02
+			run_steps.call(80, 0.016)
+			var ends: bool = float(sv.lock_t) == 0.0 and core.has_point(sv.fp[out_i])
+			lock_ok = locked and kept_out and kept_in and ends
+			if not lock_ok:
+				print("COLLABB62A a lockdown: locked ", locked, " ", sv.banner, " kept out ", kept_out, " ", sv.fp[out_i], " ", door, " grey in ", core.has_point(sv.fp[grey_i]), " kept in ", kept_in, " ", g.pilot.pos, " ends ", ends)
+			# ---- a purge: a warning, then the hall burns: you and them; the corridor is spared; who leaves in time takes nothing
+			calm.call()
+			sv.add_foe(KI["lgm"], pp + Vector2(100.0, 0.0))
+			var cor_i: int = sv.add_foe(KI["specimen"], east.get_center())
+			sv.frozen = true
+			sv.event("purge")
+			var called: bool = not (sv.purge as Dictionary).is_empty() and (sv.purge["r"] as Rect2) == core and String(sv.purge["name"]) == "B2" and not bool(sv.purge["lit"]) and String(sv.banner) == "PURGE"
+			run_steps.call(240, 0.016)
+			var waits: bool = not (sv.purge as Dictionary).is_empty() and not bool(sv.purge["lit"]) and float(sv.run["hp"]) == 1000.0 and int(sv.n) == 2
+			run_steps.call(20, 0.016)
+			var hp_lit := float(sv.run["hp"])
+			var burns: bool = not (sv.purge as Dictionary).is_empty() and bool(sv.purge["lit"]) and hp_lit < 1000.0 - float(SV.PURGE_DMG) * 0.5 and int(sv._cnt[KI["lgm"]]) == 0 and int(sv._cnt[KI["specimen"]]) == 1 \
+				and float(sv.fhp[0]) == float(sv.fmx[0])
+			run_steps.call(45, 0.016)
+			burns = burns and float(sv.run["hp"]) < hp_lit
+			run_steps.call(70, 0.016)
+			var over9: bool = (sv.purge as Dictionary).is_empty()
+			calm.call()
+			sv.event("purge")
+			stand.call(east.get_center())
+			run_steps.call(370, 0.016)
+			var spared: bool = float(sv.run["hp"]) == 1000.0 and (sv.purge as Dictionary).is_empty()
+			purge_ok = called and waits and burns and over9 and spared
+			if not purge_ok:
+				print("COLLABB62A a purge: called ", called, " ", sv.banner, " waits ", waits, " burns ", burns, " ", hp_lit, " ", sv.run["hp"], " counts ", sv._cnt[KI["lgm"]], sv._cnt[KI["specimen"]], " over ", over9, " spared ", spared)
+			# ---- a containment breach: the tanks of your hall burst, a specimen out of each; none left whole here: the nearest hall that has some
+			calm.call()
+			var core_tanks: Array = (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "spec_tank" and core.has_point(Vector2(float(o["x"]) + 1.0, float(o["y"]) + 1.5) * TL))
+			var whole: bool = core_tanks.size() == 4 and core_tanks.all(func(o): return int(o.get("seed", 0)) != 9)
+			sv.event("breach")
+			var t0: Dictionary = core_tanks[0] if not core_tanks.is_empty() else {}
+			var swapped := false
+			if not t0.is_empty():
+				var want_img: Image = OA.make(t0, g.map.pal)["image"]
+				var want_at: Vector2 = Vector2(float(t0["x"]) * TL, float(int(t0["y"]) + 1) * TL) * GroundMap.SCALE
+				swapped = (g._sorted.get_children() as Array).any(func(c): return c is Sprite2D and (c as Sprite2D).position.is_equal_approx(want_at) and (c as Sprite2D).texture.get_image().get_data() == want_img.get_data())
+			var burst: bool = int(sv._cnt[KI["specimen"]]) == 4 and int(sv.n) == 4 and core_tanks.all(func(o): return int(o.get("seed", 0)) == 9) and String(sv.banner) == "CONTAINMENT BREACH: B2" \
+				and range(int(sv.n)).all(func(q): return float(sv.fstun[q]) > 0.0 and core.has_point(sv.fp[q]) and int(sv._solid[sv._ti(sv.fp[q])]) == 0)
+			calm.call()
+			sv.event("breach")
+			var where: String = String(sv.banner).trim_prefix("CONTAINMENT BREACH: ")
+			var ids: Array = g.map.get_meta("sv_room_ids", [])
+			var next_hall: bool = where in ["A1", "C3"] and int(sv._cnt[KI["specimen"]]) == 4 and range(int(sv.n)).all(func(q): return (REG.call(ids.find(where)) as Rect2).has_point(sv.fp[q]))
+			breach_ok = whole and burst and swapped and next_hall
+			if not breach_ok:
+				print("COLLABB62A a breach: whole ", whole, " ", core_tanks.size(), " burst ", burst, " ", sv._cnt[KI["specimen"]], " ", sv.banner, " swapped ", swapped, " next ", next_hall, " ", where)
+			# ---- a laser grid: on, it costs you and them; off, nothing; before it comes on it flickers
+			calm.call()
+			var cyc: float = float(SV.GRID_ON) + float(SV.GRID_OFF)
+			var grids_in: bool = (sv.grids as Array).size() == 6
+			var g0: Dictionary = sv.grids[0] if grids_in else {}
+			var gmid: Vector2 = (((g0["a"] as Vector2) + (g0["b"] as Vector2)) * 0.5) if grids_in else pp
+			var galong: Vector2 = ((g0["b"] as Vector2) - (g0["a"] as Vector2)).normalized() if grids_in else Vector2.RIGHT
+			sv.run["t"] = fposmod(0.5 - float(g0.get("ph", 0.0)), cyc) + cyc * 2.0
+			stand.call(gmid)
+			var gi: int = sv.add_foe(KI["specimen"], gmid + galong * 30.0)
+			sv.fhp[gi] = 1000.0
+			sv.fmx[gi] = 1000.0
+			sv.frozen = true
+			sv._lab_tick = 0.0
+			sv.step(0.016)
+			var on_ok: bool = grids_in and bool(g0["on"]) and float(sv.run["hp"]) < 1000.0 and float(sv.kb_t) > 0.0 and float(sv.fhp[gi]) < 1000.0
+			sv.run["t"] = float(sv.run["t"]) + float(SV.GRID_ON)
+			sv.run["hp"] = 1000.0
+			sv.fhp[gi] = 1000.0
+			sv.hurt_cd = 0.0
+			sv._lab_tick = 0.0
+			sv.step(0.016)
+			var off_ok: bool = grids_in and not bool(g0["on"]) and not bool(g0["warn"]) and float(sv.run["hp"]) == 1000.0 and float(sv.fhp[gi]) == 1000.0
+			sv.run["t"] = float(sv.run["t"]) + float(SV.GRID_OFF) - 0.5 - 0.3
+			sv.step(0.016)
+			var warn_ok: bool = grids_in and not bool(g0["on"]) and bool(g0["warn"]) and float(sv.run["hp"]) == 1000.0
+			grid_ok = on_ok and off_ok and warn_ok
+			if not grid_ok:
+				print("COLLABB62A a laser grid: grids ", (sv.grids as Array).size(), " on ", on_ok, " ", g0.get("on"), " ", sv.run["hp"], " ", sv.fhp[gi] if gi < sv.n else -1.0, " off ", off_ok, " warn ", warn_ok, " ", g0.get("warn"))
+			# ---- the Containment Seal: nobody comes in, who touches a field burns, you may leave
+			calm.call()
+			sv.run["t"] = 30.0
+			sv.give("seal")
+			var sealed: bool = is_equal_approx(float(sv.seal_t), float(SV.ITEMS["seal"]["time"])) and (sv.seal_doors as Array).size() == 4 and (sv.seal_r as Rect2) == core and String(sv.banner) == "CONTAINMENT SEAL" \
+				and String((sv.item_pop as Dictionary).get("id", "")) == "seal"
+			var s_out: int = sv.add_foe(KI["specimen"], door + Vector2(10.0, 0.0))
+			sv.fhp[s_out] = 1000.0
+			sv.fmx[s_out] = 1000.0
+			stand.call(door + Vector2(-60.0, 0.0))
+			run_steps.call(150, 0.016)
+			var scorched: bool = not core.has_point(sv.fp[s_out]) and float(sv.fhp[s_out]) < 1000.0 and float(sv.seal_t) > 5.0
+			stand.call(door + Vector2(40.0, 0.0))
+			sv.step(0.016)
+			var leave: bool = not core.has_point(g.pilot.pos)
+			seal_ok = sealed and scorched and leave
+			if not seal_ok:
+				print("COLLABB62A the seal: sealed ", sealed, " ", sv.seal_t, " ", sv.banner, " scorched ", scorched, " ", sv.fhp[s_out] if s_out < sv.n else -1.0, " ", sv.fp[s_out] if s_out < sv.n else Vector2.ZERO, " leave ", leave)
+			calm.call()
+			if shots:
+				sv.run["hp"] = 1000000.0
+				# the three: troopers aiming and their rings, a brain pulling, saucers and their beams
+				for tq in 3:
+					var ta: int = sv.add_foe(KI["trooper"], pp + Vector2(150.0 + tq * 26.0, -70.0 + tq * 60.0))
+					sv.fv[ta] = tq
+					sv.ftm[ta] = 0.2 * tq
+				sv.add_foe(KI["brain"], pp + Vector2(-130.0, -40.0))
+				for sq in 2:
+					var sa: int = sv.add_foe(KI["saucer"], pp + Vector2(-260.0, 60.0 + sq * 46.0))
+					sv.fvel[sa] = Vector2(105.0, 0.0)
+					sv.ftm[sa] = 6.0
+				await picture.call(pp + Vector2(0.0, -10.0), 1.6, 130, "col62a19_gegner")
+				calm.call()
+				# a lockdown at the east doorway
+				sv.run["hp"] = 1000000.0
+				stand.call(door + Vector2(-110.0, 0.0))
+				for sq2 in 70:
+					sv.add_foe(KI["lgm"], sv.near_free(Vector2(door.x + 20.0 + sv.rng.randf() * 260.0, door.y - 80.0 + sv.rng.randf() * 160.0), 12.0))
+				for sq3 in 5:
+					sv.add_foe(KI["grey"], Vector2(core.end.x + 40.0 + sq3 * 30.0, east.position.y - 60.0 - sq3 * 26.0))
+				sv.event("lockdown")
+				await picture.call(door + Vector2(-60.0, -30.0), 1.0, 260, "col62a19_lockdown")
+				calm.call()
+				# the Containment Seal at the same doorway
+				sv.run["hp"] = 1000000.0
+				stand.call(door + Vector2(-110.0, 0.0))
+				for sq4 in 70:
+					sv.add_foe(KI["lgm"], sv.near_free(Vector2(door.x + 20.0 + sv.rng.randf() * 260.0, door.y - 80.0 + sv.rng.randf() * 160.0), 12.0))
+				sv.give("seal")
+				await picture.call(door + Vector2(-60.0, -30.0), 1.0, 200, "col62a19_seal")
+				calm.call()
+				# a purge: the warning, then the fire
+				sv.run["hp"] = 1000000.0
+				sv.swarm(60, "lgm")
+				sv.event("purge")
+				await picture.call(pp + Vector2(0.0, -40.0), 0.75, 150, "col62a19_purge_warnung")
+				await picture.call(pp + Vector2(0.0, -40.0), 0.75, 125, "col62a19_purge_feuer")
+				calm.call()
+				for fw in 100:
+					await get_tree().process_frame
+				# a containment breach in the Specimen Hall
+				var a1: Rect2 = REG.call(0)
+				sv.run["hp"] = 1000000.0
+				stand.call(a1.position + Vector2(18.0, 7.5) * TL)
+				sv.event("breach")
+				await picture.call(a1.position + Vector2(17.0, 7.0) * TL, 1.5, 55, "col62a19_breach")
+				calm.call()
+				# a laser grid, on
+				var gq0: Dictionary = sv.grids[0]
+				var gm0: Vector2 = ((gq0["a"] as Vector2) + (gq0["b"] as Vector2)) * 0.5
+				var gn0: Vector2 = ((gq0["b"] as Vector2) - (gq0["a"] as Vector2)).orthogonal().normalized()
+				sv.run["hp"] = 1000000.0
+				stand.call(gm0 + gn0 * 70.0 if g.map.free_at(gm0 + gn0 * 70.0, 5.0) else gm0 - gn0 * 70.0)
+				sv.frozen = true
+				sv.run["t"] = fposmod(0.3 - float(gq0["ph"]), cyc) + cyc * 3.0
+				await picture.call(gm0 + Vector2(0.0, -20.0), 1.3, 40, "col62a19_gitter")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				calm.call()
+			sv.end(false)
+			for f12 in 20:
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(data_ok and kinds_ok and lock_ok and purge_ok and breach_ok and grid_ok and seal_ok,
+		"62a, part 11b (Luz): the rest of the Alien Laboratory: the trooper and its ring of light that a wall turns back once, the brain and its pull, the saucers and their beam that holds you; a lockdown, a purge, a containment breach; the laser grids in their beat; the Containment Seal, in this stage's crates only  " + str([data_ok, kinds_ok, lock_ok, purge_ok, breach_ok, grid_ok, seal_ok]))
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main._close_planet_map()
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Package 62a, part 11c (Luz, 24 Nov 2026): the bosses of the Alien Laboratory. The Apex: it comes at 7:30; no walls
+## of light: the doors of the hall you stand in shut (in a corridor it hunts you until you enter a hall, and comes in
+## after you); it takes aim along a line and leaps, then stands open; from two thirds three leaps in a row and a ring
+## out of its tail; in its last third the light goes red and it spits a fan that leaves pools; put out, the doors
+## open and a great crate lies there. The Mastermind: the great tank bursts and it rises; nothing reaches it and no
+## door shuts until you stand in the Core Hall; rings of thought with two gaps that pass what stands in the hall;
+## from two thirds it hurls what stands there onto marks (what it took is gone from the hall); in its last third it
+## pulls you, a round about it wears you down, Greys come in through the walls; put out, the stage is held.
+func _test_collabc62a(_view: SystemView) -> void:
+	var CG = load("res://scripts/ground/colosseum_gen.gd")
+	var CD = load("res://data/colosseum.gd")
+	var SV = load("res://data/survivor.gd")
+	var SA = load("res://scripts/ground/survivor_art.gd")
+	var OA = load("res://scripts/ground/obj_art.gd")
+	var shots := OS.get_environment("COL_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	Commands.cheats_enabled = true
+	var TL := float(GroundMap.TILE)
+	# ---- the rules
+	var sd: Dictionary = SV.stage_data("lab")
+	var tex_ok := true
+	for kind in ["apex", "mastermind"]:
+		for d in 4:
+			for f in 3:
+				var tx: Texture2D = SA.texture(String(kind), 0, d, f)
+				tex_ok = tex_ok and tx != null and tx.get_width() == SA.size_of(String(kind)).x and tx.get_height() == SA.size_of(String(kind)).y and not tx.get_image().is_invisible()
+	tex_ok = tex_ok and SA.texture("apex", 0, 0, 0).get_image().get_data() != SA.texture("apex", 0, 2, 0).get_image().get_data() and SA.texture("apex", 0, 2, 0).get_image().get_data() != SA.texture("apex", 0, 2, 1).get_image().get_data()
+	var pal0: Dictionary = DeckGen.palette_for_body({"type": "barren"})
+	var tank_art: bool = (OA.make({"kind": "big_tank", "x": 0, "y": 0, "w": 8, "h": 4, "rise": 64, "seed": 9}, pal0)["image"] as Image).get_data() != (OA.make({"kind": "big_tank", "x": 0, "y": 0, "w": 8, "h": 4, "rise": 64}, pal0)["image"] as Image).get_data()
+	var data_ok: bool = String(sd["soft"]) == "apex" and String(sd["end"]) == "mastermind" and bool(SV.FOES["apex"]["boss"]) and bool(SV.FOES["mastermind"]["boss"]) \
+		and int(SV.FOES["apex"]["beh"]) == 27 and int(SV.FOES["mastermind"]["beh"]) == 28 and int(SV.FOES["apex"]["beh"]) >= SV.BOSS_BEH and float(SV.FOES["apex"]["speed"]) > 58.0 \
+		and float(SV.FOES["mastermind"]["speed"]) == 0.0 and int(SV.CORE_BOSS["apex"]) == 12 and int(SV.CORE_BOSS["mastermind"]) == 30 \
+		and ["apex", "mastermind"].all(func(k): return SV.BANNERS.has(k) and SV.FOE_INFO.has(k) and not String(SV.FOE_INFO[k]).contains("–") and not String(SV.FOES[k]["name"]).contains("–") \
+			and String(SV.foe_home(k)) == "lab" and (SV.FOE_ORDER as Array).has(k)) \
+		and (SV.FOE_HOME["lab"] as Array).size() == 8 and SV.BANNERS.has("sealed") and tex_ok and tank_art
+	if not data_ok:
+		print("COLLABC62A rules: tex ", tex_ok, " tank ", tank_art, " soft ", sd["soft"], " end ", sd["end"], " home ", SV.FOE_HOME["lab"])
+	# ---- down to Centauria, into the lobby, a run
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var apex_ok := false
+	var hunt_ok := false
+	var mind_ok := false
+	var last_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		CD.switch_mode(GameState.col_state(), "survivor")
+		Commands.execute({"type": "debug_casino", "sv": "stage:lab"})
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f6 in 6:
+			await get_tree().process_frame
+		var sv = g.survivor
+		if sv != null and is_instance_valid(sv):
+			var pp: Vector2 = g.pilot.pos
+			var KI: Dictionary = sv._ki
+			var run_steps := func(count: int, dt: float) -> void:
+				for k3 in count:
+					sv.step(dt)
+			var stand := func(at: Vector2) -> void:
+				g.pilot.pos = at
+				g.pilot.position = at * GroundMap.SCALE
+				sv._last_pp = at
+				sv._lead = Vector2.ZERO
+				sv._slide = Vector2.ZERO
+			var calm := func() -> void:
+				if String(sv.boss_kind) != "" and int(sv.boss_i()) >= 0:
+					sv._lock_wait = false
+					sv._hit(sv.boss_i(), 1.0e12, pp)
+				sv._win_t = -1.0
+				sv.clear_swarm()
+				sv.run["hp"] = 1000.0
+				sv.run["xp"] = -1000000
+				sv.run["weapons"] = []
+				sv.run["t"] = 30.0
+				sv.hurt_cd = 0.0
+				sv.kb_t = 0.0
+				sv.dash_t = 0.0
+				sv.shield_t = 0.0
+				sv.hold_t = 0.0
+				sv.pull = Vector2.ZERO
+				sv.sn = 0
+				sv.banner_t = 0.0
+				sv.frozen = false
+				sv.globs.clear()
+				sv.waves.clear()
+				sv.pools.clear()
+				sv.tele.clear()
+				sv.crates.clear()
+				sv.lock_t = 0.0
+				sv.seal_t = 0.0
+				sv.purge = {}
+				sv.flock_warn = {}
+				stand.call(pp)
+			var picture := func(cam: Vector2, zoom: float, frames: int, file: String) -> void:
+				g.story_cam = cam
+				g.story_zoom = zoom
+				g._cam_c = cam * GroundMap.SCALE
+				for fq in frames:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/%s.png" % file)
+			var REG := func(q: int) -> Rect2:
+				return sv._regs[q]
+			var core: Rect2 = REG.call(4)
+			var east: Rect2 = REG.call(12)
+			sv.quiet = true
+			sv.grids = []
+			var st_of := func() -> String:
+				return String((sv.bst as Dictionary).get("st", ""))
+			# ---- The Apex, in the hall you stand in: the doors shut, it takes aim, it leaps, it stands open
+			calm.call()
+			sv.boss_start("apex")
+			var bi: int = sv.boss_i()
+			var came: bool = String(sv.boss_kind) == "apex" and bi >= 0 and bool(sv._lock_wait) and not bool(sv.barrier_on) and String(sv.banner) == "THE APEX" and core.has_point(sv.fp[bi]) \
+				and (sv.fp[bi] as Vector2).distance_to(pp) > 100.0 and int(sv._solid[sv._ti(sv.fp[bi])]) == 0
+			sv.step(0.016)
+			var shut: bool = not bool(sv._lock_wait) and float(sv.lock_t) > 1.0e6 and (sv.lock_doors as Array).size() == 4 and bool(sv.barrier_on) and (sv.barrier as Rect2) == core \
+				and String(sv.banner) == "THE DOORS SHUT" and (sv._wall_lines() as Array).is_empty()
+			sv.fp[bi] = pp + Vector2(0.0, 180.0)                     # (to a place from which nothing stands between it and you)
+			sv.bst["t"] = 0.0
+			sv.step(0.016)
+			var aims: bool = String(st_of.call()) == "aim" and int(sv.bst["left"]) == 1 and (sv.bst["dir"] as Vector2).dot((pp - (sv.fp[bi] as Vector2)).normalized()) > 0.98
+			run_steps.call(52, 0.016)
+			var from_at: Vector2 = sv.fp[bi]
+			var leaps_now: bool = String(st_of.call()) == "leap"
+			run_steps.call(5, 0.016)
+			var quick: bool = (sv.fp[bi] as Vector2).distance_to(from_at) > 20.0
+			var opened := false
+			for q0 in 240:
+				sv.step(0.016)
+				if String(st_of.call()) == "open":
+					opened = true
+					break
+			var struck: bool = float(sv.run["hp"]) <= 1000.0 - float(SV.FOES["apex"]["pounce"]) and core.has_point(sv.fp[bi])
+			run_steps.call(90, 0.016)
+			var on_again: bool = String(st_of.call()) != "open"
+			# from two thirds: three leaps in a row, then its tail
+			sv.fhp[bi] = float(sv.fmx[bi]) * 0.6
+			sv.run["hp"] = 1000.0
+			sv.waves.clear()
+			sv.bst["st"] = "stalk"
+			sv.bst["t"] = 0.0
+			stand.call(pp)
+			var leaps := 0
+			var prev := ""
+			var three := false
+			for q1 in 900:
+				sv.step(0.016)
+				sv.run["hp"] = 1000.0
+				var now := String(st_of.call())
+				if now == "leap" and prev != "leap":
+					leaps += 1
+				prev = now
+				if now == "open":
+					three = true
+					break
+			three = three and leaps == 3 and (sv.waves as Array).size() >= 1 and int(sv.boss_info()["phase"]) == 2
+			# in its last third: the light goes red, and every other time it spits a fan that leaves pools
+			sv.fhp[bi] = float(sv.fmx[bi]) * 0.3
+			sv.bst["st"] = "stalk"
+			sv.bst["t"] = 0.0
+			sv.bst["n"] = 1
+			sv.globs.clear()
+			sv.pools.clear()
+			stand.call(pp)
+			sv.fp[bi] = pp + Vector2(0.0, 180.0)
+			var red := false
+			var spat := false
+			for q2 in 400:
+				sv.step(0.016)
+				sv.run["hp"] = 1000.0
+				red = red or (bool(sv.bst["alarm"]) and sv._dark0 != null)
+				if (sv.globs as Array).filter(func(g9): return not bool(g9["clean"])).size() == 5:
+					spat = true
+					break
+			run_steps.call(150, 0.016)
+			var pools: bool = (sv.pools as Array).size() >= 1 and int(sv.boss_info()["phase"]) == 3
+			sv._hit(bi, 1.0e12, pp)
+			var out: bool = String(sv.boss_kind) == "" and float(sv.lock_t) == 0.0 and not bool(sv.barrier_on) and sv._dark0 == null and (sv.run["bosses"] as Array).has("apex") \
+				and (sv.crates as Array).any(func(c): return bool(c.get("great", false)) and bool(c.get("weapon", false))) and float(sv._win_t) < 0.0
+			apex_ok = came and shut and aims and leaps_now and quick and opened and struck and on_again and three and red and spat and pools and out
+			if not apex_ok:
+				print("COLLABC62A The Apex: came ", came, " ", sv.banner, " shut ", shut, " aims ", aims, " leaps ", leaps_now, " quick ", quick, " opened ", opened, " struck ", struck, " ", sv.run["hp"], " on ", on_again,
+					" three ", three, " ", leaps, " ", (sv.waves as Array).size(), " red ", red, " spat ", spat, " pools ", pools, " ", (sv.pools as Array).size(), " out ", out)
+			# ---- The Apex while you stand in a corridor: no door shuts; enter a hall and it does; it comes in after you. And it comes by the clock
+			calm.call()
+			stand.call(east.get_center())
+			sv.step(0.016)
+			sv.boss_start("apex")
+			run_steps.call(120, 0.016)
+			sv.run["hp"] = 1000.0
+			var hunts: bool = bool(sv._lock_wait) and not bool(sv.barrier_on) and float(sv.lock_t) == 0.0 and int(sv.boss_i()) >= 0
+			stand.call(core.get_center() + Vector2(300.0, 100.0))
+			sv.step(0.016)
+			var then_shut: bool = not bool(sv._lock_wait) and (sv.lock_r as Rect2) == core and bool(sv.barrier_on)
+			var comes_in := false
+			for q3 in 1200:
+				sv.step(0.016)
+				sv.run["hp"] = 1000.0
+				stand.call(core.get_center() + Vector2(300.0, 100.0))
+				if int(sv.boss_i()) >= 0 and core.grow(-14.0).has_point(sv.fp[sv.boss_i()]):
+					comes_in = true
+					break
+			calm.call()
+			sv._ev_i = 999
+			sv._flock_at = 99999.0
+			sv._supply_at = 99999.0
+			sv._alpha_at = 99999.0
+			sv.boss_done.clear()
+			sv.run["t"] = float(SV.SOFT_BOSS) + 1.0
+			sv.quiet = false
+			sv.step(0.016)
+			sv.quiet = true
+			var by_clock: bool = String(sv.boss_kind) == "apex"
+			hunt_ok = hunts and then_shut and comes_in and by_clock
+			if not hunt_ok:
+				print("COLLABC62A the hunt: hunts ", hunts, " then shut ", then_shut, " comes in ", comes_in, " by the clock ", by_clock, " ", sv.boss_kind)
+			# ---- The Mastermind: the great tank bursts, it rises; nothing reaches it and no door shuts until you stand in its hall
+			calm.call()
+			stand.call(east.get_center())
+			sv.step(0.016)
+			var tanks: Array = (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) == "big_tank")
+			var tank: Dictionary = tanks[0] if tanks.size() == 1 else {}
+			var seed0 := int(tank.get("seed", 0))
+			sv.boss_start("mastermind")
+			var mi: int = sv.boss_i()
+			var woke: bool = String(sv.boss_kind) == "mastermind" and mi >= 0 and bool(sv._lock_wait) and int(sv._lock_reg) == 4 and seed0 != 9 and int(tank.get("seed", 0)) == 9 \
+				and String(sv.banner) == "THE MASTERMIND WAKES" and core.has_point(sv.fp[mi]) and int(sv._solid[sv._ti(sv.fp[mi])]) == 0 and String(st_of.call()) == "wait"
+			var hp0 := float(sv.fhp[mi])
+			sv._hit(mi, 500.0, pp)
+			run_steps.call(200, 0.016)
+			var guarded: bool = float(sv.fhp[mi]) == hp0 and (sv.globs as Array).is_empty() and bool(sv._lock_wait)
+			stand.call((REG.call(5) as Rect2).get_center() + Vector2(0.0, 100.0))
+			run_steps.call(5, 0.016)
+			var not_here: bool = bool(sv._lock_wait) and float(sv.lock_t) == 0.0
+			stand.call(pp)
+			sv.step(0.016)
+			var shut2: bool = not bool(sv._lock_wait) and (sv.lock_r as Rect2) == core and String(st_of.call()) == "woke" and String(sv.banner) == "THE DOORS SHUT"
+			# rings of thought with two gaps, through what stands in the hall; little green men come to it
+			sv.globs.clear()
+			sv.bst["ring"] = 0.0
+			sv.bst["spawn"] = 99.0
+			sv.step(0.016)
+			var minds := func() -> int:
+				return (sv.globs as Array).filter(func(g9): return g9.has("mind")).size()
+			var ring: bool = int(minds.call()) == 16
+			sv.bst["ring"] = 99.0
+			run_steps.call(70, 0.016)
+			sv.run["hp"] = 1000.0
+			ring = ring and int(minds.call()) >= 15
+			sv.bst["spawn"] = 0.0
+			sv.step(0.016)
+			var lets_out: bool = int(sv._cnt[KI["lgm"]]) == 3
+			# from two thirds: it hurls what stands in its hall
+			for rq in range(int(sv.n) - 1, -1, -1):                # (those it let out go; it stays)
+				if int(sv.fk[rq]) != int(KI["mastermind"]):
+					sv._remove(rq)
+			mi = sv.boss_i()
+			sv.globs.clear()
+			var stuff := func() -> Array:
+				return (g.map.objects as Array).filter(func(o): return String(o.get("kind", "")) in ["console_row", "spec_tank"] and core.has_point(Vector2(float(o["x"]) + 0.5, float(o["y"]) + 0.5) * TL) and not bool(o.get("gone", false)))
+			var had: int = (stuff.call() as Array).size()
+			sv.fhp[mi] = float(sv.fmx[mi]) * 0.6
+			sv.bst["hurl"] = 0.0
+			sv.bst["spawn"] = 99.0
+			sv.run["hp"] = 1000.0
+			sv.hurt_cd = 0.0
+			stand.call(pp + Vector2(0.0, 120.0))
+			sv.step(0.016)
+			var took: Array = (g.map.objects as Array).filter(func(o): return bool(o.get("gone", false)))
+			var hurled: bool = (sv.hurls as Array).size() == 2 and had == 8 and (stuff.call() as Array).size() == 6 and took.size() == 2 \
+				and took.all(func(o): return g.map.free_at(Vector2(float(o["x"]) + float(o.get("w", 1)) * 0.5, float(o["y"]) + 0.5) * TL, 3.0)) \
+				and (sv.tele as Array).filter(func(t9): return String(t9["kind"]) == "spot").size() == 2 and ((sv.hurls[0]["to"] as Vector2) - (pp + Vector2(0.0, 120.0))).length() < 1.0
+			run_steps.call(80, 0.016)
+			var landed: bool = (sv.hurls as Array).is_empty() and float(sv.run["hp"]) <= 1000.0 - float(SV.FOES["mastermind"]["hurl"])
+			# in its last third: it pulls you, a round about it wears you down, Greys come in through the walls
+			sv.globs.clear()
+			sv.fhp[mi] = float(sv.fmx[mi]) * 0.3
+			sv.bst["hurl"] = 99.0
+			sv.bst["ring"] = 99.0
+			sv.bst["grey"] = 99.0
+			sv.bst["tick"] = 99.0
+			stand.call(pp)
+			sv.step(0.016)
+			sv.step(0.016)
+			var to_it: Vector2 = ((sv.fp[mi] as Vector2) - pp).normalized()
+			var pulls: bool = absf((sv.pull as Vector2).length() - float(SV.FOES["mastermind"]["pull"])) < 0.01 and (sv.pull as Vector2).dot(to_it) > 0.4 and (sv.move(Vector2.ZERO) as Vector2).dot(to_it) > 0.4
+			sv.run["hp"] = 1000.0
+			sv.hurt_cd = 0.0
+			sv.bst["tick"] = 0.0
+			sv.step(0.016)
+			var wears: bool = (sv.fp[mi] as Vector2).distance_to(pp) < float(SV.FOES["mastermind"]["ring_r"]) and float(sv.run["hp"]) == 1000.0 - float(SV.FOES["mastermind"]["ring"])
+			sv.bst["grey"] = 0.0
+			sv.step(0.016)
+			var greys: bool = int(sv._cnt[KI["grey"]]) == 2 and range(int(sv.n)).filter(func(q): return int(sv.fk[q]) == int(KI["grey"])).all(func(q): return not core.has_point(sv.fp[q]))
+			mind_ok = woke and guarded and not_here and shut2 and ring and lets_out and hurled and landed and pulls and wears and greys
+			if not mind_ok:
+				print("COLLABC62A The Mastermind: woke ", woke, " ", sv.banner, " guarded ", guarded, " not here ", not_here, " shut ", shut2, " ring ", ring, " ", minds.call(), " lets out ", lets_out, " hurled ", hurled, " ", had, " ",
+					(stuff.call() as Array).size(), " ", (sv.hurls as Array).size(), " landed ", landed, " ", sv.run["hp"], " pulls ", pulls, " ", sv.pull, " wears ", wears, " greys ", greys, " ", sv._cnt[KI["grey"]])
+			# put out: the doors open, the stage is held
+			mi = sv.boss_i()
+			sv._hit(mi, 1.0e12, pp)
+			last_ok = String(sv.boss_kind) == "" and float(sv.lock_t) == 0.0 and not bool(sv.barrier_on) and (sv.run["bosses"] as Array).has("mastermind") and float(sv._win_t) >= 0.0 and int(sv.n) == 0 \
+				and (sv._boss_pull as Vector2) == Vector2.ZERO and (sv.hurls as Array).is_empty()
+			if not last_ok:
+				print("COLLABC62A the end: ", sv.boss_kind, " lock ", sv.lock_t, " bosses ", sv.run["bosses"], " win ", sv._win_t, " n ", sv.n)
+			sv._win_t = -1.0
+			calm.call()
+			if shots:
+				# The Apex takes aim; in its last third, in the red light
+				for fw0 in 260:                                       # (what flashed when the last one went out has faded)
+					await get_tree().process_frame
+				sv.run["hp"] = 1000000.0
+				sv.boss_start("apex")
+				sv.step(0.016)
+				sv.bst["st"] = "aim"
+				sv.bst["t"] = 0.6
+				sv.bst["dir"] = (pp - (sv.fp[sv.boss_i()] as Vector2)).normalized()
+				sv.frozen = true
+				await picture.call((pp + (sv.fp[sv.boss_i()] as Vector2)) * 0.5 + Vector2(0.0, -20.0), 1.3, 40, "col62a20_apex_linie")
+				sv.frozen = false
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()]) * 0.3
+				sv.bst["st"] = "stalk"
+				sv.bst["t"] = 0.0
+				sv.bst["n"] = 1
+				sv.swarm(30, "lgm")
+				await picture.call(pp + Vector2(0.0, -30.0), 0.9, 230, "col62a20_apex_rot")
+				calm.call()
+				for fw in 60:
+					await get_tree().process_frame
+				# The Mastermind wakes while you are elsewhere; then its rings; what it hurls; its last third
+				sv.run["hp"] = 1000000.0
+				stand.call(pp + Vector2(250.0, 40.0))
+				sv._lock_reg = 99
+				sv.boss_start("mastermind")
+				sv._lock_reg = 99                                       # (for the picture: the doors stay open though you stand in its hall)
+				await picture.call((sv.fp[sv.boss_i()] as Vector2) + Vector2(60.0, -60.0), 1.2, 50, "col62a20_mastermind_wacht")
+				sv._lock_reg = 4
+				stand.call(pp + Vector2(120.0, 60.0))
+				sv.bst["ring"] = 0.5
+				await picture.call((sv.fp[sv.boss_i()] as Vector2) + Vector2(0.0, 20.0), 0.9, 330, "col62a20_mastermind_ringe")
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()]) * 0.6
+				sv.bst["hurl"] = 0.0
+				await picture.call((sv.fp[sv.boss_i()] as Vector2) + Vector2(60.0, 20.0), 0.9, 42, "col62a20_mastermind_wurf")
+				sv.fhp[sv.boss_i()] = float(sv.fmx[sv.boss_i()]) * 0.3
+				sv.bst["grey"] = 0.2
+				await picture.call((sv.fp[sv.boss_i()] as Vector2) + Vector2(60.0, 20.0), 0.8, 420, "col62a20_mastermind_ende")
+				g.story_cam = Vector2.INF
+				g.story_zoom = 0.0
+				calm.call()
+			sv.end(false)
+			for f12 in 20:
+				await get_tree().process_frame
+			if g.minigame != null and g.minigame.has_method("is_sv_result"):
+				g.minigame._t = 2.0
+				g.minigame.go()
+			for f13 in 10:
+				await get_tree().process_frame
+	check(data_ok and apex_ok and hunt_ok and mind_ok and last_ok,
+		"62a, part 11c (Luz): the bosses of the Alien Laboratory: The Apex (the doors of your hall shut; a line, a leap, it stands open; three leaps and its tail; the red light and what it spits; in a corridor it hunts you and comes in after you; it comes at 7:30) and The Mastermind (the great tank bursts; nothing until you stand in the Core Hall; rings of thought, what it hurls, its pull, the round about it, Greys through the walls; put out, the stage is held)  " + str([data_ok, apex_ok, hunt_ok, mind_ok, last_ok]))
+	CD.force.clear()
+	GameState.col_gear_off()
+	CG.gate_open = 0.0
+	CG.boot = 0.0
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main._close_planet_map()
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame

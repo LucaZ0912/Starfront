@@ -3,6 +3,108 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.62.31 – 2026-11-24
+
+**Package 62a, part 11c (Luz): the bosses of the Alien Laboratory. The stage is whole now.**
+- **No walls of light on this stage.** When a boss is here, the doors of a hall shut instead: fields of force across
+  its doorways, for you and for them, until the boss is out. Nobody new comes while they are shut.
+- **The Apex** (at 7:30), the hunter the laboratory bred: black and glossy, a low body of ribs with a green light
+  inside them, four legs, two arms that end in sickles, a crown of spines swept back from its head, a tail of
+  vertebrae with a blade at its end. A creature of its own, in the manner of the biomechanical.
+  - It is faster than you. If you stand in a corridor when it comes, it hunts you down the corridors; the doors
+    shut once you enter a hall, and it comes in after you.
+  - It takes aim along a line you can see, and leaps along it until a wall or what stands in the hall stops it.
+    Then it stands open for a moment.
+  - From two thirds of its health: three leaps in a row, from wall to wall, and then a ring of force out of its
+    tail.
+  - In its last third the light goes red. It is faster still, and every other time it spits a fan instead that
+    leaves pools where it lands.
+  - Put out, it leaves a great weapon crate, and the doors open.
+- **The Mastermind** (when the fifteen minutes are up): what slept in the great tank of the Core Hall. The glass
+  bursts and it rises: a brain as large as a rover, one great eye in its front.
+  - Until you stand in the Core Hall nothing reaches it, and it does nothing. A sign at the edge of the picture
+    shows the way; the gold guide lines lead there too. Once you are in, the doors shut.
+  - Rings of thought with two gaps in them, faster with each third it loses. They pass what stands in the hall;
+    only a wall ends them. Little green men come to it.
+  - From two thirds: it hurls what stands in its hall, consoles and tanks, onto marks, the first of them where
+    you stand. The hall is the emptier for it. With nothing left to hurl, pieces of its tank.
+  - In its last third: it pulls you to it, a round about it wears you down, and Greys come in through the walls.
+  - Put out, the stage is held.
+- Both leave cores as the other bosses do (twelve and thirty), and both stand in the collection (thirty-five kinds
+  in all).
+- Not played by hand. How hard the two are is a guess.
+
+## alpha 0.8.62.30 – 2026-11-24
+
+**Package 62a, part 11b (Luz): the rest of the Alien Laboratory: three more kinds, three things by the clock, an item of its own, laser grids.**
+- **Three more kinds.**
+  - **Trooper** (from 4:30): a green one in a suit and a glass helmet, with a ray gun. It keeps its distance, takes
+    aim along a line you can see and fires a slow ring of light. A wall turns the ring back, once.
+  - **Brain** (from 6:00): a brain under a dome of glass, hovering. While it is in the hall with you it pulls you
+    towards it: you walk away from it slower, and standing still you drift to it. Leave the hall, or put it out.
+  - **Saucer** (from 2:30, every 45 seconds): two of them abreast, later three, along a line shown first, a tractor
+    beam under each. Who stands in a beam is hurt and held for a moment. A dodge frees you, and takes you through.
+  - A trooper or a brain that is not in the hall you stand in comes through the doorways first, as the others do.
+- **Three things by the clock.**
+  - **Lockdown:** for fifteen seconds fields of force close the doorways of the hall (or corridor) you stand in.
+    Nobody passes them, you neither. A Grey walks in through the wall as ever.
+  - **Purge:** a warning over the hall you stand in, a count under your feet, and after four seconds it burns. It
+    costs you a great deal if you stay, and it burns them just the same: lead them in, and leave. Out in the
+    corridor nothing happens to anybody.
+  - **Containment Breach:** in the hall nearest to you that still has whole tanks, the four nearest to you burst,
+    and a specimen comes out of each. The banner names the hall.
+- **Laser grids** across six of the doorways (never one of the Core Hall's): on for a little over two seconds, off
+  for a little under three, flickering before they come on. They cost you and them alike, and throw you back.
+- **Containment Seal**, an item that lies in this stage's crates only: for ten seconds fields of force close every
+  doorway of the hall you stand in. Nobody comes in, and what touches a field burns. You may leave. A Grey still
+  walks in through the wall.
+- A field of force holds a crowd too: nobody is pushed through it, pulled through it by a gravity well or a black
+  hole, or thrown through it.
+- The collection's Survivor has the three new kinds (thirty-three in all).
+- Not built yet: The Apex and The Mastermind (part 11c). Until then the stage has no boss.
+- Not played by hand. All figures are first guesses.
+
+## alpha 0.8.62.29 – 2026-11-24
+
+**Package 62a, part 11a (Luz): Survivor's fourth stage, the Alien Laboratory: its ground, its walls, its first three kinds.**
+- **A stage with walls.** The first three stages are open fields. The Alien Laboratory is nine halls in a grid of
+  three by three, each joined to its neighbours by a wide corridor; the doorways are as wide as the corridors, and
+  no hall is a dead end. You begin in the middle one, the Core Hall, beside a great sealed tank.
+  - Specimen Hall (two): rows of tanks, something in each. A few are broken, and their nutrient on the floor holds
+    back whoever walks through it.
+  - Operating Theatre (two): tables under their lamps, instrument carts.
+  - Hangar: a parked saucer, landing rings.
+  - Cryo Vault: pods along the wall and in rows, frost.
+  - Holding Pens: cells behind fields of force.
+  - Trophy Room: what they took, held in stasis: tractors, cows, road signs.
+  - Core Hall: the great tank, cables from it to four rows of consoles.
+  - Every hall has its letters on the floor (A1 to C3), and two guide lines run down each corridor, in the colours
+    of the two halls it joins.
+- **They find their way.** On a stage with walls they do not walk straight at you: they take the shortest way
+  through the doorways, spread over a doorway's whole width. Where two ways are as short, half of them take the
+  one and half the other, so they come at you from both sides.
+- **What you fire meets the walls** (Luz: it bounces off them).
+  - Turned back by a wall: the drone's shots (three times at most), the Silverblades, a black hole, the
+    Superlaser's beam (once).
+  - A grenade thrown at a wall comes down this side of it; so does a gravity well.
+  - What looks for a target needs a free line to it: the Laser and its jumps, the Sentry, the Taser's chain.
+  - What works on a field needs a free line from its middle: the Pulse, the cold, the Taser, a grenade's burst, a
+    mine, the Fusion Halo's ring.
+  - The Plasma Orbs are drawn in where a wall stands in their round.
+  - The other three stages have no walls and play as before.
+- **Three kinds.**
+  - **Little Green Man**, the swarm: half your height, a head far too large, two antennae.
+  - **Grey** (from 1:30): it walks straight at you through the walls. Inside a wall it is pale, nothing reaches it,
+    and it cannot touch you.
+  - **Specimen** (from 3:00): something out of a tank. Slow, and it takes a great deal.
+- The stage opens once The Ice Worm is put out on Whiteout. Its picture before a run: a hall of tanks.
+- The collection's Survivor has the three new kinds (thirty in all).
+- Debug menu: the stage Alien Laboratory.
+- Not built yet: the Trooper, the Brain, the Saucers, the three events, the Containment Seal and the laser grids
+  (part 11b); The Apex and The Mastermind (part 11c). Until then the stage has no boss: who holds out fifteen
+  minutes has held it.
+- Not played by hand. All figures are first guesses.
+
 ## alpha 0.8.62.28 – 2026-11-24
 
 **Package 62a, parts 10b and 10c (Luz): a suit for Survivor, and its version for outside the arena.**

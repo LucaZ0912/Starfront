@@ -1563,6 +1563,7 @@ func _build_ground() -> void:
 	rsv6.add_child(UI.button("Outbreak", func(): _cmd({"type": "debug_casino", "sv": "stage:outbreak"})))
 	rsv6.add_child(UI.button("AI Takeover", func(): _cmd({"type": "debug_casino", "sv": "stage:takeover"})))
 	rsv6.add_child(UI.button("Whiteout", func(): _cmd({"type": "debug_casino", "sv": "stage:whiteout"})))      # part 9
+	rsv6.add_child(UI.button("Alien Laboratory", func(): _cmd({"type": "debug_casino", "sv": "stage:lab"})))      # part 11a
 	var CDd = load("res://data/colosseum.gd")                       # part 5: the next fight's ground and its plan
 	var rco3 := _row()
 	rco3.add_child(UI.label("Ground:", 12, UI.TEXT_DIM))

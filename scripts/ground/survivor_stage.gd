@@ -11,6 +11,7 @@ extends RefCounted
 ## No class_name: preload("res://scripts/ground/survivor_stage.gd").
 
 const TILE := GroundMap.TILE
+const Lab = preload("res://scripts/ground/survivor_lab.gd")
 const SW := 200                    # tiles
 const SH := 140
 const EDGE := 2                    # the wall of light round the hologram
@@ -25,6 +26,8 @@ static func build(stage_id: String, seed_n: int) -> GroundMap:
 		return _takeover(stage_id, seed_n)                   # (part 8) the second stage has a ground of its own
 	if stage_id == "whiteout":
 		return _whiteout(stage_id, seed_n)                   # (part 9) … and so has the third
+	if stage_id == "lab":
+		return Lab.build(stage_id, seed_n)                    # (part 11a) the Alien Laboratory: halls and corridors, see survivor_lab.gd
 	var m := GroundMap.new()
 	m.pal = DeckGen.palette_for_body({"type": "barren"})
 	m.pal["terrain_a"] = Color(0.3, 0.31, 0.34)

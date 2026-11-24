@@ -218,6 +218,44 @@ var _marks: Array = []             # what is to be drawn round those in the pict
 var _w := 0
 var _h := 0
 var _solid := PackedByteArray()    # per tile: 1 nobody walks here
+var walls_on := false              # (part 11a) the stage has walls (the Alien Laboratory): they find their way round them, and what you fire is turned back
+var _wall := PackedByteArray()     # per tile: 1 a wall (not what merely stands in the way)
+var _reg := PackedByteArray()      # per tile: the hall or corridor it lies in, + 1 (0: none)
+var _regs: Array = []              # each hall and corridor as a rect (art px)
+var _links: Array = []             # the doorways: [region, region, one end, the other end]
+var _hop := PackedInt32Array()     # [from * count + to]: the doorway to take (-1: none); `_hop2`: the other way round where two ways are as short
+var _hop2 := PackedInt32Array()
+var _preg := 0                     # the region you stand in, + 1
+var _grey_k := -1
+var _spec_k := -1
+var _trooper_k := -1               # (part 11b)
+var _brain_k := -1
+var _saucer_k := -1
+var _tr_ray := 9.0
+var _br_pull := 0.4
+var _br_r := 230.0
+var _sa_beam := 9.0
+var _sa_r := 20.0
+var _sa_hold := 0.9
+var pull := Vector2.ZERO           # (part 11b) what the brains in the hall with you pull you by (a share of your pace)
+var _pull_acc := Vector2.ZERO
+var hold_t := 0.0                  # seconds a saucer's beam still holds you (a dodge frees you)
+var lock_t := 0.0                  # a lockdown: seconds left; `lock_r` the hall or corridor shut; `lock_doors` its doorways ([one end, the other])
+var lock_r := Rect2()
+var lock_doors: Array = []
+var seal_t := 0.0                  # a Containment Seal: the same, but yours
+var seal_len := 1.0
+var seal_r := Rect2()
+var seal_doors: Array = []
+var purge: Dictionary = {}         # a purge: {"r": the hall or corridor, "t": seconds since it was called, "lit": it burns, "tick", "name"}
+var grids: Array = []              # the laser grids: {"a", "b", "ph", "on", "warn"}
+var _lock_wait := false             # (part 11c) a boss of a stage with walls is here, and the doors have not shut yet: they shut once you stand in a hall (`_lock_reg`: in that one; -1: in any)
+var _lock_reg := -1
+var _boss_pull := Vector2.ZERO     # what The Mastermind pulls you by in its last third
+var hurls: Array = []              # what The Mastermind hurls: {"from", "to", "t", "len", "tex"}
+var _apex_k := -1
+var _mm_k := -1
+var _lab_tick := 0.0
 var _haz := PackedByteArray()      # per tile: 1 it holds you back, 2 it burns, 3 bare ice (you slide)
 var _gw := 0
 var _gh := 0
@@ -293,6 +331,9 @@ func setup(p_view, p_map: GroundMap, p_run: Dictionary) -> void:
 	for y in _h:
 		for x in _w:
 			_solid[y * _w + x] = 0 if GroundMap.walkable_t(map.t_at(x, y)) else 1
+	walls_on = bool(map.get_meta("sv_walls", false))
+	if walls_on:
+		_wall_setup()
 	for hz in map.get_meta("col_hazards", []):
 		var code := 2 if String(hz["kind"]) == "burn" else (1 if String(hz["kind"]) == "slow" else (3 if String(hz["kind"]) == "ice" else 0))
 		if code == 2:
@@ -349,7 +390,7 @@ func setup(p_view, p_map: GroundMap, p_run: Dictionary) -> void:
 		_mass.append(float(fd.get("mass", 1.0)))
 		_nosep.append(1 if bool(fd.get("fly", false)) or bool(fd.get("boss", false)) else 0)
 		_shield.append(float(fd.get("shield", 0.0)))
-		_digs.append(1 if int(fd.get("beh", 0)) in [13, 25] else 0)
+		_digs.append(1 if int(fd.get("beh", 0)) in [13, 15, 25] else 0)      # (15, part 11a: a Grey inside a wall)
 		_cnt.append(0)
 		_tsz.append(Vector2(SArt.size_of(String(kind))) * 2.0)
 		for v in 4:
@@ -363,6 +404,21 @@ func setup(p_view, p_map: GroundMap, p_run: Dictionary) -> void:
 	_pylon_k = _ki["pylon"]
 	_burrow_k = _ki["burrower"]
 	_glider_k = _ki["glider"]
+	_grey_k = _ki["grey"]
+	_spec_k = _ki["specimen"]
+	_trooper_k = _ki["trooper"]
+	_brain_k = _ki["brain"]
+	_saucer_k = _ki["saucer"]
+	_apex_k = _ki["apex"]
+	_mm_k = _ki["mastermind"]
+	_tr_ray = float(SD.FOES["trooper"]["ray"])
+	_br_pull = float(SD.FOES["brain"]["pull"])
+	_br_r = float(SD.FOES["brain"]["pull_r"])
+	_sa_beam = float(SD.FOES["saucer"]["beam"])
+	_sa_r = float(SD.FOES["saucer"]["beam_r"])
+	_sa_hold = float(SD.FOES["saucer"]["hold"])
+	for gd0 in map.get_meta("sv_grids", []):
+		grids.append({"a": gd0["a"], "b": gd0["b"], "ph": float(gd0["ph"]), "on": false, "warn": false})
 	var bur: Dictionary = SD.FOES["burrower"]
 	_bur_pace = float(bur["pace"])
 	_bur_warn = float(bur["warn"])
@@ -440,11 +496,14 @@ func move(dir: Vector2) -> Vector2:
 	if dash_t > 0.0:
 		_slide = dash_dir
 		return dash_dir
+	if hold_t > 0.0:                                        # (part 11b) held in a saucer's beam: a dodge frees you
+		_slide = Vector2.ZERO
+		return Vector2.ZERO
 	if _haz[_ti(view.pilot.pos)] == 3:                      # (part 9a) bare ice: you keep your way, and turn it only slowly
 		_slide = _slide.move_toward(dir.limit_length(1.0), SD.ICE_TURN * get_process_delta_time())
 		return _slide
 	_slide = dir.limit_length(1.0)
-	return dir
+	return dir.limit_length(1.0) + pull if pull != Vector2.ZERO else dir      # (part 11b: a brain's pull)
 
 
 ## … and your pace: the throw's, the dodge's, or your own, held back by what lies on the ground.
@@ -465,6 +524,7 @@ func dash(dir: Vector2) -> bool:
 	dash_dir = dir.normalized()
 	dash_t = DASH_TIME
 	kb_t = 0.0
+	hold_t = 0.0
 	dash_charges -= 1.0
 	Audio.play("ui_click", "survivor: a dodge", -8.0)
 	return true
@@ -502,6 +562,7 @@ func step(delta: float) -> void:
 	hurt_cd = maxf(0.0, hurt_cd - delta)
 	dash_t = maxf(0.0, dash_t - delta)
 	kb_t = maxf(0.0, kb_t - delta)
+	hold_t = maxf(0.0, hold_t - delta)
 	shield_t = maxf(0.0, shield_t - delta)
 	stasis_t = maxf(0.0, stasis_t - delta)
 	over_t = maxf(0.0, over_t - delta)
@@ -551,6 +612,8 @@ func step(delta: float) -> void:
 	if not vents.is_empty():
 		_vents(delta, pp)
 	_walls(delta)
+	if walls_on:
+		_lab_step(delta, pp)
 	_num_t -= delta
 	if _num_t <= 0.0:                                       # what each one took since its last number: a new number over it
 		_num_t = 0.22
@@ -628,7 +691,7 @@ func add_foe(k: int, p: Vector2) -> int:
 	fdet[n] = 0.0
 	fface[n] = 0
 	fst[n] = 0
-	ftm[n] = rng.randf_range(1.0, 2.6) if (_beh[k] == 3 or _beh[k] == 9 or _beh[k] == 14) else 0.0
+	ftm[n] = rng.randf_range(1.0, 2.6) if (_beh[k] == 3 or _beh[k] == 9 or _beh[k] == 14 or _beh[k] == 16) else 0.0
 	fal[n] = 0
 	fsh[n] = _shield[k]
 	fbo[n] = 0.0
@@ -775,7 +838,7 @@ func event(kind: String) -> void:
 	match kind:
 		"flock":                                            # screechers, in a wedge, straight through where you stand
 			var a := rng.randf() * TAU
-			var hunters := String(stg["flock"]) in ["hunter", "glider"]      # (part 8b: on AI Takeover hunters come, along a line shown first; part 9b: on Whiteout gliders)
+			var hunters := String(stg["flock"]) in ["hunter", "glider", "saucer"]      # (part 8b: on AI Takeover hunters come, along a line shown first; part 9b: on Whiteout gliders; part 11b: in the laboratory saucers)
 			flock_warn = {"dir": Vector2.from_angle(a), "t": 1.5 if hunters else 1.3, "at": pp}
 			Audio.play("sv_alarm" if hunters else "sv_screech", "survivor: the flock", -10.0)
 		"ring":                                             # a ring of shamblers closes round you
@@ -848,6 +911,24 @@ func event(kind: String) -> void:
 			var ad: Vector2 = [Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP][rng.randi() % 4]
 			var afar := absf(ad.x) * half.x + absf(ad.y) * half.y + 70.0
 			avas.append({"c": pp - ad * afar, "dir": ad, "s": 0.0, "far": afar * 2.0 + 80.0, "warm": SD.AVA_WARN})
+		"lockdown":                                         # (part 11b) fields of force close the doorways of the hall you stand in
+			var lreg := (int(_reg[_ti(pp)]) - 1) if walls_on else -1
+			if lreg < 0:
+				return
+			lock_r = _regs[lreg]
+			lock_doors = _doors_of(lreg)
+			lock_t = SD.LOCK_TIME
+		"purge":                                            # … the hall you stand in is burnt out, after a warning
+			var preg := (int(_reg[_ti(pp)]) - 1) if walls_on else -1
+			if preg < 0 or not purge.is_empty():
+				return
+			purge = {"r": _regs[preg], "t": 0.0, "lit": false, "tick": 0.0, "name": _reg_name(preg)}
+		"breach":                                           # … tanks burst in the hall nearest to you that has any left whole
+			if not walls_on:
+				return
+			_breach(pp)
+			Audio.play("sv_alarm", "survivor: breach", -12.0)
+			return
 		_:
 			return
 	say(kind)
@@ -876,6 +957,8 @@ func _blackout(on: bool) -> void:
 ## They walk at you (each kind in its own way); what stands in their way they slide along, or walk round for a
 ## moment.
 func _move(delta: float, pp: Vector2) -> void:
+	_preg = _reg[_ti(pp)] if walls_on else 0
+	_pull_acc = _boss_pull                                  # (part 11c: what The Mastermind pulls you by; the brains add to it)
 	if not flock_warn.is_empty():                           # the flock: announced, then it comes
 		flock_warn["t"] = float(flock_warn["t"]) - delta
 		if float(flock_warn["t"]) <= 0.0:
@@ -942,6 +1025,10 @@ func _move(delta: float, pp: Vector2) -> void:
 			elif hurt_ok and _dmg[k] > 0.0 and p.distance_squared_to(pp) < pow(_rad[k] + 4.5, 2.0):
 				_hurt(_dmg[k])
 				hurt_ok = false
+			if k == _saucer_k and hurt_ok and p.distance_squared_to(pp) < _sa_r * _sa_r:      # (part 11b) a saucer's tractor beam: it hurts you and holds you; a dodge frees you
+				_hurt(_sa_beam)
+				hurt_ok = false
+				hold_t = _sa_hold
 			if k == _glider_k:                                # (part 9b) a glider lets chunks of ice fall along its way, each onto a mark
 				fbo[i] -= delta
 				if fbo[i] <= 0.0:
@@ -971,10 +1058,41 @@ func _move(delta: float, pp: Vector2) -> void:
 			continue
 		var d := pp - p
 		var dl := d.length()
+		if b == 15:                                         # (part 11a) the Grey: straight at you, through the walls; in a wall nothing reaches it and it touches nobody
+			var gv := d * (_spd[k] / dl) if dl > 0.5 else Vector2.ZERO
+			if nova_r > 0.0 and dl < nova_r:
+				gv *= 0.6
+			var gkb := fkb[i]
+			if gkb != Vector2.ZERO:
+				gv += gkb
+				fkb[i] = gkb * maxf(0.0, 1.0 - delta * 9.0) if gkb.length_squared() > 4.0 else Vector2.ZERO
+			var gq := p + gv * delta
+			gq = Vector2(clampf(gq.x, 20.0, _w * TL - 20.0), clampf(gq.y, 20.0, _h * TL - 20.0))
+			fp[i] = gq
+			fst[i] = 0 if (walls_on and _wall[_ti(gq)] != 0) else 2
+			if absf(d.x) > absf(d.y) * 1.2:
+				fface[i] = 3 if d.x > 0.0 else 2
+			else:
+				fface[i] = 0 if d.y > 0.0 else 1
+			if fst[i] == 2 and hurt_ok and dl < _rad[k] + 5.0:
+				_hurt(_dmg[k] * (1.5 if fal[i] != 0 else 1.0))
+				hurt_ok = false
+			continue
 		var v := Vector2.ZERO
 		if b == 0:
-			if dl > 0.5:
+			var rg := _reg[_ti(p)] if walls_on else 0
+			if rg != 0 and _preg != 0 and rg != _preg:        # (part 11a) not in the hall you stand in: to the doorway on its way to you
+				if ((_frame + i) & 3) == 0 or fvel[i] == Vector2.ZERO:
+					fvel[i] = _steer(p, pp, i)
+				v = fvel[i] * _spd[k]
+				d = fvel[i]                                     # (it looks where it goes)
+			elif dl > 0.5:
 				v = d * (_spd[k] / dl)
+		elif walls_on and (b == 16 or b == 17) and fst[i] == 0 and _preg != 0 and _reg[_ti(p)] != 0 and _reg[_ti(p)] != _preg:      # (part 11b) a trooper, a brain not in the hall you stand in: through the doorways first
+			if ((_frame + i) & 3) == 0 or fvel[i] == Vector2.ZERO:
+				fvel[i] = _steer(p, pp, i)
+			v = fvel[i] * _spd[k]
+			d = fvel[i]
 		elif dl > 0.5 or fst[i] != 0:                       # (one in the middle of what its kind does goes on with it, even standing right on you)
 			v = _want(i, b, k, d, maxf(dl, 0.6), delta)
 		if fbo[i] > 0.0:                                    # (a howler drives it on)
@@ -1002,6 +1120,8 @@ func _move(delta: float, pp: Vector2) -> void:
 				q = p
 			if det == 0.0:
 				fdet[i] = 0.7 if (i & 1) == 0 else -0.7
+		if _shut(p, q):
+			q = p                                             # (part 11b) a field of force across a doorway: nobody passes
 		fp[i] = q
 		if absf(d.x) > absf(d.y) * 1.2:
 			fface[i] = 3 if d.x > 0.0 else 2
@@ -1012,6 +1132,7 @@ func _move(delta: float, pp: Vector2) -> void:
 			hurt_ok = false
 		elif shield_t > 0.0 and _dmg[k] > 0.0 and dl < _rad[k] + 5.0:
 			shield_hit = 0.18                                 # (part 7f) one of them is at the Shield: it flashes
+	pull = _pull_acc.limit_length(0.7)
 	gone.reverse()
 	for gi in gone:
 		_remove(gi)
@@ -1123,6 +1244,34 @@ func _want(i: int, b: int, k: int, d: Vector2, dl: float, delta: float) -> Vecto
 				fvel[i] = d / dl
 				return Vector2.ZERO
 			return d.rotated(sin(float(run["t"]) * 5.0 + i * 1.3) * 0.5) * (_spd[k] / dl)
+		16:                                                 # (part 11b) the trooper: it keeps its distance, takes aim, fires a slow ring of light (a wall turns it back once)
+			ftm[i] -= delta
+			if fst[i] == 1:
+				if ftm[i] <= 0.0:
+					if globs.size() < 300:
+						globs.append({"p": fp[i], "v": fvel[i] * 62.0, "life": 5.5, "clean": true, "ray": true, "r2": 110.0, "dmg": _tr_ray * (1.5 if fal[i] != 0 else 1.0)})
+					Audio.play("sv_shot", "survivor: a trooper", -18.0)
+					fst[i] = 0
+					ftm[i] = rng.randf_range(2.6, 3.6)
+				return Vector2.ZERO
+			if ftm[i] <= 0.0 and dl < 220.0 and dl > 40.0:
+				fst[i] = 1
+				ftm[i] = 0.7
+				fvel[i] = d / dl
+				return Vector2.ZERO
+			if dl < 80.0:
+				return d * (-_spd[k] * 0.8 / dl)
+			if dl > 150.0:
+				return d * (_spd[k] / dl)
+			return Vector2.ZERO
+		17:                                                 # (part 11b) the brain: it hovers at a distance, and while it is in the hall with you it pulls you to it
+			if dl < _br_r:
+				_pull_acc -= d * (_br_pull / dl)                  # (d runs from it to you: its pull the other way)
+			if dl < 100.0:
+				return d * (-_spd[k] * 0.7 / dl)
+			if dl > 170.0:
+				return d * (_spd[k] / dl)
+			return d.orthogonal() * (_spd[k] * 0.5 / dl) * (1.0 if (i & 1) == 0 else -1.0)
 		9:                                                  # (part 8) the gunner: it keeps its distance, takes aim along a line, fires three bolts along it
 			ftm[i] -= delta
 			if fst[i] == 1:
@@ -1206,6 +1355,815 @@ func _want(i: int, b: int, k: int, d: Vector2, dl: float, delta: float) -> Vecto
 	return d * (_spd[k] / dl)
 
 
+# ---------------------------------------------------------------- (part 11a) a stage with walls
+
+## The tables of a stage with walls: which tiles are wall, which hall or corridor each tile lies in, and for every
+## pair of them the doorway that leads from the one towards the other (two tables: where two ways are as short, the
+## one takes this, the other that, so that they come at you from both).
+func _wall_setup() -> void:
+	_wall.resize(_w * _h)
+	_wall.fill(0)
+	_reg.resize(_w * _h)
+	_reg.fill(0)
+	for y in _h:
+		for x in _w:
+			var t := map.t_at(x, y)
+			if t == GroundMap.T.CAP or t == GroundMap.T.FACE or t == GroundMap.T.VOID:
+				_wall[y * _w + x] = 1
+	var regs: Array = map.get_meta("sv_regions", [])
+	for q in regs.size():
+		var r: Rect2i = regs[q]
+		_regs.append(Rect2(Vector2(r.position) * TL, Vector2(r.size) * TL))
+		for y2 in range(r.position.y, r.end.y):
+			for x2 in range(r.position.x, r.end.x):
+				_reg[y2 * _w + x2] = q + 1
+	_links = map.get_meta("sv_links", [])
+	var cnt := regs.size()
+	var adj: Array = []
+	for q2 in cnt:
+		adj.append([])
+	for li in _links.size():
+		var l: Array = _links[li]
+		(adj[int(l[0])] as Array).append([int(l[1]), li])
+		(adj[int(l[1])] as Array).append([int(l[0]), li])
+	_hop.resize(cnt * cnt)
+	_hop.fill(-1)
+	_hop2.resize(cnt * cnt)
+	_hop2.fill(-1)
+	for flip in 2:
+		for to in cnt:
+			var seen := PackedByteArray()
+			seen.resize(cnt)
+			seen.fill(0)
+			seen[to] = 1
+			var queue: Array = [to]
+			while not queue.is_empty():
+				var cur: int = queue.pop_front()
+				var nb: Array = (adj[cur] as Array).duplicate()
+				if flip == 1:
+					nb.reverse()
+				for e in nb:
+					var o := int(e[0])
+					if seen[o] == 0:
+						seen[o] = 1
+						if flip == 0:
+							_hop[o * cnt + to] = int(e[1])
+						else:
+							_hop2[o * cnt + to] = int(e[1])
+						queue.append(o)
+
+
+## The way one of them (`i`: its place in the rows) at `p` takes to you at `pp` (a unit vector): to the doorway on
+## its way, to a place in it that is its own (between the point nearest to it and a point by lot, so that they
+## fill the doorway's whole width and do not all press through at one corner); at the doorway, on through it.
+## (Called only for one that is not in your hall.)
+func _steer(p: Vector2, pp: Vector2, i: int) -> Vector2:
+	var odd := (i & 1) == 1
+	var a := int(_reg[_ti(p)]) - 1
+	var b := int(_reg[_ti(pp)]) - 1
+	if a < 0 or b < 0 or a == b:
+		return (pp - p).normalized()
+	var li := (_hop2 if odd else _hop)[a * _regs.size() + b]
+	if li < 0:
+		return (pp - p).normalized()
+	var l: Array = _links[li]
+	var p0: Vector2 = l[2]
+	var p1: Vector2 = l[3]
+	var gate := Geometry2D.get_closest_point_to_segment(p, p0.lerp(p1, 0.1), p0.lerp(p1, 0.9)).lerp(p0.lerp(p1, 0.1 + 0.8 * fposmod(float(i) * 0.6180339, 1.0)), 0.65)
+	var d := gate - p
+	if d.length_squared() < 196.0:                        # at the doorway: on through it, into what lies beyond
+		var beyond: int = int(l[1]) if int(l[0]) == a else int(l[0])
+		var nrm := (p1 - p0).orthogonal().normalized()
+		var side := nrm.dot((_regs[beyond] as Rect2).get_center() - gate)
+		return nrm if side >= 0.0 else -nrm
+	return d.normalized()
+
+
+## Is the line from a to b free of walls? (Always, on a stage without walls.)
+func _sees(a: Vector2, b: Vector2) -> bool:
+	if not walls_on:
+		return true
+	var d := b - a
+	var steps := int(maxf(absf(d.x), absf(d.y)) / 8.0) + 1
+	var st := d / float(steps)
+	var p := a
+	for s in steps:
+		p += st
+		if _wall[_ti(p)] != 0:
+			return false
+	return true
+
+
+## How far something from `from` along `dir` (a unit vector) gets before it meets a wall (`far` at most).
+func _free_len(from: Vector2, dir: Vector2, far: float) -> float:
+	if not walls_on:
+		return far
+	var l := 0.0
+	while l < far:
+		l = minf(far, l + 6.0)
+		if _wall[_ti(from + dir * l)] != 0:
+			return maxf(0.0, l - 6.0)
+	return far
+
+
+## Where something thrown from `from` at `to` comes down: at `to` when no wall stands in its way; else the wall
+## turns it back, and it comes down as far from the wall as it had left to go.
+func _reach(from: Vector2, to: Vector2) -> Vector2:
+	if not walls_on:
+		return to
+	var d := to - from
+	var far := d.length()
+	if far < 1.0:
+		return to
+	var dir := d / far
+	var l := _free_len(from, dir, far)
+	if l >= far:
+		return to
+	var hit := from + dir * l
+	var v := dir
+	var hx := _wall[_ti(hit + Vector2(signf(dir.x) * 8.0, 0.0))] != 0
+	var hy := _wall[_ti(hit + Vector2(0.0, signf(dir.y) * 8.0))] != 0
+	if hx and not hy:
+		v.x = -v.x
+	elif hy and not hx:
+		v.y = -v.y
+	else:
+		v = -v
+	return hit + v * _free_len(hit, v, far - l)
+
+
+## Something that flies meets a wall: where it is after this step, and its way from here on: [place, way].
+func _bounce(p: Vector2, v: Vector2, delta: float) -> Array:
+	var q := p + v * delta
+	if _wall[_ti(q)] == 0:
+		return [q, v]
+	var hx := _wall[_ti(Vector2(q.x, p.y))] != 0
+	var hy := _wall[_ti(Vector2(p.x, q.y))] != 0
+	if hx and not hy:
+		v.x = -v.x
+	elif hy and not hx:
+		v.y = -v.y
+	else:
+		v = -v
+	q = p + v * delta
+	return [q if _wall[_ti(q)] == 0 else p, v]
+
+
+## Where a plasma orb is on its round: on the round, or drawn in where a wall stands in its way.
+func _orb_at(pp: Vector2, dir: Vector2, r: float) -> Vector2:
+	if not walls_on:
+		return pp + dir * r
+	var l := _free_len(pp, dir, r)
+	return pp + dir * (r if l >= r else maxf(4.0, l - 5.0))
+
+
+## Where a wall turns the superlaser's beam back, and where the beam it turns back ends ([] where no wall is in
+## its way): what is left of its reach it runs on from there, as far as the next wall.
+func _sweep_bounce() -> Array:
+	if not walls_on or sweep.is_empty():
+		return []
+	var from: Vector2 = view.pilot.pos
+	var dir := Vector2.from_angle(float(sweep["a"]))
+	var far := float(sweep["reach"])
+	var l := _free_len(from, dir, far)
+	if l >= far:
+		return []
+	var hit := from + dir * l
+	var v := dir
+	var hx := _wall[_ti(hit + Vector2(signf(dir.x) * 8.0, 0.0))] != 0
+	var hy := _wall[_ti(hit + Vector2(0.0, signf(dir.y) * 8.0))] != 0
+	if hx and not hy:
+		v.x = -v.x
+	elif hy and not hx:
+		v.y = -v.y
+	else:
+		v = -v
+	return [hit, hit + v * _free_len(hit, v, far - l)]
+
+
+## (Part 11c) A boss comes on a stage with walls. No walls of light: the doors of a hall shut instead, once you
+## stand in one (`_lab_step`): for The Apex in whatever hall you enter (until then it hunts you down the corridors),
+## for The Mastermind in its own, the Core Hall. The Mastermind rises out of the great tank, whose glass bursts.
+func _lab_boss_start(kind: String) -> void:
+	var pp: Vector2 = view.pilot.pos
+	boss_done[kind] = true
+	boss_kind = kind
+	barrier_on = false
+	barrier_k = 0.0
+	bst = {"st": "stalk", "t": 1.8, "n": 0, "ring": 2.6, "spawn": 2.0, "hurl": 3.0, "tick": 0.5, "grey": 2.0, "dir": Vector2.RIGHT, "left": 0, "alarm": false}
+	fields.clear()
+	in_storm = false
+	lock_t = 0.0
+	_lock_wait = true
+	_lock_reg = -1
+	var at := pp + Vector2(0.0, -150.0)
+	if kind == "mastermind":
+		bst["st"] = "wait"
+		for o in map.objects:
+			if String(o.get("kind", "")) == "big_tank":
+				at = Vector2(float(o["x"]) + float(o.get("w", 1)) * 0.5, float(int(o["y"]) + int(o.get("h", 1))) + 0.9) * TL
+				_lock_reg = int(_reg[_ti(at)]) - 1
+				o["seed"] = 9
+				_swap_object(o)
+				tele.append({"kind": "break", "pos": at + Vector2(0.0, -40.0), "r": 70.0, "t": 0.0, "len": 0.7})
+				bombs.append({"pos": at, "r": 90.0, "t": 0.0})
+				Audio.play("sv_break", "survivor: the great tank bursts", -2.0)
+				break
+		at = near_free(at, 14.0)
+	else:                                                   # The Apex: out of the dark, well away from you, on free floor you can see
+		var far := 0.0
+		for q in 14:
+			var c := pp + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(150.0, 230.0)
+			if c.x > 40.0 and c.y > 40.0 and c.x < _w * TL - 40.0 and c.y < _h * TL - 40.0 and _solid[_ti(c)] == 0 and _sees(pp, c) and c.distance_to(pp) > far:
+				far = c.distance_to(pp)
+				at = c
+		at = near_free(at, 20.0)
+	var i := add_foe(_ki[kind], at)
+	if i < 0:
+		_make_room()
+		add_foe(_ki[kind], at)
+	say(kind)
+	Audio.play("sv_alarm", "survivor: %s" % kind, -6.0)
+
+
+## (Part 11c) The Apex. It stalks you, faster than you are (through the doorways while it is not in your hall). Then
+## the line of its leap shows, and it leaps along it until a wall or what stands in the hall stops it: one leap, and
+## it stands open for a moment. From two thirds of its health: three leaps in a row, each from where the last one
+## ended, and then a ring of force out of its tail. In its last third the light goes red: it is faster, and every
+## other time it spits a fan instead that leaves pools where it lands.
+func _apex(i: int, p: Vector2, d: Vector2, dl: float, delta: float, pp: Vector2) -> void:
+	var k := fk[i]
+	var ad: Dictionary = SD.FOES["apex"]
+	var ph := int(boss_info()["phase"])
+	var fast := 1.3 if ph == 3 else 1.0
+	var t := float(bst["t"])
+	if ph == 3 and not bool(bst["alarm"]):
+		bst["alarm"] = true
+		_alarm(true)
+		Audio.play("sv_alarm", "survivor: the light goes red", -6.0)
+	match String(bst["st"]):
+		"stalk":
+			var v := d / dl
+			if walls_on and _reg[_ti(p)] != 0 and _reg[_ti(pp)] != 0 and _reg[_ti(p)] != _reg[_ti(pp)]:
+				v = _steer(p, pp, i)
+				fface[i] = (3 if v.x > 0.0 else 2) if absf(v.x) > absf(v.y) * 1.2 else (0 if v.y > 0.0 else 1)
+			if dl > 26.0:
+				_boss_go(i, v * _spd[k] * fast, delta)
+			if t <= 0.0 and dl < 280.0 and _sees(p, pp):
+				bst["n"] = int(bst["n"]) + 1
+				if ph == 3 and int(bst["n"]) % 2 == 0:
+					bst["st"] = "spit"
+					bst["t"] = 0.5
+				else:
+					bst["st"] = "aim"
+					bst["t"] = 0.8 / fast
+					bst["dir"] = d / dl
+					bst["left"] = 3 if ph >= 2 else 1
+		"aim":
+			if t > 0.25:
+				bst["dir"] = d / dl
+			if t <= 0.0:
+				bst["st"] = "leap"
+				bst["t"] = 1.5
+				Audio.play("sv_stomp", "survivor: it leaps", -6.0)
+		"leap":
+			var dir: Vector2 = bst["dir"]
+			var q := p + dir * 360.0 * fast * delta
+			var held: bool = barrier_on and barrier.has_point(p) and not barrier.grow(-14.0).has_point(q)
+			if _solid[_ti(q)] == 0 and not held:
+				fp[i] = q
+			else:
+				t = 0.0                                         # (a wall, or what stands in the hall: there it lands)
+			if can_hurt() and fp[i].distance_to(pp) < 22.0:
+				_hurt(float(ad["pounce"]))
+				throw_you(dir, 0.3)
+			if t <= 0.0:
+				bst["left"] = int(bst["left"]) - 1
+				if int(bst["left"]) > 0:
+					bst["st"] = "aim"
+					bst["t"] = 0.5 / fast
+					var nd := pp - fp[i]
+					bst["dir"] = nd.normalized() if nd.length() > 1.0 else -dir
+				else:
+					if ph >= 2:                                   # … and its tail strikes: a ring of force
+						waves.append({"pos": fp[i], "r": 12.0, "to": float(ad["tail_r"]), "speed": 190.0, "dmg": float(ad["tail"]), "hit": false})
+						tele.append({"kind": "stomp", "pos": fp[i], "r": 44.0, "t": 0.0, "len": 0.4})
+						Audio.play("sv_stomp", "survivor: its tail", -4.0)
+					bst["st"] = "open"
+					bst["t"] = 1.3 if ph < 3 else 0.9
+		"open":
+			if t <= 0.0:
+				bst["st"] = "stalk"
+				bst["t"] = 1.3 / fast
+		"spit":
+			if t <= 0.0:
+				for sq in 5:
+					if globs.size() < 300:
+						globs.append({"p": p, "v": (d / dl).rotated((sq - 2) * 0.24) * 95.0, "life": 1.6 + 0.25 * absf(sq - 2.0), "clean": false, "dmg": float(ad["spit"])})
+				Audio.play("sv_spit", "survivor: it spits", -8.0)
+				bst["st"] = "stalk"
+				bst["t"] = 1.0
+
+
+## (Part 11c) The Mastermind. It does not move. Until you stand in its hall it waits, and nothing reaches it. Then:
+## rings of thought with two gaps in them, again and again, faster with each third it loses; little green men come
+## to it. From two thirds: it hurls what stands in the hall (consoles, tanks) onto marks, the first of them where
+## you stand; when nothing is left to hurl, pieces of its tank. In its last third it pulls you to it, a round about
+## it wears you down, and Greys come in through the walls.
+func _mastermind(i: int, p: Vector2, delta: float, pp: Vector2) -> void:
+	if _lock_wait or String(bst["st"]) == "wait":
+		_boss_pull = Vector2.ZERO
+		return
+	var md: Dictionary = SD.FOES["mastermind"]
+	var ph := int(boss_info()["phase"])
+	var d := pp - p
+	var dl := maxf(1.0, d.length())
+	for key in ["ring", "spawn", "hurl", "tick", "grey"]:
+		bst[key] = float(bst[key]) - delta
+	if float(bst["ring"]) <= 0.0:
+		bst["ring"] = [3.0, 2.6, 2.3][ph - 1]
+		var cnt := 22
+		var g1 := rng.randi() % cnt
+		_mind_ring(p + Vector2(0.0, -4.0), cnt, rng.randf() * TAU, [58.0, 66.0, 74.0][ph - 1], float(md["wave"]), [g1, (g1 + cnt / 2) % cnt])
+		Audio.play("sv_pulse", "survivor: a ring of thought", -8.0)
+	if float(bst["spawn"]) <= 0.0:
+		bst["spawn"] = 3.4
+		if ph < 3:
+			for q in 3:
+				if n < foe_cap - 30 and _cnt[_swarm_k] < 60:
+					add_foe(_swarm_k, near_free(p + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(50.0, 90.0), 14.0))
+	if ph >= 2 and float(bst["hurl"]) <= 0.0:
+		bst["hurl"] = 4.2 if ph == 2 else 3.4
+		_hurl(p, pp, 2 if ph == 2 else 3)
+	if ph < 3:
+		_boss_pull = Vector2.ZERO
+		return
+	_boss_pull = -d / dl * float(md["pull"])
+	if float(bst["tick"]) <= 0.0:
+		bst["tick"] = 0.5
+		if can_hurt() and dl < float(md["ring_r"]):
+			_hurt(float(md["ring"]))
+	if float(bst["grey"]) <= 0.0:
+		bst["grey"] = 3.2
+		var hall: Rect2 = lock_r if lock_t > 0.0 else Rect2(p - Vector2(600.0, 380.0), Vector2(1200.0, 760.0))
+		for q2 in 2:
+			if _cnt[_grey_k] >= 12 or n >= foe_cap - 4:
+				break
+			var gp := Vector2(rng.randf_range(hall.position.x, hall.end.x), hall.position.y - 40.0)      # (in the wall round the hall: they walk in through it)
+			match rng.randi() % 4:
+				1:
+					gp = Vector2(rng.randf_range(hall.position.x, hall.end.x), hall.end.y + 40.0)
+				2:
+					gp = Vector2(hall.position.x - 40.0, rng.randf_range(hall.position.y, hall.end.y))
+				3:
+					gp = Vector2(hall.end.x + 40.0, rng.randf_range(hall.position.y, hall.end.y))
+			add_foe(_grey_k, Vector2(clampf(gp.x, 24.0, _w * TL - 24.0), clampf(gp.y, 24.0, _h * TL - 24.0)))
+
+
+## A ring of thoughts round `from`, `cnt` of them, beginning at `a0`, without those whose place is in `gaps`.
+func _mind_ring(from: Vector2, cnt: int, a0: float, pace: float, dmg: float, gaps: Array) -> void:
+	for q in cnt:
+		if gaps.any(func(gq): return absi(q - int(gq)) <= 1 or absi(q - int(gq)) >= cnt - 1):
+			continue
+		if globs.size() < 300:
+			globs.append({"p": from, "v": Vector2.from_angle(a0 + q * TAU / cnt) * pace, "life": 11.0, "clean": true, "bolt": true, "mind": true, "r2": 81.0, "dmg": dmg})
+
+
+## The Mastermind hurls `count` things onto marks: the first where you stand, the others near you. What it hurls it
+## takes from what stands in its hall (the hall is the emptier for it); when nothing is left, pieces of its tank.
+func _hurl(from: Vector2, pp: Vector2, count: int) -> void:
+	var hall: Rect2 = lock_r
+	var objs: Array = (map.objects as Array).filter(func(o): return String(o.get("kind", "")) in ["console_row", "spec_tank"] and not bool(o.get("gone", false)) \
+		and hall.has_point(Vector2(float(o["x"]) + 0.5, float(o["y"]) + 0.5) * TL))
+	for q in count:
+		var spot := pp if q == 0 else near_free(pp + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(50.0, 90.0), 20.0)
+		var src := from + Vector2(0.0, -30.0)
+		var tex: Texture2D = null
+		if q < objs.size():
+			var o: Dictionary = objs[q]
+			src = Vector2(float(o["x"]) + float(o.get("w", 1)) * 0.5, float(o["y"]) + float(o.get("h", 1)) * 0.5) * TL
+			tex = ImageTexture.create_from_image(ObjArt.make(o, map.pal)["image"])
+			_remove_object(o)
+		hurls.append({"from": src, "to": spot, "t": 0.0, "len": 1.2, "tex": tex})
+		tele.append({"kind": "spot", "pos": spot, "r": float(SD.FOES["mastermind"]["hurl_r"]), "t": 0.0, "len": 1.2})
+	Audio.play("sv_stomp", "survivor: it hurls", -8.0)
+
+
+## Something that stood on the map is gone: its picture, and what it blocked.
+func _remove_object(o: Dictionary) -> void:
+	o["gone"] = true
+	for yy in range(int(o["y"]), int(o["y"]) + int(o.get("h", 1))):
+		for xx in range(int(o["x"]), int(o["x"]) + int(o.get("w", 1))):
+			if xx >= 0 and yy >= 0 and xx < _w and yy < _h:
+				map.set_t(xx, yy, GroundMap.T.FLOOR)
+				_solid[yy * _w + xx] = 0
+	if view == null or not is_instance_valid(view) or view._sorted == null:
+		return
+	var want := Vector2(float(o["x"]) * TL, float(int(o["y"]) + int(o.get("h", 1))) * TL) * S
+	for c in view._sorted.get_children():
+		if c is Sprite2D and (c as Sprite2D).position.is_equal_approx(want):
+			(c as Sprite2D).queue_free()
+			return
+
+
+## The light goes red (The Apex in its last third), or back to what it was.
+func _alarm(on: bool) -> void:
+	if view == null or not is_instance_valid(view):
+		return
+	var dr = view._dark_rect
+	if dr != null and is_instance_valid(dr):
+		if on and _dark0 == null:
+			_dark0 = dr.color
+			dr.color = Color(0.66, 0.3, 0.32)
+		elif not on and _dark0 != null:
+			dr.color = _dark0
+			_dark0 = null
+	if view._lights != null and is_instance_valid(view._lights):
+		view._lights.modulate = Color(1.0, 0.5, 0.45, 0.85) if on else Color(1, 1, 1, 1)
+
+
+## (Part 11b) Does a field of force (a lockdown's, a Containment Seal's) stand between p and q?
+func _shut(p: Vector2, q: Vector2) -> bool:
+	return (lock_t > 0.0 and lock_r.has_point(p) != lock_r.has_point(q)) or (seal_t > 0.0 and seal_r.has_point(p) != seal_r.has_point(q))
+
+
+## (Part 11b) The doorways of a hall or corridor: [[one end, the other], …].
+func _doors_of(reg: int) -> Array:
+	var out: Array = []
+	for l in _links:
+		if int(l[0]) == reg or int(l[1]) == reg:
+			out.append([l[2], l[3]])
+	return out
+
+
+## What a hall or corridor is called in a banner.
+func _reg_name(reg: int) -> String:
+	var ids: Array = map.get_meta("sv_room_ids", [])
+	return String(ids[reg]) if reg >= 0 and reg < ids.size() else "THE CORRIDOR"
+
+
+## (Part 11b) What goes on in a stage with walls: a lockdown (it holds you in, as it holds them), a Containment
+## Seal (who touches its fields burns), a purge (the warning, then the fire), the laser grids in their beat.
+func _lab_step(delta: float, pp: Vector2) -> void:
+	if frozen or stasis_t > 0.0:
+		pull = Vector2.ZERO
+	if _lock_wait:
+		if boss_kind == "":
+			_lock_wait = false
+		else:
+			var here := int(_reg[_ti(pp)]) - 1
+			var halls: int = (map.get_meta("sv_room_ids", []) as Array).size()
+			if here >= 0 and here < halls and (_lock_reg < 0 or here == _lock_reg) and (_regs[here] as Rect2).grow(-14.0).has_point(pp):
+				_lock_wait = false
+				lock_r = _regs[here]
+				lock_doors = _doors_of(here)
+				lock_t = 1.0e9
+				barrier = lock_r
+				barrier_on = true
+				barrier_k = 1.0
+				if boss_kind == "mastermind":
+					bst["st"] = "woke"
+				say("sealed")
+				Audio.play("sv_alarm", "survivor: the doors shut", -8.0)
+	var hq9 := hurls.size() - 1
+	while hq9 >= 0:
+		var hu: Dictionary = hurls[hq9]
+		hu["t"] = float(hu["t"]) + delta
+		if float(hu["t"]) >= float(hu["len"]):
+			var hat: Vector2 = hu["to"]
+			var hur := float(SD.FOES["mastermind"]["hurl_r"])
+			if can_hurt() and hat.distance_to(pp) < hur:
+				_hurt(float(SD.FOES["mastermind"]["hurl"]))
+			if blasts.size() < 40:
+				blasts.append({"pos": hat, "r": hur, "t": 0.0})
+			Audio.play("sv_boom", "survivor: it comes down", -8.0)
+			hurls.remove_at(hq9)
+		hq9 -= 1
+	_lab_tick -= delta
+	var tick := _lab_tick <= 0.0
+	if tick:
+		_lab_tick = 0.25
+	var grow := 1.0 + float(run["t"]) / 200.0
+	if lock_t > 0.0:
+		lock_t = maxf(0.0, lock_t - delta)
+		var inner := lock_r.grow(-5.0)
+		if not inner.has_point(pp):
+			var held := Vector2(clampf(pp.x, inner.position.x, inner.end.x), clampf(pp.y, inner.position.y, inner.end.y))
+			view.pilot.pos = held
+			view.pilot.position = held * S
+		if lock_t <= 0.0:
+			Audio.play("sv_break", "survivor: the lockdown ends", -10.0)
+	if seal_t > 0.0:
+		seal_t = maxf(0.0, seal_t - delta)
+		if tick:
+			_src = 0
+			_kbk = 0.5
+			for dr in seal_doors:
+				_burn_line(dr[0], dr[1], 9.0, SD.SEAL_FOES * grow)
+			_kbk = 1.0
+	if not purge.is_empty():
+		var pt := float(purge["t"]) + delta
+		purge["t"] = pt
+		var pr: Rect2 = purge["r"]
+		if not bool(purge["lit"]) and pt >= SD.PURGE_WARN:
+			purge["lit"] = true
+			purge["tick"] = 0.0
+			Audio.play("sv_bomb", "survivor: the purge", -4.0)
+			if can_hurt() and pr.has_point(pp):
+				_hurt(SD.PURGE_DMG)
+		if bool(purge["lit"]):
+			purge["tick"] = float(purge["tick"]) - delta
+			if float(purge["tick"]) <= 0.0:
+				purge["tick"] = 0.5
+				_src = 0
+				_kbk = 0.0
+				for i in range(n - 1, -1, -1):
+					if i < n and _beh[fk[i]] != 5 and _beh[fk[i]] < SD.BOSS_BEH and pr.has_point(fp[i]):
+						_hit(i, SD.PURGE_FOES * grow, fp[i])
+				_kbk = 1.0
+				if can_hurt() and pr.has_point(pp) and pt > SD.PURGE_WARN + 0.3:
+					_hurt(SD.PURGE_TICK)
+			if pt >= SD.PURGE_WARN + SD.PURGE_BURN:
+				purge = {}
+	if not grids.is_empty():
+		var cyc: float = SD.GRID_ON + SD.GRID_OFF
+		for g in grids:
+			var ph := fposmod(float(run["t"]) + float(g["ph"]), cyc)
+			var on := ph < SD.GRID_ON
+			g["warn"] = ph > cyc - SD.GRID_WARN
+			var ga: Vector2 = g["a"]
+			var gb: Vector2 = g["b"]
+			if on and not bool(g["on"]) and ga.distance_squared_to(pp) < 360.0 * 360.0:
+				Audio.play("sv_laser", "survivor: a laser grid", -16.0)
+			g["on"] = on
+			if not on:
+				continue
+			if can_hurt() and _near_line(pp, ga, gb) < 7.0:
+				_hurt(SD.GRID_DMG)
+				var back := pp - Geometry2D.get_closest_point_to_segment(pp, ga, gb)
+				throw_you(back if back.length() > 0.5 else (gb - ga).orthogonal(), 0.16)
+			if tick:
+				_src = 0
+				_kbk = 0.0
+				_burn_line(ga, gb, 7.0, SD.GRID_FOES * grow)
+				_kbk = 1.0
+
+
+## Who of them stands within `near` of the line from a to b takes `dmg`.
+func _burn_line(a: Vector2, b: Vector2, near: float, dmg: float) -> void:
+	var mid := (a + b) * 0.5
+	for j in touching(mid, a.distance_to(b) * 0.5 + near + 2.0):
+		if j < n and _beh[fk[j]] != 5 and _near_line(fp[j], a, b) < near:
+			_hit(j, dmg, mid)
+
+
+## (Part 11b) A containment breach: in the hall nearest to you that still has whole tanks, those nearest to you
+## burst, and what was in them comes out. (No tank left whole anywhere: two specimens come as the others do.)
+func _breach(pp: Vector2) -> void:
+	var by_hall := {}
+	for o in map.objects:
+		if String(o.get("kind", "")) != "spec_tank" or int(o.get("seed", 0)) == 9 or bool(o.get("gone", false)):
+			continue
+		var at := Vector2(float(o["x"]) + 1.0, float(o["y"]) + 1.5) * TL
+		var rg := int(_reg[_ti(at)]) - 1
+		if rg < 0:
+			continue
+		if not by_hall.has(rg):
+			by_hall[rg] = []
+		(by_hall[rg] as Array).append([at.distance_squared_to(pp), o, at])
+	var best := -1
+	var best_d := INF
+	for rg2 in by_hall:
+		var hr: Rect2 = _regs[int(rg2)]
+		var hd := 0.0 if hr.has_point(pp) else pp.distance_squared_to(hr.get_center())
+		if hd < best_d:
+			best_d = hd
+			best = int(rg2)
+	if best < 0:
+		spawn_kind("specimen", 2)
+		say("breach")
+		return
+	var list: Array = by_hall[best]
+	list.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
+	for q in mini(SD.BREACH_TANKS, list.size()):
+		var o2: Dictionary = list[q][1]
+		var at2: Vector2 = list[q][2]
+		o2["seed"] = 9
+		_swap_object(o2)
+		var si := add_foe(_spec_k, near_free(at2, 14.0))
+		if si >= 0:
+			fstun[si] = 0.7 + q * 0.25                        # (it stands a moment before it comes)
+		if pops.size() < 60:
+			pops.append({"pos": at2, "t": 0.0})
+		tele.append({"kind": "break", "pos": at2, "r": 26.0, "t": 0.0, "len": 0.45})
+	say("", "CONTAINMENT BREACH: %s" % _reg_name(best))
+	Audio.play("sv_break", "survivor: tanks burst", -6.0)
+
+
+## The picture of something that stands on the map is drawn anew (a tank that burst).
+func _swap_object(o: Dictionary) -> void:
+	if view == null or not is_instance_valid(view) or view._sorted == null:
+		return
+	var img: Image = ObjArt.make(o, map.pal)["image"]
+	var want := Vector2(float(o["x"]) * TL, float(int(o["y"]) + int(o.get("h", 1))) * TL) * S
+	for c in view._sorted.get_children():
+		if c is Sprite2D and (c as Sprite2D).position.is_equal_approx(want) and (c as Sprite2D).texture != null and (c as Sprite2D).texture.get_width() == img.get_width():
+			(c as Sprite2D).texture = ImageTexture.create_from_image(img)
+			return
+
+
+static func _hq(i: int, s: int) -> float:
+	var v := sin(float(i) * 12.9898 + float(s) * 78.233) * 43758.5453
+	return v - floorf(v)
+
+
+## (Part 11b) On the ground of a stage with walls: over the hall a purge will burn its warning, and the count to it
+## under your feet; the strip of floor a laser grid burns.
+func _lab_ground(pc: Vector2, half: Vector2) -> void:
+	var wt := float(Time.get_ticks_msec()) / 1000.0
+	if boss_kind == "apex" and String(bst.get("st", "")) == "aim":      # (part 11c) the line The Apex will leap along
+		var ai := boss_i()
+		if ai >= 0:
+			var ad: Vector2 = bst["dir"]
+			var ato := (fp[ai] + ad * _free_len(fp[ai], ad, 640.0)) * S
+			draw_line(fp[ai] * S, ato, Color(1.0, 0.1, 0.08, 0.2), 70.0)
+			draw_line(fp[ai] * S, ato, Color(1.0, 0.14, 0.1, 0.95), 3.0)
+			for ch in 4:
+				var cp := (fp[ai] * S).lerp(ato, fposmod(wt * 1.6 + ch * 0.25, 1.0))
+				draw_polyline(PackedVector2Array([cp - ad * 16.0 + ad.orthogonal() * 22.0, cp, cp - ad * 16.0 - ad.orthogonal() * 22.0]), Color(1.0, 0.3, 0.25, 0.8), 4.0)
+	if boss_kind == "mastermind" and not _lock_wait and not bst.is_empty():      # … the round about The Mastermind that wears you down
+		var mi := boss_i()
+		if mi >= 0 and int(boss_info()["phase"]) == 3:
+			_danger(fp[mi] * S, float(SD.FOES["mastermind"]["ring_r"]) * S, 0.7 + 0.3 * sin(wt * 6.0))
+	if not purge.is_empty():
+		var pr: Rect2 = purge["r"]
+		var rr := Rect2(pr.position * S, pr.size * S)
+		var pt := float(purge["t"])
+		if not bool(purge["lit"]):
+			var bl := 0.5 + 0.5 * sin(wt * (6.0 + pt * 3.0))
+			draw_rect(rr, Color(1.0, 0.1, 0.08, 0.07 + 0.1 * bl))
+			draw_rect(rr.grow(-8.0), Color(1.0, 0.14, 0.1, 0.95), false, 8.0)
+			draw_string(ThemeDB.fallback_font, pc + Vector2(-300.0, 170.0), str(int(ceil(SD.PURGE_WARN - pt))), HORIZONTAL_ALIGNMENT_CENTER, 600.0, 150, Color(1.0, 0.2, 0.15, 0.5))
+		else:
+			draw_rect(rr, Color(0.9, 0.25, 0.05, 0.3))
+	for g in grids:
+		var ga: Vector2 = (g["a"] as Vector2) * S
+		var gb: Vector2 = (g["b"] as Vector2) * S
+		if absf((ga.x + gb.x) * 0.5 - pc.x) > half.x + 320.0 or absf((ga.y + gb.y) * 0.5 - pc.y) > half.y + 320.0:
+			continue
+		if bool(g["on"]):
+			draw_line(ga, gb, Color(1.0, 0.1, 0.08, 0.3), 24.0)
+			draw_line(ga, gb, Color(1.0, 0.14, 0.1, 0.95), 3.0)
+		elif bool(g["warn"]):
+			draw_line(ga, gb, Color(1.0, 0.14, 0.1, 0.3 + 0.45 * absf(sin(wt * 16.0))), 2.0)
+
+
+## A field of force across a doorway from a to b (screen px), rising from the floor.
+func _field(o: Node2D, a: Vector2, b: Vector2, col: Color, fade: float, wt: float) -> void:
+	var up := Vector2(0.0, -58.0)
+	if absf(a.x - b.x) < 1.0:                                # a doorway that runs north and south: seen edge on
+		var top := Vector2(a.x, minf(a.y, b.y)) + up
+		var ln := absf(a.y - b.y) - up.y
+		o.draw_rect(Rect2(top + Vector2(-8.0, 0.0), Vector2(16.0, ln)), Color(col, 0.2 * fade))
+		o.draw_rect(Rect2(top + Vector2(-2.0, 0.0), Vector2(4.0, ln)), Color(col, 0.85 * fade))
+		for q in int(ln / 20.0):
+			o.draw_rect(Rect2(a.x - 10.0, top.y + fposmod(q * 20.0 + wt * 44.0, ln), 20.0, 2.0), Color(col.lightened(0.45), 0.7 * fade))
+	else:
+		var wd := absf(b.x - a.x)
+		var x0 := minf(a.x, b.x)
+		o.draw_colored_polygon(PackedVector2Array([a, b, b + up, a + up]), Color(col, 0.2 * fade))
+		o.draw_line(a, b, Color(col, 0.95 * fade), 3.0)
+		o.draw_line(a + up, b + up, Color(col, 0.8 * fade), 2.0)
+		for q2 in int(wd / 18.0):
+			var fx := x0 + fposmod(q2 * 18.0 + wt * 34.0, wd)
+			o.draw_line(Vector2(fx, a.y), Vector2(fx, a.y + up.y), Color(col.lightened(0.45), (0.25 + 0.3 * absf(sin(wt * 5.0 + q2))) * fade), 2.0)
+
+
+## … above the figures: the fields of a lockdown (red: theirs) and of a Containment Seal (yours), a laser grid's
+## beams, a brain's pull, a saucer's beam, what holds you.
+func _lab_over(o: Node2D) -> void:
+	var wt := float(Time.get_ticks_msec()) / 1000.0
+	for hu in hurls:                                        # (part 11c) what The Mastermind hurls, on its way
+		var hk := clampf(float(hu["t"]) / float(hu["len"]), 0.0, 1.0)
+		var hp9 := ((hu["from"] as Vector2).lerp(hu["to"], hk)) * S + Vector2(0.0, -sin(hk * PI) * 280.0 - 24.0)
+		var htx: Texture2D = hu["tex"]
+		o.draw_set_transform(hp9, hk * 7.0, Vector2.ONE)
+		if htx != null:
+			o.draw_texture_rect(htx, Rect2(-Vector2(htx.get_size()) * S * 0.5, Vector2(htx.get_size()) * S), false)
+		else:
+			o.draw_rect(Rect2(Vector2(-24.0, -17.0), Vector2(48.0, 34.0)), Color(0.3, 0.33, 0.38))
+			o.draw_rect(Rect2(Vector2(-24.0, -17.0), Vector2(48.0, 7.0)), Color(0.6, 0.9, 0.8))
+		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if boss_kind == "mastermind" and _boss_pull != Vector2.ZERO:      # … and its pull on you: a thick thread of rings
+		var mi := boss_i()
+		if mi >= 0:
+			var mfrom := fp[mi] * S + Vector2(0.0, -156.0)
+			var mto: Vector2 = view.pilot.pos * S + Vector2(0.0, -36.0)
+			var mside := (mto - mfrom).orthogonal().normalized()
+			var mpts := PackedVector2Array()
+			for ms in 19:
+				var mk9 := float(ms) / 18.0
+				mpts.append(mfrom.lerp(mto, mk9) + mside * sin(mk9 * 16.0 - wt * 9.0) * 9.0 * sin(mk9 * PI))
+			o.draw_polyline(mpts, Color(0.85, 0.45, 1.0, 0.8), 5.0)
+			for mr in 4:
+				var mrk := fposmod(1.0 - wt * 0.8 + mr / 4.0, 1.0)
+				o.draw_arc(mfrom.lerp(mto, mrk), 7.0 + 9.0 * mrk, 0.0, TAU, 14, Color(0.95, 0.7, 1.0, 0.85), 2.5)
+	for which in 2:
+		var left := lock_t if which == 0 else seal_t
+		if left <= 0.0:
+			continue
+		var col := Color(1.0, 0.2, 0.15) if which == 0 else Color(0.5, 1.0, 0.75)
+		for dr in (lock_doors if which == 0 else seal_doors):
+			_field(o, (dr[0] as Vector2) * S, (dr[1] as Vector2) * S, col, clampf(left / 0.6, 0.0, 1.0), wt)
+	for g in grids:
+		var ga: Vector2 = (g["a"] as Vector2) * S
+		var gb: Vector2 = (g["b"] as Vector2) * S
+		for ge in [ga, gb]:                                     # its posts
+			o.draw_line(ge, (ge as Vector2) + Vector2(0.0, -62.0), Color(0.12, 0.13, 0.16), 7.0)
+			o.draw_rect(Rect2((ge as Vector2) + Vector2(-4.0, -66.0), Vector2(8.0, 6.0)), Color(1.0, 0.2, 0.15) if (bool(g["on"]) or bool(g["warn"])) else Color(0.35, 0.12, 0.12))
+		if not bool(g["on"]):
+			continue
+		for h in 4:
+			var lift := Vector2(0.0, -10.0 - h * 14.0)
+			o.draw_line(ga + lift, gb + lift, Color(1.0, 0.25, 0.2, 0.9), 2.5)
+			o.draw_line(ga + lift, gb + lift, Color(1.0, 0.9, 0.85, 0.8), 1.0)
+	var pilot: Vector2 = view.pilot.pos
+	for mk in _marks:
+		var mq: Vector2 = (mk[1] as Vector2) * S
+		if String(mk[0]) == "tractor":                         # a saucer's beam: down to the round it holds
+			var br := _sa_r * S
+			o.draw_colored_polygon(PackedVector2Array([mq + Vector2(-9.0, -44.0), mq + Vector2(9.0, -44.0), mq + Vector2(br, 0.0), mq + Vector2(-br, 0.0)]), Color(0.5, 1.0, 0.6, 0.22))
+			o.draw_set_transform(mq, 0.0, Vector2(1.0, 0.55))
+			o.draw_arc(Vector2.ZERO, br, 0.0, TAU, 28, Color(1.0, 0.14, 0.1, 0.95), 3.0)
+			o.draw_circle(Vector2.ZERO, br, Color(1.0, 0.1, 0.08, 0.16))
+			o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		elif String(mk[0]) == "pull":                          # a brain's pull: a thread of rings from it to you
+			var bp: Vector2 = mk[1]
+			if bp.distance_to(pilot) < _br_r and (not walls_on or _reg[_ti(bp)] == _reg[_ti(pilot)]):
+				var from := mq + Vector2(0.0, -40.0)
+				var to := pilot * S + Vector2(0.0, -36.0)
+				var pts := PackedVector2Array()
+				var side := (to - from).orthogonal().normalized()
+				for s in 15:
+					var k := float(s) / 14.0
+					pts.append(from.lerp(to, k) + side * sin(k * 14.0 - wt * 9.0) * 6.0 * sin(k * PI))
+				o.draw_polyline(pts, Color(0.85, 0.45, 1.0, 0.75), 3.0)
+				for rq in 3:
+					var rk := fposmod(1.0 - wt * 0.9 + rq / 3.0, 1.0)
+					o.draw_arc(from.lerp(to, rk), 5.0 + 6.0 * rk, 0.0, TAU, 12, Color(0.95, 0.7, 1.0, 0.8), 2.0)
+	if hold_t > 0.0:                                         # held in a saucer's beam
+		var hp := pilot * S
+		for hq in 3:
+			o.draw_arc(hp + Vector2(0.0, -14.0 - hq * 22.0 - fposmod(wt * 60.0, 22.0)), 26.0, 0.0, TAU, 18, Color(0.5, 1.0, 0.6, 0.85), 3.0)
+
+
+## … and what shines: a purge's fire, the fields, the grids.
+func _lab_glow(o: Node2D, gt: Texture2D) -> void:
+	var wt := float(Time.get_ticks_msec()) / 1000.0
+	if boss_kind == "mastermind" or boss_kind == "apex":      # (part 11c) the light of the two: The Mastermind's beats, The Apex's ribs glow
+		var gbi := boss_i()
+		if gbi >= 0:
+			var gbq := fp[gbi] * S
+			if boss_kind == "mastermind":
+				var beat := 0.75 + 0.25 * sin(wt * 3.0)
+				o.draw_texture_rect(gt, Rect2(gbq + Vector2(-210.0, -360.0), Vector2(420.0, 420.0)), false, Color(1.0, 0.5, 0.85, 0.26 * beat))
+				o.draw_texture_rect(gt, Rect2(gbq + Vector2(-100.0, -260.0), Vector2(200.0, 200.0)), false, Color(0.85, 0.65, 1.0, 0.14 * beat))
+			else:
+				o.draw_texture_rect(gt, Rect2(gbq + Vector2(-80.0, -100.0), Vector2(160.0, 120.0)), false, Color(0.4, 1.0, 0.5, 0.45 + 0.2 * sin(wt * 5.0)))
+	var pilot: Vector2 = view.pilot.pos
+	if not purge.is_empty() and bool(purge["lit"]):
+		var hv := _half() + Vector2(90.0, 90.0)
+		var vis := (purge["r"] as Rect2).intersection(Rect2(pilot - hv, hv * 2.0))
+		if vis.size.x > 0.0 and vis.size.y > 0.0:
+			var k := clampf((float(purge["t"]) - SD.PURGE_WARN) / SD.PURGE_BURN, 0.0, 1.0)
+			o.draw_rect(Rect2(vis.position * S, vis.size * S), Color(1.0, 0.45, 0.1, 0.4 * (1.0 - k * 0.6)))
+			for q in 110:
+				var fs := (70.0 + 110.0 * _hq(q, 3)) * (0.7 + 0.3 * sin(wt * 9.0 + q))
+				var fc := Vector2(vis.position.x + _hq(q, 1) * vis.size.x, vis.position.y + _hq(q, 2) * vis.size.y) * S
+				o.draw_texture_rect(gt, Rect2(fc - Vector2(fs, fs * 1.5), Vector2(fs * 2.0, fs * 2.2)), false, Color(1.0, 0.45 + 0.35 * _hq(q, 4), 0.12, 0.6 * (1.0 - k * 0.5)))
+	for which in 2:
+		var left := lock_t if which == 0 else seal_t
+		if left <= 0.0:
+			continue
+		var col := Color(1.0, 0.25, 0.2, 0.5) if which == 0 else Color(0.5, 1.0, 0.75, 0.5)
+		for dr in (lock_doors if which == 0 else seal_doors):
+			var mid := ((dr[0] as Vector2) + (dr[1] as Vector2)) * 0.5 * S
+			var ext := ((dr[1] as Vector2) - (dr[0] as Vector2)).abs() * 0.5 * S + Vector2(70.0, 90.0)
+			o.draw_texture_rect(gt, Rect2(mid - ext + Vector2(0.0, -28.0), ext * 2.0), false, col)
+	for g in grids:
+		if bool(g["on"]):
+			var gm := ((g["a"] as Vector2) + (g["b"] as Vector2)) * 0.5 * S
+			var gx := ((g["b"] as Vector2) - (g["a"] as Vector2)).abs() * 0.5 * S + Vector2(50.0, 70.0)
+			o.draw_texture_rect(gt, Rect2(gm - gx + Vector2(0.0, -26.0), gx * 2.0), false, Color(1.0, 0.25, 0.2, 0.45))
+
+
+## How long the superlaser's beam is right now: its reach, or as far as the wall.
+func _sweep_len() -> float:
+	if sweep.is_empty():
+		return 0.0
+	return _free_len(view.pilot.pos, Vector2.from_angle(float(sweep["a"])), float(sweep["reach"]))
+
+
 ## (Part 9a) Is this one a burrower under the ice? (Nothing reaches it there: no hit, no cold, no shock; it is
 ## not in the grid of cells, so nothing that looks for who stands near finds it.)
 func _under(i: int) -> bool:
@@ -1249,8 +2207,8 @@ func _flock() -> void:
 	var cnt := 9 + int(float(run["t"]) / 150.0)
 	var k: int = _ki[String(stg["flock"]) if String(stg["flock"]) != "" else "screecher"]
 	var side := dir.orthogonal()
-	if String(stg["flock"]) in ["hunter", "glider"]:        # (part 8b) one hunter, later two abreast: each burns along its line; (part 9b) gliders: one more of them
-		var hn := (1 if float(run["t"]) < 480.0 else 2) + (1 if String(stg["flock"]) == "glider" else 0)
+	if String(stg["flock"]) in ["hunter", "glider", "saucer"]:        # (part 8b) one hunter, later two abreast: each burns along its line; (part 9b) gliders: one more of them; (part 11b) saucers: as many as gliders
+		var hn := (1 if float(run["t"]) < 480.0 else 2) + (1 if String(stg["flock"]) in ["glider", "saucer"] else 0)
 		for hq in hn:
 			var hi := add_foe(k, at - dir * far + side * (float(hq) - float(hn - 1) * 0.5) * 46.0)
 			if hi < 0:
@@ -1281,10 +2239,15 @@ func _thrown(delta: float, pp: Vector2) -> void:
 		g["p"] = p
 		g["life"] = float(g["life"]) - delta
 		var gone := false
-		if p.distance_squared_to(pp) < 64.0 and can_hurt():
+		if p.distance_squared_to(pp) < float(g.get("r2", 64.0)) and can_hurt():
 			_hurt(float(g.get("dmg", 9.0)))
 			gone = true
-		elif float(g["life"]) <= 0.0 or _solid[_ti(p)] != 0:
+		elif g.has("ray") and walls_on and _wall[_ti(p)] != 0 and not g.has("b"):      # (part 11b) a trooper's ring of light: a wall turns it back, once
+			var gb: Array = _bounce(p - (g["v"] as Vector2) * delta, g["v"], delta)
+			g["p"] = gb[0]
+			g["v"] = gb[1]
+			g["b"] = 1
+		elif float(g["life"]) <= 0.0 or (_wall[_ti(p)] != 0 if (walls_on and g.has("mind")) else _solid[_ti(p)] != 0):      # (part 11c: a ring of thought passes what stands in the hall; only a wall ends it)
 			gone = true
 			if not bool(g["clean"]) and pools.size() < 60:
 				pools.append({"pos": p - (g["v"] as Vector2) * delta, "r": 13.0, "t": 0.0, "life": 2.6, "kind": "acid", "dps": 12.0})
@@ -1320,6 +2283,7 @@ func _grid() -> void:
 ## They push each other apart: each one against those in its own cell and the cells after it.
 func _separate() -> void:
 	var r2 := SEP * SEP
+	var shut_on := lock_t > 0.0 or seal_t > 0.0             # (part 11b) a field of force across a doorway: nobody is pushed through it either
 	for i in n:
 		if _nosep[fk[i]] != 0 or (_digs[fk[i]] != 0 and fst[i] < 2):
 			continue
@@ -1349,10 +2313,10 @@ func _separate() -> void:
 					var l := sqrt(l2)
 					var m := d * ((SEP - l) / l * 0.5)
 					var a := p + m
-					if _solid[(int(a.x) >> 4) + (int(a.y) >> 4) * _w] == 0:
+					if _solid[(int(a.x) >> 4) + (int(a.y) >> 4) * _w] == 0 and not (shut_on and _shut(p, a)):
 						p = a
 					var b := fp[j] - m
-					if _solid[(int(b.x) >> 4) + (int(b.y) >> 4) * _w] == 0:
+					if _solid[(int(b.x) >> 4) + (int(b.y) >> 4) * _w] == 0 and not (shut_on and _shut(fp[j], b)):
 						fp[j] = b
 				j = _next[j]
 		fp[i] = p
@@ -1361,6 +2325,9 @@ func _separate() -> void:
 ## A hit: a shield takes it first; else thrown back a little, and out when nothing is left.
 func _hit(i: int, dmg: float, from: Vector2) -> void:
 	if fk[i] == _core_k and boss_kind == "core" and _cnt[_pylon_k] > 0:      # (part 8c) The Core behind its shield: nothing reaches it while a pylon stands
+		_guard_t = 0.3
+		return
+	if _lock_wait and boss_kind == "mastermind" and fk[i] == _mm_k:           # (part 11c) The Mastermind before you stand in its hall: nothing reaches it
 		_guard_t = 0.3
 		return
 	if _digs[fk[i]] != 0 and fst[i] < 2:
@@ -1494,6 +2461,9 @@ func _hurt(dmg: float) -> void:
 func boss_start(kind: String) -> void:
 	if not _ki.has(kind) or boss_kind != "":
 		return
+	if walls_on:                                            # (part 11c) a stage with walls: the doors of a hall shut instead
+		_lab_boss_start(kind)
+		return
 	var pp: Vector2 = view.pilot.pos
 	var hb: Vector2 = SD.BARRIER * 0.5
 	var want := pp + (Vector2(0.0, -96.0) if kind in ["core", "heart"] else Vector2.ZERO)      # (part 8c: The Core stands in the middle of its field, you south of it; part 9c: so does The Storm Heart)
@@ -1593,6 +2563,12 @@ func _boss(delta: float, pp: Vector2) -> void:
 		throw_you(d, 0.22)
 	if boss_kind == "warden":
 		_warden(i, p, d, dl, delta, pp)
+		return
+	if boss_kind == "apex":                                 # (part 11c) the bosses of the Alien Laboratory
+		_apex(i, p, d, dl, delta, pp)
+		return
+	if boss_kind == "mastermind":
+		_mastermind(i, p, delta, pp)
 		return
 	if boss_kind == "core":
 		_core(p, delta, pp)
@@ -2069,7 +3045,7 @@ func _drones(delta: float, wd: float, pp: Vector2) -> void:
 func _boss_go(i: int, v: Vector2, delta: float) -> void:
 	var p := fp[i]
 	var q := p + v * delta
-	if barrier_on and barrier_k >= 1.0:
+	if barrier_on and barrier_k >= 1.0 and (not walls_on or barrier.has_point(p)):      # (part 11c: on a stage with walls one still outside the hall that shut walks in first)
 		var inner := barrier.grow(-14.0)
 		q = Vector2(clampf(q.x, inner.position.x, inner.end.x), clampf(q.y, inner.position.y, inner.end.y))
 	if _solid[_ti(q)] != 0:
@@ -2099,7 +3075,13 @@ func _boss_out(kind: String, p: Vector2) -> void:
 	say("free")
 	Audio.play("sv_bomb", "survivor: a boss is out", -4.0)
 	in_storm = false
-	if kind in ["foreman", "warden", "worm"]:
+	if walls_on:                                            # (part 11c) the doors open again, what it did ends with it
+		lock_t = 0.0
+		_lock_wait = false
+		_boss_pull = Vector2.ZERO
+		hurls.clear()
+		_alarm(false)
+	if kind in ["foreman", "warden", "worm", "apex"]:
 		crates.append({"pos": near_free(p, 16.0), "great": true, "fall": 0.0, "mark": true, "weapon": true})
 	else:
 		_win_t = WIN_WAIT
@@ -2304,6 +3286,14 @@ func give(id: String) -> void:
 				if bool(tc.get("ice", false)) and (tc["pos"] as Vector2).distance_squared_to(pp) < th2:
 					tc["ice"] = false
 			tele.append({"kind": "thermal", "pos": pp, "r": float(it["r"]), "t": 0.0, "len": 0.6})
+		"seal":                                             # (part 11b) fields of force across every doorway of the hall you stand in: nobody comes in, what touches one burns
+			var sreg := (int(_reg[_ti(pp)]) - 1) if walls_on else -1
+			if sreg >= 0:
+				seal_r = _regs[sreg]
+				seal_doors = _doors_of(sreg)
+				seal_t = float(it["time"]) * float(mods.get("dur", 1.0))
+				seal_len = seal_t
+			tele.append({"kind": "override", "pos": pp, "r": 130.0, "t": 0.0, "len": 0.5})
 		"bomb":                                             # all round you are out (the tough ones take a heavy blow)
 			var r2 := pow(float(it["r"]), 2.0)
 			for i in range(n - 1, -1, -1):
@@ -2376,7 +3366,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 					var rn2 := nova_r * nova_r
 					_kbk = 0.3                                     # (it burns without a pause: each burn throws them back only a little)
 					for i in range(n - 1, -1, -1):
-						if i < n and fp[i].distance_squared_to(pp) < rn2:
+						if i < n and fp[i].distance_squared_to(pp) < rn2 and _sees(pp, fp[i]):
 							_hit(i, float(st["dmg"]) * 0.45 * dk, pp)
 					_kbk = 1.0
 				else:
@@ -2385,7 +3375,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 					Audio.play("sv_pulse", "survivor: the pulse", -18.0)
 					var r2 := r * r
 					for i in range(n - 1, -1, -1):
-						if i < n and fp[i].distance_squared_to(pp) < r2:
+						if i < n and fp[i].distance_squared_to(pp) < r2 and _sees(pp, fp[i]):
 							_hit(i, float(st["dmg"]) * dk, pp)
 			"laser":                                         # beams at the nearest
 				var want := int(st["n"]) + _more()
@@ -2393,7 +3383,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 				var best: Array = []                            # [distance squared, which], the nearest first
 				for i in n:
 					var d2 := fp[i].distance_squared_to(pp)
-					if d2 > reach2 or (best.size() >= want and d2 >= float(best[-1][0])) or _under(i):
+					if d2 > reach2 or (best.size() >= want and d2 >= float(best[-1][0])) or _under(i) or not _sees(pp, fp[i]):
 						continue
 					var at := best.size()
 					while at > 0 and d2 < float(best[at - 1][0]):
@@ -2421,7 +3411,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 							var nd := 70.0 * 70.0
 							for j in n:
 								var dj := fp[j].distance_squared_to(from)
-								if dj < nd and dj > 4.0 and not _under(j):
+								if dj < nd and dj > 4.0 and not _under(j) and _sees(from, fp[j]):
 									nd = dj
 									nb = j
 							if nb < 0:
@@ -2444,6 +3434,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 						if (ult and absf(dd.x) < half.x and absf(dd.y) < half.y) or (not ult and dd.length() < 120.0):
 							tgt = fp[c]
 							break
+					tgt = _reach(pp, tgt)                           # (part 11a: a wall turns it back)
 					nades.append({"a": pp, "b": tgt, "t": 0.0, "r": float(st["r"]) * area, "dmg": float(st["dmg"]) * dk, "u": ult})
 			"drone":                                         # the drones that fly with you get a round to fire: each turns its gun once round and fires shot by shot (the Carrier Swarm: three drones, their shots going through)
 				var cnt := int(st["n"]) + _more() * 2
@@ -2504,7 +3495,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 				var arc := float(SD.WEAPONS["cryo"]["arc"])
 				var fa := face_dir.angle()
 				for j in touching(pp, cr):
-					if j >= n or (not ult and absf(wrapf((fp[j] - pp).angle() - fa, -PI, PI)) > arc):
+					if j >= n or (not ult and absf(wrapf((fp[j] - pp).angle() - fa, -PI, PI)) > arc) or not _sees(pp, fp[j]):
 						continue
 					var n0 := n
 					_hit(j, float(st["dmg"]) * dk, fp[j])            # (from where it stands: the cold does not throw it back)
@@ -2522,7 +3513,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 				var tst := float(SD.WEAPONS["taser"]["stun"]) * dur
 				var struck: Array = []
 				for j5 in touching(pp, tr0):                      # (Luz, 23 Nov 2026: a cone, not a round field)
-					if j5 >= n or absf(wrapf((fp[j5] - pp).angle() - tang, -PI, PI)) > tarc:
+					if j5 >= n or absf(wrapf((fp[j5] - pp).angle() - tang, -PI, PI)) > tarc or not _sees(pp, fp[j5]):
 						continue
 					var n5 := n
 					struck.append(fp[j5])
@@ -2538,7 +3529,7 @@ func _weapons(delta: float, pp: Vector2) -> void:
 							var zd := 64.0 * 64.0
 							for j6 in touching(zfrom, 64.0):
 								var zj := fp[j6].distance_squared_to(zfrom)
-								if j6 < n and zj < zd and zj > 9.0:
+								if j6 < n and zj < zd and zj > 9.0 and _sees(zfrom, fp[j6]):
 									zd = zj
 									zb = j6
 							if zb < 0:
@@ -2563,11 +3554,11 @@ func _weapons(delta: float, pp: Vector2) -> void:
 				_orb_more = _more()
 				Audio.play("sv_pulse", "survivor: the plasma orbs", -14.0)
 			"gravity":                                       # a sphere thrown among them (at the nearest one, or ahead of you)
-				var gp := near_free(pp + face_dir * 70.0, 20.0)
+				var gp := near_free(_reach(pp, pp + face_dir * 70.0), 20.0)
 				var gbest := 150.0 * 150.0
 				for i3 in n:
 					var gd := fp[i3].distance_squared_to(pp)
-					if gd < gbest and gd > 900.0 and not _under(i3):
+					if gd < gbest and gd > 900.0 and not _under(i3) and _sees(pp, fp[i3]):
 						gbest = gd
 						gp = fp[i3]
 				wells.append({"p": gp, "r": float(st["r"]) * area, "life": float(st["time"]) * dur, "t": 0.0, "dmg": float(st["dmg"]) * dk, "tick": 0.0, "ult": ult})
@@ -2620,7 +3611,7 @@ func _orbs(delta: float, pp: Vector2, cnt: int, r: float, dmg: float, halo: bool
 	orb_a += delta * float(SD.WEAPONS["orbs"]["turn"]) * float(mods.get("spin", 1.0))
 	orb_r = r
 	for q in cnt:
-		var bp := pp + Vector2.from_angle(orb_a + q * TAU / cnt) * r
+		var bp := _orb_at(pp, Vector2.from_angle(orb_a + q * TAU / cnt), r)
 		orb_pts.append(bp)
 		for j in touching(bp, 12.0):
 			if j < n:
@@ -2628,7 +3619,7 @@ func _orbs(delta: float, pp: Vector2, cnt: int, r: float, dmg: float, halo: bool
 	if not halo:
 		return
 	for q2 in cnt:
-		var bp2 := pp + Vector2.from_angle(-orb_a * 0.8 + (q2 + 0.5) * TAU / cnt) * r * 1.65
+		var bp2 := _orb_at(pp, Vector2.from_angle(-orb_a * 0.8 + (q2 + 0.5) * TAU / cnt), r * 1.65)
 		orb_out.append(bp2)
 		for j2 in touching(bp2, 12.0):
 			if j2 < n:
@@ -2651,7 +3642,7 @@ func _fly(delta: float, pp: Vector2) -> void:
 			var at: Vector2 = nd["b"]
 			var r2 := float(nd["r"]) * float(nd["r"])
 			for i in range(n - 1, -1, -1):
-				if i < n and fp[i].distance_squared_to(at) < r2:
+				if i < n and fp[i].distance_squared_to(at) < r2 and _sees(at, fp[i]):
 					_hit(i, float(nd["dmg"]), at)
 			blasts.append({"pos": at, "r": float(nd["r"]), "t": 0.0})
 			if bool(nd.get("u", false)):
@@ -2664,6 +3655,11 @@ func _fly(delta: float, pp: Vector2) -> void:
 	while q >= 0:
 		var sh: Dictionary = shots[q]
 		var p: Vector2 = (sh["p"] as Vector2) + (sh["v"] as Vector2) * delta
+		if walls_on and _wall[_ti(p)] != 0 and int(sh.get("b", 0)) < 3:      # (part 11a) a wall turns it back, three times at most
+			var sb: Array = _bounce(sh["p"], sh["v"], delta)
+			p = sb[0]
+			sh["v"] = sb[1]
+			sh["b"] = int(sh.get("b", 0)) + 1
 		sh["p"] = p
 		sh["life"] = float(sh["life"]) - delta
 		var gone := float(sh["life"]) <= 0.0 or _solid[_ti(p)] != 0
@@ -2700,8 +3696,13 @@ func _fly(delta: float, pp: Vector2) -> void:
 				continue
 			var off := wrapf(d.angle() - prev, -PI, PI) * sgn
 			var wide := 0.05 + 7.0 / sqrt(l2)
-			if off >= -wide and off <= span + wide:
+			if off >= -wide and off <= span + wide and _sees(pp, fp[i]):
 				_zap(i, pp)
+		var sbz: Array = _sweep_bounce()                       # (part 11a) … and who stands in the beam a wall turns back
+		if not sbz.is_empty():
+			for i5 in range(n - 1, -1, -1):
+				if i5 < n and _near_line(fp[i5], sbz[0], sbz[1]) < 9.0:
+					_zap(i5, sbz[0])
 		if k >= 1.0:
 			sweep = {}
 	_src = int(_wsrc.get("orbs", 0))
@@ -2715,7 +3716,7 @@ func _fly(delta: float, pp: Vector2) -> void:
 		for j4 in touching(hc0, hr1):
 			if j4 < n:
 				var dj4 := fp[j4].distance_to(hc0)
-				if dj4 >= hr0 and dj4 < hr1:
+				if dj4 >= hr0 and dj4 < hr1 and _sees(hc0, fp[j4]):
 					_hit(j4, float(hal["dmg"]), hc0)
 		if hr1 >= float(hal["to"]):
 			halos.remove_at(q)
@@ -2726,6 +3727,10 @@ func _fly(delta: float, pp: Vector2) -> void:
 	while q >= 0:
 		var bl: Dictionary = blades[q]
 		var bp: Vector2 = (bl["p"] as Vector2) + (bl["v"] as Vector2) * delta
+		if walls_on and _wall[_ti(bp)] != 0:                  # (part 11a) a wall turns it back
+			var bb: Array = _bounce(bl["p"], bl["v"], delta)
+			bp = bb[0]
+			bl["v"] = bb[1]
 		if absf(bp.x - pp.x) > half.x or absf(bp.y - pp.y) > half.y:      # at the edge of the picture: it bounces, and darts back at you (a little off)
 			bp = Vector2(clampf(bp.x, pp.x - half.x, pp.x + half.x), clampf(bp.y, pp.y - half.y, pp.y + half.y))
 			bl["v"] = (pp - bp).normalized().rotated(rng.randf_range(-0.45, 0.45)) * 320.0 * float(mods.get("spin", 1.0))
@@ -3090,7 +4095,7 @@ func _devices(delta: float, pp: Vector2) -> void:
 					break
 		if trod:
 			for j in touching(mp, float(mn["r"])):
-				if j < n:
+				if j < n and _sees(mp, fp[j]):
 					_hit(j, float(mn["dmg"]), mp)
 			if blasts.size() < 40:
 				blasts.append({"pos": mp, "r": float(mn["r"]), "t": 0.0})
@@ -3121,6 +4126,8 @@ func _devices(delta: float, pp: Vector2) -> void:
 		if float(s["cd"]) <= 0.0:
 			s["cd"] = float(SD.WEAPONS["sentry"]["rate"]) * float(mods["cd"])
 			var near: Array = touching(spos, reach)
+			if walls_on:                                        # (part 11a) it fires at whom it sees
+				near = near.filter(func(j9): return j9 < n and _sees(spos, fp[j9]))
 			if not near.is_empty():
 				near.sort_custom(func(a, b): return fp[a].distance_squared_to(spos) < fp[b].distance_squared_to(spos))
 				var aim: Array = near.slice(0, 1 + _more())
@@ -3147,6 +4154,10 @@ func _devices(delta: float, pp: Vector2) -> void:
 	while q >= 0:                                           # a black hole: it drifts on to the edge of the picture and swallows what comes near it
 		var h: Dictionary = holes[q]
 		var hpos: Vector2 = (h["p"] as Vector2) + (h["v"] as Vector2) * delta
+		if walls_on and _wall[_ti(hpos)] != 0:                # (part 11a) a wall turns it back
+			var hb: Array = _bounce(h["p"], h["v"], delta)
+			hpos = hb[0]
+			h["v"] = hb[1]
 		h["p"] = hpos
 		if bool(h.get("u", false)) and _frame % 3 == 0:        # (the Event Horizon: the wake it leaves)
 			var htr: PackedVector2Array = h.get("tr", PackedVector2Array())
@@ -3179,7 +4190,7 @@ func _devices(delta: float, pp: Vector2) -> void:
 					_hit(j4, 1000000.0, fp[j4])
 				continue
 			var hto := fp[j4] + d4 * (minf(l4, 150.0 * clampf(_mass[k4] + 0.35, 0.4, 1.3) * (0.4 + 0.6 * (1.0 - l4 / hr)) * delta) / l4)
-			if _beh[k4] == 5 or _solid[_ti(hto)] == 0:
+			if _beh[k4] == 5 or (_solid[_ti(hto)] == 0 and not _shut(fp[j4], hto)):
 				fp[j4] = hto
 		if absf(hpos.x - pp.x) > edge.x + hr or absf(hpos.y - pp.y) > edge.y + hr or float(h["t"]) > 40.0 or hpos.x < 0.0 or hpos.y < 0.0 or hpos.x > _w * TL or hpos.y > _h * TL:
 			holes.remove_at(q)
@@ -3206,7 +4217,7 @@ func _devices(delta: float, pp: Vector2) -> void:
 				var l := d.length()
 				if l > 2.0:
 					var to := fp[j3] + d * (minf(l, 64.0 * clampf(_mass[k] + 0.3, 0.35, 1.3) * delta) / l)
-					if _solid[_ti(to)] == 0:
+					if _solid[_ti(to)] == 0 and not _shut(fp[j3], to):
 						fp[j3] = to
 			if crush:
 				_hit(j3, float(w["dmg"]) * 12.0 if (_tough[k] != 0 or fal[j3] != 0) else 1000000.0, fp[j3])
@@ -3347,7 +4358,8 @@ func _to_bands(pp: Vector2) -> void:
 		if _digs[fk[i]] != 0 and fst[i] < 2:                # (part 9a) under the ice: no figure, a shape on the ground
 			if fk[i] == _burrow_k:
 				_marks.append(["burrow", p, -1.0 if fst[i] == 0 else clampf(1.0 - ftm[i] / _bur_warn, 0.0, 1.0), i])
-			continue
+			if fk[i] != _grey_k:                              # (part 11a: a Grey inside a wall is still to be seen, pale)
+				continue
 		var b2 := clampi(int(p.y) >> 4, 0, _h - 1)
 		var bd: Band = _bands[b2]
 		if bd.ids.is_empty():
@@ -3361,7 +4373,7 @@ func _to_bands(pp: Vector2) -> void:
 			_marks.append(["spit", p, 1.0 - ftm[i] / 0.5, i])
 		elif bh == 4 and fst[i] == 1:
 			_marks.append(["howl", p, 0.0, i])
-		elif bh == 9 and fst[i] == 1:
+		elif (bh == 9 or bh == 16) and fst[i] == 1:
 			_marks.append(["aim", p, clampf(1.0 - ftm[i] / 0.7, 0.0, 1.0), i])
 		elif bh == 8 and fst[i] == 1:
 			_marks.append(["leap", p, 0.0, i])
@@ -3373,11 +4385,15 @@ func _to_bands(pp: Vector2) -> void:
 			_marks.append(["arm", p, 0.0, i])
 		elif bh == 5 and k == _hunter_k:
 			_marks.append(["beam", p, 0.0, i])
+		elif bh == 5 and k == _saucer_k:
+			_marks.append(["tractor", p, 0.0, i])            # (part 11b) a saucer's beam
+		elif bh == 17:
+			_marks.append(["pull", p, 0.0, i])               # … a brain's pull
 		if fovr[i] > 0.0:
 			_marks.append(["ovr", p, 0.0, i])                 # (part 7f) turned by an Override: a sign over it
 		if fal[i] != 0:
 			_marks.append(["alpha", p, fhp[i] / maxf(1.0, fmx[i]), i])
-		elif (bh == 2 or bh == 10 or bh == 24) and fhp[i] < fmx[i]:
+		elif (bh == 2 or bh == 10 or bh == 24 or k == _spec_k) and fhp[i] < fmx[i]:
 			_marks.append(["bar", p, fhp[i] / maxf(1.0, fmx[i]), i])
 	for b3 in _used:
 		(_bands[b3] as Band).queue_redraw()
@@ -3397,6 +4413,8 @@ func draw_band(band: Band) -> void:
 		var sz: Vector2 = _tsz[k]
 		if fal[i] != 0:
 			sz *= 1.45
+		if k == _mm_k:
+			sz *= 1.5                                             # (part 11c: The Mastermind is as large as what slept in the tank)
 		var tex: Texture2D = _tex[((k * 4 + fv[i]) * 4 + fface[i]) * 3 + (0 if (ffr[i] > 0.0 or fstun[i] > 0.0) else WALK[((tkf if _beh[k] == 5 else tk) + i) & 3])]
 		var sw := _rad[k] * 4.0 * (1.45 if fal[i] != 0 else 1.0)
 		band.draw_rect(Rect2(at + Vector2(-sw * 0.5, -3.0), Vector2(sw, 6.0)), Color(0, 0, 0, 0.3))
@@ -3406,6 +4424,8 @@ func draw_band(band: Band) -> void:
 			col = Color(1.7, 1.6, 0.8)                           # (stunned by a shock: lit yellow)
 		if fovr[i] > 0.0 and fflash[i] <= 0.0:
 			col = Color(0.7, 1.7, 0.85)                          # (turned by an Override: it is yours for now)
+		if k == _grey_k and fst[i] < 2:
+			col.a = 0.36                                           # (part 11a: a Grey inside a wall)
 		if k == _burrow_k and fst[i] == 3:
 			col.a = clampf(ftm[i] / 0.45, 0.0, 1.0)              # (part 9a: a burrower going back under the ice)
 		band.draw_texture_rect(tex, Rect2(at + Vector2(-sz.x * 0.5, -sz.y - lift), sz), false, col)
@@ -3426,6 +4446,8 @@ func _draw() -> void:
 	var pc: Vector2 = pp * S
 	var half := (_half() + Vector2(60.0, 60.0)) * S
 	var tnow := float(run["t"])
+	if walls_on:
+		_lab_ground(pc, half)
 	for sl in sleepers:                                     # those lying in the colony
 		var lp: Vector2 = (sl["pos"] as Vector2) * S
 		if absf(lp.x - pc.x) < half.x and absf(lp.y - pc.y) < half.y:
@@ -3782,7 +4804,7 @@ func _draw() -> void:
 	for hal8 in halos:                                      # … a burst of the halo, running out
 		SFX.halo_ground(self, (hal8["c"] as Vector2) * S, float(hal8["r"]) * S, clampf((float(hal8["r"]) - float(hal8["from"])) / maxf(1.0, float(hal8["to"]) - float(hal8["from"])), 0.0, 1.0), tnow)
 	if not sweep.is_empty() and bool(sweep.get("u", false)):      # the Sunlance: what it burns into the ground where its beam ends
-		SFX.sun_ground(self, pc, float(sweep["a"]), float(sweep["reach"]) * S, -1.0 if float(sweep["to"]) < float(sweep["a0"]) else 1.0, float(sweep["a0"]))
+		SFX.sun_ground(self, pc, float(sweep["a"]), _sweep_len() * S, -1.0 if float(sweep["to"]) < float(sweep["a0"]) else 1.0, float(sweep["a0"]))
 	if nova_r > 0.0:                                        # the Nova Field stands
 		SFX.nova_ground(self, pc, nova_r * S, tnow, clampf(float(_wt.get("pulse", 0.0)) / 0.35, 0.0, 1.0))
 	elif plv > 0:
@@ -3832,7 +4854,7 @@ func _draw() -> void:
 ## The four sides of the walls of light as they stand now (each from its corners towards its middle).
 func _wall_lines() -> Array:
 	var out: Array = []
-	if barrier_k <= 0.0:
+	if barrier_k <= 0.0 or walls_on:                        # (part 11c: on a stage with walls the fields across the doorways are drawn instead)
 		return out
 	var r := barrier
 	var cs: Array = [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
@@ -3854,6 +4876,8 @@ func draw_glow(o: Node2D) -> void:
 	var mag2: float = pow(SD.MAGNET * float(mods["mag"]), 2.0)
 	var tnow := float(run["t"])
 	var all := magnet_t > 0.0
+	if walls_on:
+		_lab_glow(o, gt)
 	for q in sn:
 		var tier := stier[q]
 		var col: Color = SArt.SHARD_COL[tier]
@@ -3879,7 +4903,7 @@ func draw_glow(o: Node2D) -> void:
 		elif bc8 == 2:
 			SFX.chain_glow(o, gt, (bm8["a"] as Vector2) * S, (bm8["b"] as Vector2) * S, bk8, float(_frame / 2) * 3.1 + (bm8["a"] as Vector2).x * 0.13 + (bm8["b"] as Vector2).y * 0.07)
 	if not sweep.is_empty() and bool(sweep.get("u", false)):      # the Sunlance
-		SFX.sun_glow(o, gt, pc + ch8, float(sweep["a"]), float(sweep["reach"]) * S, tnow)
+		SFX.sun_glow(o, gt, pc + ch8, float(sweep["a"]), _sweep_len() * S, tnow)
 	for bl8 in blades:                                      # a silverblade's trail of silver light
 		var tr8 := PackedVector2Array()
 		for tp8 in bl8.get("tr", PackedVector2Array()):
@@ -3966,7 +4990,7 @@ func draw_glow(o: Node2D) -> void:
 		o.draw_texture_rect(gt, Rect2((bl["pos"] as Vector2) * S - Vector2(br, br) * 0.5, Vector2(br, br)), false, Color(0.4, 1.0, 0.65, 0.6 * (1.0 - kb)))
 	for g in globs:                                         # acid on its way (a gunner's bolt: red)
 		var gp: Vector2 = (g["p"] as Vector2) * S + Vector2(0.0, -20.0)
-		o.draw_texture_rect(gt, Rect2(gp - Vector2(22.0, 22.0), Vector2(44.0, 44.0)), false, Color(1.0, 0.3, 0.2, 0.8) if g.has("bolt") else Color(0.5, 1.0, 0.3, 0.7))
+		o.draw_texture_rect(gt, Rect2(gp - Vector2(22.0, 22.0), Vector2(44.0, 44.0)), false, Color(0.8, 0.4, 1.0, 0.85) if g.has("mind") else (Color(1.0, 0.3, 0.2, 0.8) if (g.has("bolt") or g.has("ray")) else Color(0.5, 1.0, 0.3, 0.7)))
 	if String(run.get("stage", "")) == "takeover":           # (part 8) the machines' red eyes in the dark; tracers of a far fight over the field
 		for b0 in _used:
 			for i0 in (_bands[b0] as Band).ids:
@@ -4110,6 +5134,8 @@ func draw_glow(o: Node2D) -> void:
 
 func draw_over(o: Node2D) -> void:
 	var tnow := float(run["t"])
+	if walls_on:
+		_lab_over(o)
 	if not vents.is_empty() or bright:
 		var vpc: Vector2 = view.pilot.pos * S
 		var vhalf := (_half() + Vector2(90.0, 200.0)) * S
@@ -4161,6 +5187,18 @@ func draw_over(o: Node2D) -> void:
 	var ch: Vector2 = CHEST * S
 	for g in globs:                                         # acid in the air (a gunner's bolt: a short red streak)
 		var gp: Vector2 = (g["p"] as Vector2) * S + Vector2(0.0, -20.0)
+		if g.has("mind"):                                     # (part 11c) a thought of The Mastermind's: an orb in a ring
+			o.draw_circle(gp, 7.0, Color(0.85, 0.5, 1.0, 0.9))
+			o.draw_circle(gp, 3.5, Color(1.0, 0.93, 1.0))
+			o.draw_arc(gp, 11.0, 0.0, TAU, 12, Color(0.8, 0.45, 1.0, 0.6), 2.0)
+			continue
+		if g.has("ray"):                                      # (part 11b) a trooper's ray: rings of light, one behind the other
+			var rd9 := (g["v"] as Vector2).normalized()
+			for rq9 in 3:
+				o.draw_set_transform(gp - rd9 * (rq9 * 10.0), rd9.angle(), Vector2(0.45, 1.0))
+				o.draw_arc(Vector2.ZERO, 12.0 - rq9 * 2.5, 0.0, TAU, 14, Color(1.0, 0.3 + rq9 * 0.14, 0.25, 0.95 - rq9 * 0.22), 3.0)
+			o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			continue
 		if g.has("needle"):                                   # (part 9b) a needle of ice: pale, a dark edge to it
 			var nd9 := (g["v"] as Vector2).normalized()
 			o.draw_line(gp - nd9 * 20.0, gp + nd9 * 2.0, Color(0.05, 0.12, 0.3), 6.0)
@@ -4312,17 +5350,26 @@ func draw_over(o: Node2D) -> void:
 		var so: Vector2 = view.pilot.pos * S + ch
 		var way := -1.0 if float(sweep["to"]) < float(sweep["a0"]) else 1.0
 		if bool(sweep.get("u", false)):                       # (the Sunlance: a beam like a sun's)
-			SFX.sun_over(o, so, float(sweep["a"]), float(sweep["reach"]) * S, way, float(sweep["a0"]), tnow)
+			SFX.sun_over(o, so, float(sweep["a"]), _sweep_len() * S, way, float(sweep["a0"]), tnow)
 		else:
 			for tq in range(6, 0, -1):                           # (what it leaves behind for a moment)
 				var ta := float(sweep["a"]) - way * tq * 0.045
 				if (ta - float(sweep["a0"])) * way < 0.0:
 					continue
-				o.draw_line(so, so + Vector2.from_angle(ta) * float(sweep["reach"]) * S, Color(1.0, 0.35, 0.65, 0.22 - tq * 0.03), 18.0)
-			var se: Vector2 = so + Vector2.from_angle(float(sweep["a"])) * float(sweep["reach"]) * S
+				o.draw_line(so, so + Vector2.from_angle(ta) * _sweep_len() * S, Color(1.0, 0.35, 0.65, 0.22 - tq * 0.03), 18.0)
+			var se: Vector2 = so + Vector2.from_angle(float(sweep["a"])) * _sweep_len() * S
 			o.draw_line(so, se, Color(1.0, 0.3, 0.6, 0.55), 30.0)
 			o.draw_line(so, se, Color(1.0, 0.75, 0.9), 14.0)
 			o.draw_line(so, se, Color(1, 1, 1), 5.0)
+	if not sweep.is_empty() and walls_on:                   # (part 11a) the beam a wall turns back
+		var sb9: Array = _sweep_bounce()
+		if not sb9.is_empty():
+			var b9a: Vector2 = (sb9[0] as Vector2) * S + ch
+			var b9b: Vector2 = (sb9[1] as Vector2) * S + ch
+			o.draw_line(b9a, b9b, Color(1.0, 0.3, 0.6, 0.45), 24.0)
+			o.draw_line(b9a, b9b, Color(1.0, 0.75, 0.9), 11.0)
+			o.draw_line(b9a, b9b, Color(1, 1, 1), 4.0)
+			o.draw_circle(b9a, 15.0, Color(1.0, 0.82, 0.95, 0.85))
 	var spin := tnow * 14.0
 	for bl9 in blades:                                      # the silverblades: each with a trail of silver behind it (Luz, 23 Nov 2026)
 		var tr9 := PackedVector2Array()
@@ -4348,7 +5395,7 @@ func draw_over(o: Node2D) -> void:
 	for ln in _wall_lines():                                # the walls of light: a bright line, posts at the corners
 		o.draw_line(ln[0], ln[1], Color(1.0, 0.5, 0.35), 3.0)
 		o.draw_line(ln[0] + Vector2(0.0, -26.0), ln[1] + Vector2(0.0, -26.0), Color(1.0, 0.4, 0.3, 0.5), 2.0)
-	if barrier_k > 0.0:
+	if barrier_k > 0.0 and not walls_on:
 		for cq in [barrier.position, Vector2(barrier.end.x, barrier.position.y), barrier.end, Vector2(barrier.position.x, barrier.end.y)]:
 			var cc: Vector2 = (cq as Vector2) * S
 			o.draw_rect(Rect2(cc + Vector2(-5.0, -40.0), Vector2(10.0, 42.0)), Color(0.2, 0.22, 0.28))

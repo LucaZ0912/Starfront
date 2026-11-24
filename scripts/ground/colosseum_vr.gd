@@ -418,6 +418,18 @@ class VrFx extends Node2D:
 								var op := r.position + Vector2(8.0 + _h(ri * 19 + k6, 11) * (r.size.x - 26.0), 8.0 + _h(ri * 19 + k6, 12) * (r.size.y - 16.0))
 								draw_rect(Rect2(op + Vector2(sin(_t * 0.5 + k6) * 2.0, 0.0), Vector2(7.0, 1.0)), Color.from_hsv(fposmod(_h(k6, 13) + _t * 0.05, 1.0), 0.5, 0.9, 0.35))
 							continue
+						if String(hz.get("look", "")) == "nutrient":        # (part 11a) spilled nutrient: a green pool that glows, bubbles rising in it
+							for nu_q in 6:
+								var nu_c := r.get_center() + Vector2((_h(ri * 29 + nu_q, 17) - 0.5) * r.size.x * 0.55, (_h(ri * 29 + nu_q, 18) - 0.5) * r.size.y * 0.45)
+								draw_set_transform(nu_c, 0.0, Vector2(1.0, 0.6))
+								draw_circle(Vector2.ZERO, r.size.x * (0.2 + 0.12 * _h(ri * 29 + nu_q, 19)), Color(0.12, 0.6, 0.28, 0.42))
+								draw_circle(Vector2.ZERO, r.size.x * (0.11 + 0.08 * _h(ri * 29 + nu_q, 19)), Color(0.35, 0.95, 0.5, 0.25))
+								draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+							for nu_k in 10:
+								var nu_p := r.position + Vector2(10.0 + _h(ri * 31 + nu_k, 20) * (r.size.x - 20.0), 8.0 + _h(ri * 31 + nu_k, 21) * (r.size.y - 16.0))
+								var nu_b := fposmod(_t * 0.7 + _h(nu_k, 22), 1.0)
+								draw_circle(nu_p, 1.0 + nu_b * 2.2, Color(0.7, 1.0, 0.75, 0.6 * (1.0 - nu_b)))
+							continue
 						if String(hz.get("look", "")) == "coolant":         # (part 7) spilled coolant: a pale blue sheet, glints drifting over it
 							draw_rect(r.grow(-4.0), Color(0.25, 0.75, 0.95, 0.3))
 							draw_rect(r.grow(-10.0), Color(0.45, 0.9, 1.0, 0.22))

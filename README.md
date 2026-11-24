@@ -412,6 +412,27 @@ Slanted, cosy top-down view since 0.7.49.2.
   `data/acquaintances.gd` (people, events on story flags, `value`, `level`, `add`, `played_with`, `refresh`; state in
   the story's flags `acq_*`), Pilot window tab `TAB_ACQ` with `_AcqBar`; story text `{start_faction_name}`; smoke
   groups `w59a`, `w59b`, `w59c`, `acq60`.
+- 0.8.62.31 (package 62a, part 11c): `data/survivor.gd`: the bosses `apex` ("beh" 27) and `mastermind` ("beh" 28), the
+  stage's `soft` and `end`, `CORE_BOSS`; `survivor_game.gd`: `_lab_boss_start()` (called by `boss_start` on a stage
+  with walls), `_lock_wait`, `_lock_reg`, `_apex()`, `_mastermind()`, `_mind_ring()`, `_hurl()`, `hurls`,
+  `_boss_pull`, `_remove_object()`, `_alarm()`; a thrown `mind` passes what stands in a hall; `lab_art.gd`: the
+  great tank burst (`seed` 9); `survivor_art.gd` `_apex`, `_mastermind`; smoke test group `collabc62a`.
+- 0.8.62.30 (package 62a, part 11b): `data/survivor.gd`: the kinds `trooper` ("beh" 16), `brain` ("beh" 17), `saucer`,
+  `LAB_EVENTS`, `LOCK_TIME`, `PURGE_*`, `BREACH_TANKS`, `GRID_*`, `SEAL_FOES`, the item `seal`; `survivor_lab.gd`: the
+  map meta `sv_grids`; `survivor_game.gd`: `lock_t`, `lock_r`, `lock_doors`, `seal_t`, `seal_r`, `seal_doors`,
+  `purge`, `grids`, `pull`, `hold_t`, `_lab_step()`, `_shut(p, q)`, `_doors_of()`, `_reg_name()`, `_burn_line()`,
+  `_breach()`, `_swap_object()`, `_lab_ground()`, `_lab_over()`, `_lab_glow()`, `_field()`; the events `lockdown`,
+  `purge`, `breach`; a thrown `ray` with `r2`; `survivor_art.gd` `_trooper`, `_brain`, `_saucer_small`;
+  `survivor_ui.gd`: the HUD's notes in the laboratory, the icon `seal`; smoke test group `collabb62a`.
+- 0.8.62.29 (package 62a, part 11a): the stage `lab` in `data/survivor.gd` (`STAGES`, `STAGE_DATA`, `LAB_WAVES`, the kinds
+  `lgm`, `grey` ("beh" 15), `specimen`); `scripts/ground/survivor_lab.gd` builds its map (`room(c, r)`, `RW`, `RH`,
+  `CL`, `CW`; map metas `sv_walls`, `sv_regions`, `sv_links`, `sv_room_ids`); `scripts/ground/lab_art.gd` draws it
+  (the map's style `lab`: `floor_tile` for floor kinds 51 and 52, `face_tile`, `cap_tile`, `decal` for kinds
+  beginning with `lab_`; the furniture `OBJ_KINDS` through `ObjArt`); `survivor_game.gd`: `walls_on`, `_wall`,
+  `_reg`, `_regs`, `_links`, `_hop`, `_hop2`, `_wall_setup()`, `_steer(p, pp, i)`, `_sees(a, b)`, `_free_len`,
+  `_reach`, `_bounce`, `_orb_at`, `_sweep_len`, `_sweep_bounce`; `survivor_art.gd` `_lgm`, `_grey`, `_specimen`;
+  `survivor_ui.gd` `Intro._vista_lab`; `colosseum_vr.gd`: the hazard look `nutrient`; smoke test group `collab62a`;
+  sheets without a window: `Claude outputs/_furn/lab.tscn`.
 - 0.8.62.28 (package 62a, parts 10b and 10c): `data/survivor.gd` `rig_tier(col)`, `RIG_STEPS`, `RIG_NAMES`, `RIG_SUIT`
   (the record's `suit`, `rig_force`); `chibi_art.gd`: a look's `sv` (0 … 10) or the suit `suit_survivor` is drawn by
   `_sv_frame` on a canvas padded by `SV_PAD`; `sv_tier(look)`, `glow(look, dir, f)` (four masks of lights), `sv_hue`;

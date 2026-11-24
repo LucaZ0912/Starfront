@@ -14,7 +14,7 @@ const SKINS := [Color(0.5, 0.62, 0.44), Color(0.56, 0.6, 0.5), Color(0.44, 0.56,
 
 ## How large the picture of each kind is (art px; a shambler's where a kind is not named).
 const SIZES := {"warden": Vector2i(76, 64), "core": Vector2i(52, 66), "pylon": Vector2i(20, 60), "bulwark": Vector2i(36, 62), "seeker": Vector2i(16, 16), "jammer": Vector2i(20, 46), "hunter": Vector2i(44, 22), "enforcer": Vector2i(22, 58), "gunner": Vector2i(26, 58), "scout": Vector2i(30, 22), "hauler": Vector2i(40, 56), "bloater": Vector2i(32, 40), "shieldbearer": Vector2i(28, 40), "screecher": Vector2i(38, 24), "foreman": Vector2i(52, 66),
-	"brood": Vector2i(78, 66), "mite": Vector2i(22, 14), "burrower": Vector2i(28, 30), "rimeback": Vector2i(36, 34), "glider": Vector2i(44, 22), "worm": Vector2i(48, 76), "heart": Vector2i(48, 70)}
+	"brood": Vector2i(78, 66), "lgm": Vector2i(22, 30), "grey": Vector2i(22, 44), "specimen": Vector2i(40, 54), "trooper": Vector2i(24, 34), "brain": Vector2i(26, 38), "saucer": Vector2i(44, 22), "apex": Vector2i(72, 58), "mastermind": Vector2i(64, 88), "mite": Vector2i(22, 14), "burrower": Vector2i(28, 30), "rimeback": Vector2i(36, 34), "glider": Vector2i(44, 22), "worm": Vector2i(48, 76), "heart": Vector2i(48, 70)}
 
 static var _cache := {}
 
@@ -90,6 +90,22 @@ static func image(kind: String, v: int, dir: int, f: int) -> Image:
 			_iceworm(img, d, f)
 		"heart":
 			_stormheart(img, f)
+		"lgm":
+			_lgm(img, d, f, v)
+		"grey":
+			_grey(img, d, f, v)
+		"specimen":
+			_specimen(img, d, f, v)
+		"trooper":
+			_trooper(img, d, f, v)
+		"brain":
+			_brain(img, d, f, v)
+		"saucer":
+			_saucer_small(img, f, v)
+		"apex":
+			_apex(img, d, f)
+		"mastermind":
+			_mastermind(img, f)
 		_:
 			_shambler(img, d, f, v)
 	if dir == 3:
@@ -1466,3 +1482,463 @@ static func _stormheart(img: Image, f: int) -> void:
 		CA._px(img, int(sp.x), int(sp.y) - 3, pale)
 	for q2 in 7:                                                       # the ice under it
 		CA._r(img, cx - 13 + q2 * 4, img.get_height() - 5 - (q2 % 3), 3, 3 + (q2 % 3), FROST if q2 % 2 == 0 else FROST_D)
+
+
+# ---------------------------------------------------------------- part 11a: the Alien Laboratory
+
+const LGM_SKIN := [Color(0.45, 0.85, 0.36), Color(0.38, 0.78, 0.42), Color(0.55, 0.88, 0.3), Color(0.4, 0.8, 0.5)]
+const LGM_SUIT := [Color(0.72, 0.76, 0.82), Color(0.82, 0.27, 0.22), Color(0.26, 0.46, 0.86), Color(0.86, 0.76, 0.22)]
+const GREY_SKIN := [Color(0.62, 0.64, 0.68), Color(0.58, 0.63, 0.66), Color(0.66, 0.65, 0.7), Color(0.55, 0.6, 0.62)]
+const SPEC_SKIN := [Color(0.42, 0.62, 0.55), Color(0.5, 0.6, 0.45), Color(0.4, 0.55, 0.62), Color(0.55, 0.58, 0.5)]
+
+
+## The little green man (part 11a, Luz: the green ones of the old pictures): half your height, a head far too large,
+## two antennae with a light at each tip, large black eyes, a small suit in one of four colours.
+static func _lgm(img: Image, dir: int, f: int, v: int) -> void:
+	var skin: Color = LGM_SKIN[v % 4]
+	var skin2 := skin.darkened(0.3)
+	var suit: Color = LGM_SUIT[v % 4]
+	var suit2 := suit.darkened(0.32)
+	var black := Color(0.04, 0.05, 0.05)
+	var cx := img.get_width() / 2
+	var hh := img.get_height()
+	var step := 0 if f == 0 else (1 if f == 1 else -1)
+	var side := dir == 2
+	var back := dir == 1
+	var hip := hh - 7
+	for leg in [-1, 1]:
+		var up: int = maxi(0, step * leg)
+		var lx: int = (cx - 3 if leg == -1 else cx + 1) if not side else cx - 1 + leg * step
+		CA._r(img, lx, hip, 2, 4 - up, suit2 if leg == -1 else suit)
+		CA._r(img, lx - (1 if side else 0), hh - 3 - up, 3, 2, Color(0.14, 0.14, 0.17))
+	var bw := 4 if side else 6
+	CA._r(img, cx - bw / 2, hip - 7, bw, 7, suit)
+	CA._r(img, cx - bw / 2, hip - 7, bw, 1, suit2)
+	CA._r(img, cx - bw / 2, hip - 2, bw, 1, Color(0.95, 0.85, 0.3))            # its belt
+	if not side and not back:
+		CA._px(img, cx, hip - 5, Color(1.0, 0.95, 0.5))                          # a badge
+	if side:
+		CA._r(img, cx - 1, hip - 6, 1, 5 + step, skin2)
+		CA._px(img, cx - 1 - step, hip - 1 + step, skin)
+	else:
+		for arm in [-1, 1]:
+			var ax: int = cx - 4 if arm == -1 else cx + 3
+			CA._r(img, ax, hip - 6, 1, 4 + step * arm, skin2)
+			CA._px(img, ax, hip - 2 + step * arm, skin)
+	var hx := cx - (2 if side else 0)
+	var hy := hip - 13
+	CA._ell(img, hx + 0.5, float(hy), 6.0, 5.5, skin)                           # the head
+	CA._ell(img, hx + 0.5, hy + 3.0, 4.0, 3.0, skin)
+	CA._ell(img, hx + 2.5, hy - 2.0, 2.0, 1.5, skin.lightened(0.18))
+	for an in [-1, 1]:                                                          # the antennae, a light at each tip
+		var ax2: int = hx + an * 3 - (1 if side else 0)
+		CA._r(img, ax2, hy - 9, 1, 4, skin2)
+		CA._px(img, ax2 + (0 if side else an), hy - 10, Color(1.0, 1.0, 0.5))
+	if back:
+		return
+	if side:
+		CA._r(img, hx - 4, hy - 1, 2, 3, black)
+		CA._px(img, hx - 4, hy - 1, Color(1, 1, 1))
+		CA._px(img, hx - 4, hy + 4, skin2)
+	else:
+		CA._r(img, hx - 3, hy - 1, 2, 3, black)
+		CA._r(img, hx + 2, hy - 1, 2, 3, black)
+		CA._px(img, hx - 3, hy - 1, Color(1, 1, 1))
+		CA._px(img, hx + 2, hy - 1, Color(1, 1, 1))
+		CA._r(img, hx, hy + 4, 2, 1, skin2)
+
+
+## The Grey (part 11a, Luz: the grey ones): taller than you and thin as a rail, the head an egg standing on its
+## point, the eyes large, black and slanted, the arms down to the knees. No suit, no mouth to speak of.
+static func _grey(img: Image, dir: int, f: int, v: int) -> void:
+	var skin: Color = GREY_SKIN[v % 4]
+	var skin2 := skin.darkened(0.28)
+	var black := Color(0.03, 0.03, 0.05)
+	var cx := img.get_width() / 2
+	var hh := img.get_height()
+	var step := 0 if f == 0 else (1 if f == 1 else -1)
+	var side := dir == 2
+	var back := dir == 1
+	var hip := hh - 16
+	for leg in [-1, 1]:
+		var up: int = maxi(0, step * leg)
+		var lx: int = (cx - 3 if leg == -1 else cx + 1) if not side else cx - 1 + leg * step
+		CA._r(img, lx, hip, 2, 13 - up, skin2 if leg == -1 else skin)
+		CA._r(img, lx - (1 if side else 0), hh - 3 - up, 3, 2, skin2.darkened(0.25))
+	var bw := 5 if side else 6
+	CA._r(img, cx - bw / 2, hip - 13, bw, 13, skin)
+	CA._r(img, cx - bw / 2 - (0 if side else 1), hip - 13, bw + (0 if side else 2), 2, skin)      # the shoulders, narrow
+	CA._r(img, cx - bw / 2, hip - 9, bw, 1, skin2)                            # (its ribs)
+	CA._r(img, cx - bw / 2, hip - 6, bw, 1, skin2)
+	CA._r(img, cx - bw / 2, hip - 1, bw, 1, skin2)
+	if side:
+		CA._r(img, cx - 1, hip - 12, 2, 15 + step, skin2)
+		CA._r(img, cx - 1 - step, hip + 3 + step, 1, 3, skin)
+	else:
+		for arm in [-1, 1]:
+			var ax: int = cx - 5 if arm == -1 else cx + 4
+			CA._r(img, ax, hip - 12, 1, 15 + step * arm, skin2)
+			CA._r(img, ax, hip + 3 + step * arm, 1, 3, skin)                    # long fingers
+	CA._r(img, cx - 1 - (1 if side else 0), hip - 15, 2, 2, skin2)             # a thin neck
+	var hx := cx - (2 if side else 0)
+	var hy := hip - 21
+	if side:                                                                  # the head from its side: long to the back, the face a point
+		CA._ell(img, hx + 2.5, hy - 1.0, 7.0, 5.5, skin)
+		CA._ell(img, hx - 1.5, hy + 1.0, 4.5, 5.0, skin)
+		for q0 in 4:
+			CA._r(img, hx - 5 + q0, hy + 5 + q0, 6 - q0, 1, skin if q0 < 3 else skin2)
+		CA._r(img, cx, hip - 11, 2, 9, skin)                                   # its arm, before the body
+		CA._r(img, cx - 1, hip - 3, 2, 6 + step, skin)
+	else:
+		CA._ell(img, hx + 0.5, float(hy), 6.5, 6.0, skin)                      # the head: wide above, a point below
+		for q in 4:
+			CA._r(img, hx - 3 + q, hy + 5 + q, 7 - q * 2, 1, skin if q < 3 else skin2)
+	CA._ell(img, hx + 2.5, hy - 3.0, 2.5, 1.6, skin.lightened(0.16))
+	if back:
+		CA._r(img, hx, hy - 3, 1, 7, skin2)
+		return
+	if side:
+		CA._r(img, hx - 5, hy, 2, 1, black)
+		CA._r(img, hx - 6, hy + 1, 4, 1, black)
+		CA._r(img, hx - 5, hy + 2, 3, 1, black)
+		CA._px(img, hx - 5, hy + 1, Color(0.6, 0.7, 0.85))
+	else:
+		for e in [-1, 1]:
+			CA._r(img, hx + (-4 if e == -1 else 3), hy, 2, 1, black)
+			CA._r(img, hx + (-5 if e == -1 else 2), hy + 1, 4, 1, black)
+			CA._r(img, hx + (-4 if e == -1 else 2), hy + 2, 3, 1, black)
+			CA._px(img, hx + (-4 if e == -1 else 4), hy + 1, Color(0.6, 0.7, 0.85))
+		CA._px(img, hx, hy + 5, skin2)
+		CA._px(img, hx + 1, hy + 5, skin2)
+		CA._r(img, hx, hy + 7, 2, 1, skin2)
+
+
+## The specimen (part 11a): something out of one of the tanks: a hunched mass on short legs, the arms down to the
+## floor, a small head sunk between the shoulders with three eyes of light; what is left of the tank still on it:
+## a collar, a cuff, hoses out of its back.
+static func _specimen(img: Image, dir: int, f: int, v: int) -> void:
+	var skin: Color = SPEC_SKIN[v % 4]
+	var skin2 := skin.darkened(0.3)
+	var dark := skin.darkened(0.6)
+	var eye := Color(0.65, 1.0, 0.4)
+	var metal := Color(0.34, 0.36, 0.4)
+	var hose := Color(0.1, 0.1, 0.13)
+	var cx := img.get_width() / 2
+	var hh := img.get_height()
+	var step := 0 if f == 0 else (1 if f == 1 else -1)
+	var side := dir == 2
+	var back := dir == 1
+	var hip := hh - 14
+	for leg in [-1, 1]:
+		var up: int = maxi(0, step * leg) * 2
+		var lx: int = (cx - 8 if leg == -1 else cx + 3) if not side else cx - 3 + leg * step * 3
+		CA._r(img, lx, hip, 6, 11 - up, skin2 if leg == -1 else skin)
+		CA._r(img, lx - 1, hh - 4 - up, 8, 3, dark)
+	if side:
+		CA._ell(img, cx - 1.0, hip - 11.0, 10.0, 13.0, skin)
+		CA._ell(img, cx + 3.0, hip - 19.0, 9.0, 8.0, skin.lightened(0.06))      # the hump
+		CA._ell(img, cx - 3.0, hip - 4.0, 7.0, 5.0, skin2)
+	else:
+		CA._ell(img, float(cx), hip - 11.0, 14.0, 13.0, skin)
+		CA._ell(img, float(cx), hip - 19.0, 13.0, 7.0, skin.lightened(0.06))    # the shoulders
+		if not back:
+			CA._ell(img, float(cx), hip - 4.0, 9.0, 5.0, skin2)
+	for q in 6:                                                               # blotches
+		CA._r(img, cx - 9 + int(_hash1(q * 7 + v) * 18.0), hip - 20 + int(_hash1(q * 13 + v + 3) * 16.0), 2, 2, skin2.darkened(0.15))
+	if side:
+		_limb(img, Vector2(cx - 5, hip - 17), Vector2(cx - 13, hip + 2 + step * 2), 5, skin)
+		CA._r(img, cx - 17, hip + 1 + step * 2, 7, 5, skin.lightened(0.05))
+		for c in 3:
+			CA._px(img, cx - 17 + c * 2, hip + 6 + step * 2, dark)
+		CA._r(img, cx - 14, hip - 3 + step, 6, 2, metal)
+	else:
+		for arm in [-1, 1]:
+			var ax: int = cx - 18 if arm == -1 else cx + 13
+			var sw: int = step * arm * 2
+			CA._r(img, ax, hip - 19, 5, 22 + sw, skin2 if arm == -1 else skin)
+			CA._r(img, ax - 1, hip + 2 + sw, 7, 5, skin.lightened(0.05))
+			for c2 in 3:
+				CA._px(img, ax + c2 * 2, hip + 7 + sw, dark)
+			if arm == 1:
+				CA._r(img, ax - 1, hip - 3 + sw, 7, 2, metal)                     # a cuff still on its wrist
+				CA._px(img, ax + 5, hip - 1 + sw, metal.lightened(0.3))
+	var hx := cx - (8 if side else 0)
+	var hy := hip - 23
+	if back:                                                                  # from behind: the hoses, torn off
+		for hq in 3:
+			_limb(img, Vector2(cx - 6 + hq * 6, hip - 24), Vector2(cx - 7 + hq * 7, hip - 8 + hq * 3), 2, hose)
+			CA._px(img, cx - 7 + hq * 7, hip - 6 + hq * 3, Color(0.4, 1.0, 0.5))
+		CA._ell(img, hx + 0.5, float(hy), 5.0, 4.0, skin2)
+		return
+	CA._ell(img, hx + 0.5, float(hy), 5.0, 4.5, skin.lightened(0.05))           # the head
+	CA._r(img, hx - 5, hy + 4, 11, 2, metal)                                  # its collar
+	CA._px(img, hx - 3, hy + 4, Color(1.0, 0.4, 0.3))
+	if side:
+		CA._px(img, hx - 3, hy, eye)
+		CA._px(img, hx - 2, hy - 2, eye)
+		CA._r(img, hx - 4, hy + 2, 3, 1, dark)
+		_limb(img, Vector2(cx + 6, hip - 25), Vector2(cx + 12, hip - 28), 2, hose)
+		_limb(img, Vector2(cx + 12, hip - 28), Vector2(cx + 16, hip - 22), 2, hose)
+		_limb(img, Vector2(cx + 16, hip - 22), Vector2(cx + 16, hip - 12), 2, hose)
+		CA._px(img, cx + 16, hip - 10, Color(0.4, 1.0, 0.5))
+	else:
+		CA._px(img, hx - 2, hy, eye)
+		CA._px(img, hx + 3, hy, eye)
+		CA._px(img, hx, hy - 2, eye)
+		CA._r(img, hx - 2, hy + 2, 5, 1, dark)
+		CA._px(img, hx - 1, hy + 2, Color(0.9, 0.9, 0.8))
+		CA._px(img, hx + 1, hy + 2, Color(0.9, 0.9, 0.8))
+		_limb(img, Vector2(cx + 8, hip - 25), Vector2(cx + 12, hip - 28), 2, hose)      # hoses out of its shoulders, hanging, one still dripping
+		_limb(img, Vector2(cx + 12, hip - 28), Vector2(cx + 18, hip - 22), 2, hose)
+		_limb(img, Vector2(cx + 18, hip - 22), Vector2(cx + 18, hip - 13), 2, hose)
+		_limb(img, Vector2(cx - 8, hip - 25), Vector2(cx - 13, hip - 27), 2, hose)
+		_limb(img, Vector2(cx - 13, hip - 27), Vector2(cx - 19, hip - 21), 2, hose)
+		CA._px(img, cx + 18, hip - 11, Color(0.4, 1.0, 0.5))
+		CA._px(img, cx + 18, hip - 8, Color(0.4, 1.0, 0.5))
+
+
+# ---------------------------------------------------------------- part 11b: the rest of the Alien Laboratory
+
+const RAY_GUN := [Color(0.86, 0.2, 0.16), Color(0.2, 0.5, 0.9), Color(0.9, 0.6, 0.15), Color(0.6, 0.3, 0.85)]
+const BRAINS := [Color(0.95, 0.6, 0.72), Color(0.78, 0.6, 0.95), Color(0.95, 0.72, 0.5), Color(0.62, 0.85, 0.7)]
+
+
+## The trooper (part 11b): a little green man in a silver suit, a bubble of glass over its head, a ray gun in its
+## hand: red, with rings round the barrel and a ball at its tip, as they always were.
+static func _trooper(img: Image, dir: int, f: int, v: int) -> void:
+	_lgm(img, dir, f, 0)
+	var gun: Color = RAY_GUN[v % 4]
+	var cx := img.get_width() / 2
+	var hh := img.get_height()
+	var step := 0 if f == 0 else (1 if f == 1 else -1)
+	var side := dir == 2
+	var back := dir == 1
+	var hip := hh - 7
+	var hx := cx - (2 if side else 0)
+	var hy := hip - 13
+	CA._r(img, cx - (2 if side else 3), hip - 7, 4 if side else 6, 1, gun)      # its collar, its pack
+	if back:
+		CA._r(img, cx - 2, hip - 6, 4, 5, Color(0.42, 0.45, 0.5))
+		CA._px(img, cx, hip - 5, gun)
+	for q in 28:                                                              # the bubble
+		var a := TAU * float(q) / 28.0
+		var bx := int(round(hx + 0.5 + cos(a) * 8.0))
+		var by := int(round(hy - 1.0 + sin(a) * 8.0))
+		CA._px(img, bx, by, Color(0.75, 0.95, 1.0) if sin(a) < 0.3 else Color(0.5, 0.7, 0.8))
+	CA._px(img, hx - 4, hy - 6, Color(1, 1, 1))
+	CA._px(img, hx - 5, hy - 5, Color(1, 1, 1))
+	if back:
+		return
+	if side:                                                                  # the ray gun, held out ahead
+		CA._r(img, cx - 9, hip - 6, 7, 2, gun)
+		CA._r(img, cx - 3, hip - 4, 2, 2, gun.darkened(0.3))
+		CA._px(img, cx - 8, hip - 7, Color(1.0, 0.9, 0.4))
+		CA._px(img, cx - 6, hip - 7, Color(1.0, 0.9, 0.4))
+		CA._px(img, cx - 8, hip - 4, Color(1.0, 0.9, 0.4))
+		CA._px(img, cx - 6, hip - 4, Color(1.0, 0.9, 0.4))
+		CA._px(img, cx - 10, hip - 6, Color(1.0, 1.0, 0.7))
+	else:
+		CA._r(img, cx + 3, hip - 5 + step, 2, 5, gun)
+		CA._px(img, cx + 2, hip - 3 + step, Color(1.0, 0.9, 0.4))
+		CA._px(img, cx + 5, hip - 3 + step, Color(1.0, 0.9, 0.4))
+		CA._r(img, cx + 3, hip + step, 2, 1, Color(1.0, 1.0, 0.7))
+
+
+## The brain (part 11b): a brain under a dome of glass on a small disc that hovers; two eyes on it, looking at you.
+static func _brain(img: Image, dir: int, f: int, v: int) -> void:
+	var meat: Color = BRAINS[v % 4]
+	var meat2 := meat.darkened(0.3)
+	var steel := Color(0.5, 0.54, 0.6)
+	var cx := img.get_width() / 2
+	var hh := img.get_height()
+	var bob := 0 if f == 0 else (1 if f == 1 else -1)
+	var back := dir == 1
+	var side := dir == 2
+	var by := hh - 12 + bob                                                    # the disc it rides on
+	CA._ell(img, cx + 0.5, by + 2.0, 9.0, 2.5, steel.darkened(0.35))
+	CA._ell(img, cx + 0.5, float(by), 10.0, 3.0, steel)
+	CA._r(img, cx - 8, by, 17, 1, steel.lightened(0.3))
+	for q in 4:
+		CA._px(img, cx - 6 + q * 4, by + 2, Color(0.5, 1.0, 0.7) if (q + f) % 2 == 0 else Color(1.0, 0.8, 0.3))
+	CA._r(img, cx - 3, by + 5, 7, 1, Color(0.5, 1.0, 0.85))                     # what holds it up
+	CA._r(img, cx - 2, by + 7 - bob, 5, 1, Color(0.4, 0.9, 0.75))
+	var my := by - 11
+	CA._ell(img, cx + 0.5, float(my), 7.5, 6.5, meat)                           # the brain
+	CA._ell(img, cx - 2.5, my - 1.0, 4.0, 4.5, meat.lightened(0.08))
+	CA._r(img, cx, my - 6, 1, 11, meat2)
+	for q2 in 5:
+		CA._r(img, cx - 6 + q2 * 3 + (q2 % 2), my - 3 + (q2 % 3), 2, 1, meat2)
+		CA._r(img, cx - 5 + q2 * 3, my + 2 - (q2 % 2), 2, 1, meat2)
+	CA._r(img, cx - 1, my + 6, 3, 4, meat2)                                    # its stem
+	if not back:
+		for e in ([-1] if side else [-1, 1]):
+			var ex: int = cx + (-5 if side else e * 3)
+			CA._r(img, ex - 1, my + 3, 3, 3, Color(0.96, 0.96, 0.9))
+			CA._px(img, ex - (1 if side else 0), my + 4, Color(0.05, 0.05, 0.08))
+	for q3 in 36:                                                             # the dome
+		var a := PI + PI * float(q3) / 35.0
+		CA._px(img, int(round(cx + 0.5 + cos(a) * 10.0)), int(round(by - 1.0 + sin(a) * 19.0)), Color(0.75, 0.95, 1.0) if q3 < 22 else Color(0.5, 0.7, 0.82))
+	CA._r(img, cx - 6, my - 7, 1, 5, Color(1, 1, 1))
+	CA._px(img, cx - 7, my - 3, Color(1, 1, 1))
+
+
+## The saucer that flies through the halls (part 11b): small, seen from its side: a disc, a dome, lights round its
+## rim that run.
+static func _saucer_small(img: Image, f: int, v: int) -> void:
+	var hull := Color(0.62, 0.66, 0.72)
+	var cx := img.get_width() / 2
+	CA._ell(img, cx + 0.5, 9.0, 8.0, 6.0, Color(0.45, 0.85, 0.82))
+	CA._ell(img, cx - 2.0, 7.0, 3.0, 2.0, Color(0.85, 1.0, 0.98))
+	CA._ell(img, cx + 0.5, 15.0, 20.0, 4.0, hull.darkened(0.3))
+	CA._ell(img, cx + 0.5, 13.0, 21.0, 4.0, hull)
+	CA._r(img, cx - 14, 12, 29, 1, hull.lightened(0.3))
+	CA._ell(img, cx + 0.5, 18.0, 6.0, 2.0, Color(0.3, 0.9, 0.5))
+	for q in 7:
+		CA._r(img, cx - 18 + q * 6, 14, 2, 2, Color(0.5, 1.0, 0.6) if (q + f + v) % 2 == 0 else Color(1.0, 0.78, 0.3))
+
+
+# ---------------------------------------------------------------- part 11c: the bosses of the Alien Laboratory
+
+const APEX_HIDE := Color(0.07, 0.07, 0.11)
+const APEX_SHEEN := Color(0.26, 0.28, 0.44)
+const APEX_BONE := Color(0.62, 0.62, 0.56)
+const APEX_GLOW := Color(0.4, 1.0, 0.5)
+
+
+## The Apex (part 11c, Luz: a boss in the manner of the biomechanical): the hunter the laboratory bred. A creature of
+## its own: black and glossy, half grown and half built: a low body of ribs with a green light inside them, four legs,
+## two arms that end in sickles, a crown of spines swept back from its head, a row of small pale eyes, a tail of
+## vertebrae with a blade at its end; hoses still run from its back into its flank.
+static func _apex(img: Image, dir: int, f: int) -> void:
+	var cx := img.get_width() / 2
+	var hh := img.get_height()
+	var step := 0 if f == 0 else (1 if f == 1 else -1)
+	var gy := hh - 3
+	if dir == 2:                                                              # from its side, the head to the left
+		for leg in 4:                                                           # the legs: two before, two behind, each bent back at the heel
+			var lx: int = [22, 27, 44, 49][leg]
+			var up: int = maxi(0, step * (1 if leg % 2 == 0 else -1)) * 2
+			var fwd: int = step * (2 if leg % 2 == 0 else -2)
+			var col: Color = APEX_HIDE if leg % 2 == 0 else APEX_HIDE.lightened(0.06)
+			_limb(img, Vector2(lx, gy - 20), Vector2(lx + 4 + fwd, gy - 11 - up), 3, col)
+			_limb(img, Vector2(lx + 4 + fwd, gy - 11 - up), Vector2(lx + fwd, gy - up), 2, col)
+			CA._r(img, lx - 3 + fwd, gy - up, 5, 2, APEX_BONE.darkened(0.3))
+		for s in 26:                                                            # the tail: up, back and down again, a blade at its end
+			var tk := float(s) / 25.0
+			var tp := Vector2(50.0 + tk * 18.0, gy - 24.0 - sin(tk * PI) * 20.0 + tk * 10.0)
+			CA._r(img, int(tp.x), int(tp.y), 3 if s < 16 else 2, 3 if s < 16 else 2, APEX_HIDE)
+			if s % 4 == 1:
+				CA._px(img, int(tp.x) + 1, int(tp.y), APEX_BONE)
+		CA._r(img, 67, gy - 16, 2, 7, APEX_BONE)
+		CA._px(img, 68, gy - 9, APEX_BONE.lightened(0.3))
+		CA._ell(img, 38.0, gy - 24.0, 15.0, 7.5, APEX_HIDE)                     # the body
+		CA._ell(img, 30.0, gy - 26.0, 9.0, 7.0, APEX_HIDE)
+		CA._r(img, 24, gy - 32, 26, 1, APEX_SHEEN)                              # (its sheen)
+		for r in 8:                                                             # the ribs, the light inside them
+			CA._r(img, 26 + r * 3, gy - 27, 1, 8, APEX_BONE)
+			CA._r(img, 27 + r * 3, gy - 25, 2, 5, APEX_GLOW.darkened(0.25 + 0.08 * float(r % 3)))
+		for sp in 6:                                                            # the ridge of its back
+			CA._r(img, 28 + sp * 4, gy - 34 - (sp % 2), 2, 2 + (sp % 2), APEX_BONE.darkened(0.2))
+		_limb(img, Vector2(40, gy - 30), Vector2(46, gy - 22), 1, Color(0.1, 0.2, 0.18))      # hoses
+		_limb(img, Vector2(34, gy - 31), Vector2(37, gy - 21), 1, Color(0.1, 0.2, 0.18))
+		CA._px(img, 46, gy - 20, APEX_GLOW)
+		_limb(img, Vector2(24, gy - 28), Vector2(17, gy - 34), 4, APEX_HIDE)     # the neck
+		CA._ell(img, 12.0, gy - 35.0, 7.0, 4.0, APEX_HIDE)                      # the head: a wedge
+		CA._r(img, 4, gy - 35, 6, 3, APEX_HIDE)
+		CA._r(img, 6, gy - 37, 9, 1, APEX_SHEEN)
+		for e in 4:
+			CA._px(img, 7 + e * 2, gy - 35, Color(0.8, 1.0, 0.85))
+		CA._r(img, 3, gy - 33, 2, 1, APEX_BONE)                                 # (its hooks)
+		CA._r(img, 5, gy - 32, 2, 1, APEX_BONE)
+		for c in 5:                                                             # the crown: spines swept back
+			_limb(img, Vector2(13 + c * 2, gy - 38), Vector2(22 + c * 3, gy - 44 - (2 - absi(c - 2)) * 2), 1, APEX_BONE if c % 2 == 0 else APEX_HIDE.lightened(0.2))
+		var sw := step * 2                                                      # the sickle: an arm forward, the blade over it
+		_limb(img, Vector2(26, gy - 22), Vector2(17, gy - 15 + sw), 3, APEX_HIDE)
+		for b in 14:
+			var bk := float(b) / 13.0
+			var bp := Vector2(17.0 - bk * 13.0, gy - 15.0 + sw - sin(bk * PI * 0.8) * 12.0)
+			CA._r(img, int(bp.x), int(bp.y), 2, 2, APEX_BONE if b > 2 else APEX_HIDE)
+		return
+	var back := dir == 1
+	for leg2 in 4:                                                            # from before or behind: four legs
+		var lx2: int = [cx - 15, cx - 8, cx + 5, cx + 12][leg2]
+		var up2: int = maxi(0, step * (1 if leg2 % 2 == 0 else -1)) * 2
+		_limb(img, Vector2(lx2 + 1, gy - 22), Vector2(lx2 + (-3 if leg2 < 2 else 3), gy - 11 - up2), 3, APEX_HIDE if leg2 % 2 == 0 else APEX_HIDE.lightened(0.06))
+		_limb(img, Vector2(lx2 + (-3 if leg2 < 2 else 3), gy - 11 - up2), Vector2(lx2 + 1, gy - up2), 2, APEX_HIDE)
+		CA._r(img, lx2 - 1, gy - up2, 5, 2, APEX_BONE.darkened(0.3))
+	CA._ell(img, float(cx), gy - 25.0, 13.0, 9.0, APEX_HIDE)                    # the body
+	CA._r(img, cx - 9, gy - 33, 18, 1, APEX_SHEEN)
+	if back:
+		for v2 in 9:                                                            # its spine, and the tail hanging from it
+			CA._r(img, cx - 1, gy - 33 + v2 * 2, 3, 1, APEX_BONE)
+		for s2 in 16:
+			CA._r(img, cx - 1 + int(sin(float(s2) * 0.5) * 2.0), gy - 16 + s2, 2, 1, APEX_HIDE.lightened(0.05))
+		CA._r(img, cx - 1, gy - 1, 3, 3, APEX_BONE)
+		for h2 in [-1, 1]:
+			_limb(img, Vector2(cx + h2 * 5, gy - 31), Vector2(cx + h2 * 10, gy - 22), 1, Color(0.1, 0.2, 0.18))
+			CA._px(img, cx + h2 * 10, gy - 20, APEX_GLOW)
+	else:
+		for r2 in 7:                                                            # the ribs, the light inside them
+			CA._r(img, cx - 9 + r2 * 3, gy - 28, 1, 8, APEX_BONE)
+			if r2 < 6:
+				CA._r(img, cx - 8 + r2 * 3, gy - 26, 2, 5, APEX_GLOW.darkened(0.25 + 0.08 * float(r2 % 3)))
+	CA._ell(img, float(cx), gy - 37.0, 6.0, 5.0, APEX_HIDE)                     # the head
+	CA._r(img, cx - 4, gy - 41, 8, 1, APEX_SHEEN)
+	for c2 in 7:                                                              # the crown
+		var ca := -PI * 0.5 + (c2 - 3) * 0.3
+		_limb(img, Vector2(cx, gy - 40) + Vector2(cos(ca), sin(ca)) * 3.0, Vector2(cx, gy - 40) + Vector2(cos(ca), sin(ca)) * (13.0 - absf(c2 - 3.0) * 1.5), 1, APEX_BONE if c2 % 2 == 0 else APEX_HIDE.lightened(0.2))
+	if not back:
+		for e2 in 4:
+			CA._px(img, cx - 3 + e2 * 2, gy - 37, Color(0.8, 1.0, 0.85))
+		CA._r(img, cx - 3, gy - 33, 2, 2, APEX_BONE)
+		CA._r(img, cx + 1, gy - 33, 2, 2, APEX_BONE)
+	for arm in [-1, 1]:                                                       # the sickles, raised either side
+		var sw2: int = step * arm * 2
+		_limb(img, Vector2(cx + arm * 9, gy - 30), Vector2(cx + arm * 20, gy - 34 + sw2), 3, APEX_HIDE)
+		for b2 in 16:
+			var bk2 := float(b2) / 15.0
+			var bp2 := Vector2(cx + arm * (20.0 + sin(bk2 * PI) * 9.0 + bk2 * 4.0), gy - 34.0 + sw2 + bk2 * 22.0)
+			CA._r(img, int(bp2.x), int(bp2.y), 2, 2, APEX_BONE if b2 > 2 else APEX_HIDE)
+
+
+## The Mastermind (part 11c): what slept in the great tank, risen out of it: a brain as large as a rover, one great
+## eye in its front, its stem hanging under it with the lines that fed it, arcs of light over its folds.
+static func _mastermind(img: Image, f: int) -> void:
+	var cx := img.get_width() / 2
+	var bob := 0 if f == 0 else (2 if f == 1 else -1)
+	var meat := Color(0.98, 0.62, 0.8)
+	var meat2 := meat.darkened(0.32)
+	var my := 30 + bob
+	for s in 40:                                                              # the stem, and what still hangs from it
+		var sw := maxi(2, 10 - s / 5)
+		CA._r(img, cx - sw / 2 + int(sin(float(s) * 0.3 + float(f)) * 2.0), my + 16 + s, sw, 1, meat2 if s % 5 != 0 else meat2.darkened(0.25))
+	for t in 6:
+		var tx := cx - 22 + t * 9
+		var tl := 18 + (t * 7) % 16
+		for s2 in tl:
+			CA._px(img, tx + int(sin(float(s2) * 0.4 + float(t) + float(f) * 0.8) * 2.0), my + 14 + s2, Color(0.08, 0.12, 0.12))
+		CA._px(img, tx, my + 14 + tl, Color(0.4, 1.0, 0.5))
+	CA._ell(img, cx - 9.0, float(my), 21.0, 19.0, meat)                         # the brain: two halves
+	CA._ell(img, cx + 10.0, my + 1.0, 20.0, 18.0, meat.darkened(0.07))
+	CA._ell(img, cx - 14.0, my - 7.0, 9.0, 7.0, meat.lightened(0.1))
+	CA._r(img, cx, my - 18, 1, 34, meat2.darkened(0.2))
+	for fo in 13:                                                             # its folds
+		var fa := -1.4 + float(fo) * 0.23
+		for s3 in 20:
+			var fp := Vector2(cx + sin(fa) * (6.0 + float(s3) * 1.25), my - cos(fa) * (3.0 + float(s3) * 0.85) + sin(float(s3) * 0.9 + float(fo)) * 1.5)
+			if absf(fp.x - float(cx)) < 27.0 and fp.y > my - 17.0 and fp.y < my + 16.0:
+				CA._px(img, int(fp.x), int(fp.y), meat2)
+	CA._ell(img, float(cx), my + 6.0, 8.0, 6.5, Color(0.96, 0.96, 0.9))         # the eye
+	CA._ell(img, float(cx), my + 6.0, 4.5, 4.5, Color(0.6, 0.3, 0.9))
+	CA._ell(img, float(cx), my + 6.0, 2.0, 2.0, Color(0.05, 0.03, 0.1))
+	CA._px(img, cx - 2, my + 4, Color(1, 1, 1))
+	CA._r(img, cx - 9, my - 1, 18, 1, meat2)
+	for a in 5:                                                               # arcs of light over it
+		var aa := float(a) * 1.3 + float(f) * 2.1
+		var ap := Vector2(cx + cos(aa) * 20.0, my - 4.0 + sin(aa) * 15.0)
+		_limb(img, ap, ap + Vector2(cos(aa * 2.3), sin(aa * 1.7)) * 6.0, 1, Color(0.8, 0.9, 1.0))
+		CA._px(img, int(ap.x), int(ap.y), Color(1, 1, 1))
+	CA._r(img, cx - 14, my + 17, 28, 3, Color(0.3, 0.32, 0.38))                # what is left of its collar
+	CA._r(img, cx - 14, my + 17, 28, 1, Color(0.55, 0.58, 0.64))
+	CA._px(img, cx - 10, my + 18, Color(1.0, 0.3, 0.25))
+	CA._px(img, cx + 9, my + 18, Color(1.0, 0.3, 0.25))
