@@ -2256,6 +2256,12 @@ func _draw_drone() -> void:
 		pick_drone(i)
 		_draw_drone_one()
 	pick_drone(keep)
+	var pa = p2()                                          # split screen: the second player's drone, drawn as yours is
+	if pa != null and not (pa.get("drone", {}) as Dictionary).is_empty():
+		var mine := drone
+		drone = pa["drone"]
+		_draw_drone_one()
+		drone = mine
 
 
 func _draw_drone_one() -> void:
@@ -2948,8 +2954,24 @@ func spawn_p2(arena: bool) -> Dictionary:
 	a["dmg"] = 1.0
 	a["firearms"] = int(sk.get("firearms", {}).get("lvl", 0))
 	a["athletics"] = int(sk.get("athletics", {}).get("lvl", 0))
-	a["st"] = {"shield": float(sst.get("shield", 0.0)), "armor": float(sst.get("armor", 0.0)), "health": float(GearData.HEALTH)}
+	var tot0: Dictionary = gr.totals()                    # (the suit with its modules: a shield generator, plates, packs, boosters)
+	a["st"] = {"shield": float(tot0.get("shield", sst.get("shield", 0.0))), "armor": float(tot0.get("armor", sst.get("armor", 0.0))), "health": float(GearData.HEALTH)}
 	a["mx"] = (a["st"] as Dictionary).duplicate()
+	a["regen"] = float(tot0.get("regen", 2.0))
+	a["speed"] = float(tot0.get("speed", 1.0))
+	a["sprint"] = float(tot0.get("sprint", 1.0))
+	a["dash"] = 1.0
+	for fid in gr.features:
+		if String(fid) != "":
+			a["dash"] = maxf(float(a["dash"]), float(GearData.stats(String(fid)).get("dash", 1.0)))
+	a["features"] = (gr.features as Array).filter(func(f0): return String(f0) != "")
+	# their drone: the first one of their fit, in the air beside them from the start
+	a["drone"] = {}
+	a["drone_id"] = ""
+	a["drone_rebuild"] = 0.0
+	for did in gr.drones:
+		if String(did) != "" and String(a["drone_id"]) == "":
+			a["drone_id"] = String(did)
 	a["order"] = "own"
 	a["cool"] = 0.4
 	a["dodge_t"] = 0.0
@@ -2972,6 +2994,101 @@ func spawn_p2(arena: bool) -> Dictionary:
 	if arena:
 		a["arena"] = true
 	return a
+
+
+## Split screen: the second player's drone. In the air beside them from the start of the fight; it fires at their
+## target as yours fires at yours (the laser drone heats up, the kinetic one empties its magazine and fills it from
+## their rounds), and the kamikaze dives at their target on their drone key and is built anew after a while. Simpler
+## than yours: it is not called back, and nobody shoots at it.
+func _p2_drone_step(a: Dictionary, delta: float, live: bool) -> void:
+	var id := String(a.get("drone_id", ""))
+	if id == "":
+		return
+	var w: Walker = a["w"]
+	var st := GearData.stats(id)
+	if (a["drone"] as Dictionary).is_empty():
+		a["drone_rebuild"] = maxf(0.0, float(a["drone_rebuild"]) - delta)
+		if float(a["drone_rebuild"]) > 0.0:
+			return
+		a["drone"] = {"is_drone": true, "id": id, "kind": String(st["kind"]), "pos": w.pos + Vector2(-1, -1), "alt": 16.0, "head": PI * 0.5, "state": "hover", "t": 0.0,
+			"heat": 0.0, "over": false, "ammo": int(st.get("mag", 0)), "cool": 0.0, "rl": 0.0, "dive": Vector2.INF, "fall": 0.0, "vel": Vector2.ZERO}
+	var d: Dictionary = a["drone"]
+	d["t"] = float(d["t"]) + delta
+	d["cool"] = maxf(0.0, float(d["cool"]) - delta)
+	if String(d["kind"]) == "laser":
+		d["heat"] = maxf(0.0, float(d["heat"]) - float(st["cool"]) * delta)
+		if bool(d["over"]) and float(d["heat"]) <= 0.0:
+			d["over"] = false
+	var t = a.get("cur")
+	var has_t: bool = t != null and not t["dead"] and not a["down"] and not a["dead"]
+	var side := 1.0 if not has_t or (t["w"] as Walker).pos.x >= w.pos.x else -1.0
+	var want: Vector2 = w.pos + Vector2(14.0 * side, -4.0) + Vector2(sin(float(d["t"]) * 1.7) * 3.0, cos(float(d["t"]) * 1.3) * 2.0)
+	var alt := 30.0 if not a["down"] else 8.0
+	var p0: Vector2 = d["pos"]
+	if String(d["state"]) == "dive":
+		var df = d.get("dive_f")
+		if df != null and not df["dead"]:
+			d["dive"] = (df["w"] as Walker).pos
+		want = d["dive"]
+		alt = maxf(4.0, (d["pos"] as Vector2).distance_to(want) * 0.25)
+		d["pos"] = (d["pos"] as Vector2) + (want - (d["pos"] as Vector2)).limit_length(float(st.get("speed", 150.0)) * delta)
+		if (d["pos"] as Vector2).distance_to(want) < 6.0:
+			_explode(want, float(st.get("radius", 55.0)), float(st["damage"]), "explosive", null, true)
+			a["drone"] = {}
+			a["drone_rebuild"] = float(st.get("rebuild", 20.0))
+			return
+	else:
+		d["pos"] = (d["pos"] as Vector2).lerp(want, 1.0 - exp(-delta * 6.0))
+	d["alt"] = lerpf(float(d["alt"]), alt, 1.0 - exp(-delta * 5.0))
+	var mv: Vector2 = (d["pos"] as Vector2) - p0
+	var face := float(d["head"])
+	if has_t and String(d["state"]) == "hover":
+		face = ((t["w"] as Walker).pos - (d["pos"] as Vector2)).angle()
+	elif mv.length() > 0.15:
+		face = mv.angle()
+	d["head"] = lerp_angle(float(d["head"]), face, 1.0 - exp(-delta * 8.0))
+	if not live or not has_t:
+		return
+	if String(d["kind"]) == "kamikaze":
+		if String(d["state"]) == "hover" and Players.just_pressed(1, "foot_drone"):
+			d["state"] = "dive"
+			d["dive_f"] = t
+			d["dive"] = (t["w"] as Walker).pos
+			Audio.play("drone_launch", "second player: the kamikaze dives", -6.0)
+		return
+	if String(d["state"]) == "p2reload":                 # the magazine is filled from their rounds
+		d["rl"] = float(d["rl"]) - delta
+		if float(d["rl"]) <= 0.0:
+			var take := mini(int(a.get("ammo", 0)), int(st.get("mag", 40)))
+			if take <= 0:
+				d["rl"] = 1.0
+			else:
+				a["ammo"] = int(a["ammo"]) - take
+				d["ammo"] = take
+				d["state"] = "hover"
+		return
+	if String(d["state"]) != "hover" or not fight or peaceful(t) or float(d["cool"]) > 0.0:
+		return
+	var tp: Vector2 = (t["w"] as Walker).pos
+	var dp: Vector2 = d["pos"]
+	if dp.distance_to(tp) > float(st["range"]) or sight(dp, tp)["blocked"]:
+		return
+	var keep := drone                                     # (the shot itself is the one your drone fires)
+	drone = d
+	if String(d["kind"]) == "laser" and not bool(d["over"]):
+		_drone_fire(t, st)
+		d["heat"] = float(d["heat"]) + float(st["heat"])
+		if float(d["heat"]) >= float(st["heat_max"]):
+			d["over"] = true
+			floaters.append({"pos": dp + Vector2(0, -50), "text": "overheated", "col": Color(1.0, 0.6, 0.3), "t": 0.0})
+	elif String(d["kind"]) == "kinetic" and int(d["ammo"]) > 0:
+		_drone_fire(t, st)
+		d["ammo"] = int(d["ammo"]) - 1
+		if int(d["ammo"]) <= 0:
+			d["state"] = "p2reload"
+			d["rl"] = float(st.get("reload", 3.0))
+	drone = keep
+	d["cool"] = 1.0 / float(st["rof"])
 
 
 ## Split screen: the other weapon into their hand. Returns its name ("" they carry one only).
@@ -3092,12 +3209,13 @@ func _p2_step(a: Dictionary, delta: float) -> void:
 			p2_belt(a, bi)
 	if live and not view.col_down and Players.just_pressed(1, "interact"):
 		p2_charge(a)
+	_p2_drone_step(a, delta, live)
 	var moved := false
 	if float(a["dodge_t"]) > 0.0:
-		moved = _walk(a, a["dodge_dir"], delta, 3.4)
+		moved = _walk(a, a["dodge_dir"], delta, 3.4 * float(a.get("dash", 1.0)))      # (Jump Jets: further)
 	elif mv.length() > 0.15:
 		var run: bool = mv.length() > 0.85 if not Players.on_keys(1) else Players.pressed(1, "foot_run")
-		moved = _walk(a, mv if mv.length() <= 1.0 else mv.normalized(), delta, 1.6 if run else 1.0)
+		moved = _walk(a, mv if mv.length() <= 1.0 else mv.normalized(), delta, (1.6 * float(a.get("sprint", 1.0)) if run else 1.0) * float(a.get("speed", 1.0)))
 	if not moved:
 		w.moving = false
 	# you are down: they hold the use key beside you
@@ -3535,7 +3653,7 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	var st: Dictionary = a["st"]
 	a["regen_wait"] = maxf(0.0, float(a["regen_wait"]) - delta)
 	if float(a["regen_wait"]) <= 0.0:
-		var add := minf(float(a["mx"]["shield"]) - float(st["shield"]), 2.0 * delta)
+		var add := minf(float(a["mx"]["shield"]) - float(st["shield"]), float(a.get("regen", 2.0)) * delta)
 		if a.has("energy"):                              # package 62a, part 6 (Luz): in the Colosseum they live on their suit's energy as you do
 			add = minf(add, float(a["energy"]) / GearData.SHIELD_ENERGY)
 			a["energy"] = float(a["energy"]) - maxf(0.0, add) * GearData.SHIELD_ENERGY

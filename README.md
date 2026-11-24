@@ -467,6 +467,16 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.9: `survivor_game.gd`: `TWO_BACK`, `back_t` (the hold-key revive and `TWO_REVIVE` are gone); the second
+  player's touch test goes by `_rad` for bosses; `two_open()` tests at the Mastermind's ring, the Warden's arm,
+  the Core's cross, the lines; the barrier clamps `two`. `ground_combat.gd`: `spawn_p2()` takes shield and armour
+  from `gear.totals()` and sets `regen`, `speed`, `sprint`, `dash`, `features`, `drone_id`; `_p2_drone_step()`
+  (it borrows `_drone_fire()` and `_draw_drone_one()` by swapping `drone`), state `p2reload`.
+- 0.8.75.8 (the rest of stage 1): `survivor_game.gd`: `TWO_SWARM`, `swarm_k()` in `_director()`; `give_seat`
+  (set in `_crates()`, read in `give()`); `two_open()` and, before every `if can_hurt() and … pp …: _hurt(x)` of
+  the stage, the same test at `two.pos` with `two_hurt(x)`; a wave's `hit2`. `Prep.slots()` leaves out
+  "features" and "drones" for seat 1. The versus card gets the second player as the first of `mates`. Smoke group
+  `split5`.
 - 0.8.75.7: `GroundView._split_hud_draw()` draws the second player's whole display over their half (bars, dodge,
   target card, the fight, belt and weapon tiles through `SuitHud.tile`); `_split_key(action)` is the key or button
   of their device; `_split_label()`.

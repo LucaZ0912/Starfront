@@ -3,6 +3,45 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.9 – 2026-11-25
+
+**Package 75, split screen: back after twenty seconds, bosses, modules and a drone for the second player.**
+- **Survivor, one of you down (Luz):** no key brings them back any more. The other holds out alone for twenty
+  seconds, then the one down is back with half their health. The seconds left stand under them, and a word
+  across the picture says so when it happens. With both down the run is over, as before. (A match in the
+  Colosseum keeps the use key held beside the one down.)
+- **Survivor, bosses hurt the second player in full:** to touch a boss hurts them, as wide as the boss is (not
+  one under the ice, not one that fights for you); The Mastermind's ring, The Warden's arm, The Core's cross of
+  light and the lines of light reach them; a boss's walls of light hold them in. With 0.8.75.8 this is every
+  blow of the stages except the avalanche, which still runs over the first player only.
+- **Match, modules for the second player:** what their suit's modules give counts: shield generator, armour
+  plates, ammunition and battery packs, sprint booster, jump jets (a further dodge).
+- **Match, a drone for the second player:** the first drone of their fit flies beside them from the start and
+  fires at their target: the laser drone heats up, the kinetic one empties its magazine and fills it from their
+  rounds, the kamikaze dives at their target on their drone key and is built anew after a while. A tile in their
+  display shows it. Simpler than yours: it is not called back, nobody shoots at it, and a second drone of a
+  two-drone suit stays unused.
+- The fighters' room offers the second player drone and module again.
+- Smoke test groups `split2`, `split3`, `split5` changed and run: none failed. No full run.
+
+## alpha 0.8.75.8 – 2026-11-25
+
+**Package 75, split screen: the rest of stage 1.**
+- **Survivor, a larger swarm for two:** 1.6 times as many come, in the flood too. A first figure, not played:
+  the kinds that come by the clock, the alphas and the bosses are as for one.
+- **Survivor, items:** an item works for and round whoever opened its crate: a medkit heals them, a bomb, a
+  stasis or an override goes off where they stand. Shield, magnet and overdrive are for both as before.
+- **Survivor, blows:** shock waves, a hauler's stamp, what is hurled, purges, laser grids, pounces, eruptions
+  and the like reach the second player where they stand (fifteen places in the stage's code), not in their dodge.
+  **Not yet:** touching a boss itself still hurts the first player only.
+- **The Colosseum's fighters' room** no longer offers the second player a drone or a module: they would do
+  nothing for them yet. Drones and modules for the second player are still to build.
+- **The picture before a fight** shows the second player beside you. Written, not looked at in a picture.
+- **Still the first player's alone:** the walk into the arena and the lobby (the second player has a figure only
+  inside a match or a run; walking about together comes with stage 3).
+- Smoke test group `split5` (4 checks); `split2`, `split4`, `split5` and the single player's `colsurv62a` run
+  together: none failed. No full run.
+
 ## alpha 0.8.75.7 – 2026-11-24
 
 **Package 75, split screen: the second player's display in a match, in full.** Before, it was a small box in a

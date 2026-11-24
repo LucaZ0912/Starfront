@@ -5472,8 +5472,6 @@ func use(instant: bool = false) -> bool:
 					[["Give up", func(): _col_fight_over(false)], ["Fight on", func(): pass]])
 			return true
 		"sv_giveup":
-			if survivor != null and is_instance_valid(survivor) and survivor.two_down and not survivor.one_down 					and survivor.two.pos.distance_to(pilot.pos) <= survivor.TWO_REACH:
-				return true                                  # (split screen: the use key is bringing the second player back right here)
 			if survivor != null and is_instance_valid(survivor) and not survivor.over:      # package 62a, part 7: out of the run by your own choice
 				ask_window("End the run?", "The run ends here. It pays for the time you held out.", [["End it", func(): survivor.end(false)], ["Go on", func(): pass]])
 			return true
@@ -6235,6 +6233,11 @@ func _col_intro_step(delta: float) -> void:
 						ml["suit"] = "suit_mil_light"
 						ml["helmet"] = false
 						vmates.append({"name": String(tm["name"]).to_upper(), "tex": ChibiArt.frame(ml, 0, 0)})
+				if Players.split and GameState.has_pilot2():     # split screen: the second player stands beside you in the picture
+					var l2: Dictionary = (GameState.pilot2.get("look", {}) as Dictionary).duplicate()
+					l2["suit"] = String(cst["fit2"]["suit"]).get_slice(":", 0)
+					l2["helmet"] = false
+					vmates.insert(0, {"name": String(GameState.pilot2.get("name", "")).to_upper(), "tex": ChibiArt.frame(l2, 0, 0)})
 				var yl: Dictionary = pilot_look().duplicate()
 				yl["suit"] = String(cst["fit"]["suit"]).get_slice(":", 0)
 				yl["helmet"] = false
@@ -6823,7 +6826,7 @@ func _split_hud_draw(hud: Control) -> void:
 		tx += tile.x + 6.0
 	if not grs.is_empty():
 		tx += 16.0
-		_split_label(hud, Vector2(tx, ty - 4.0), "%s  grenade at the target" % _split_key("foot_grenade"))
+		_split_label(hud, Vector2(tx, ty - 4.0), "%s  grenade" % _split_key("foot_grenade"))
 		var first := true
 		for gg in grs:
 			var gn := int(gg.get("n", 0))
@@ -6831,6 +6834,27 @@ func _split_hud_draw(hud: Control) -> void:
 				Color(1.0, 0.45, 0.4) if (first and gn > 0) else Color(0.5, 0.55, 0.6, 0.5), -1.0, Color.WHITE)
 			first = first and gn <= 0
 			tx += tile.x + 6.0
+	var did := String(a.get("drone_id", ""))
+	if did != "":
+		tx += 16.0
+		var dst: Dictionary = GD.stats(did)
+		var dd: Dictionary = a.get("drone", {})
+		var dsub := "rebuilt in %d s" % int(ceil(float(a.get("drone_rebuild", 0.0))))
+		var dbar := -1.0
+		if not dd.is_empty():
+			match String(dd["kind"]):
+				"laser":
+					dsub = "OVERHEATED" if bool(dd["over"]) else "firing at the target"
+					dbar = 1.0 - clampf(float(dd["heat"]) / maxf(float(dst.get("heat_max", 1.0)), 0.01), 0.0, 1.0)
+				"kinetic":
+					dsub = "reloading" if String(dd["state"]) == "p2reload" else "%d rd" % int(dd["ammo"])
+					dbar = float(dd["ammo"]) / maxf(float(dst.get("mag", 1)), 1.0)
+				_:
+					dsub = "diving" if String(dd["state"]) == "dive" else "%s: dive" % _split_key("foot_drone")
+		_split_label(hud, Vector2(tx, ty - 4.0), "drone")
+		SuitHud.tile(hud, Rect2(Vector2(tx, ty), tile), GI.icon(did), "", String(dst.get("name", "")), dsub, Color(0.45, 0.85, 1.0, 0.8) if not dd.is_empty() else Color(0.5, 0.55, 0.6, 0.5),
+			dbar, Color(1.0, 0.6, 0.25))
+		tx += tile.x + 6.0
 	# ---- the word in the middle: down, out, a charging point, or what the use key does
 	var use_key: String = _split_key("interact")
 	var word := ""

@@ -213,7 +213,8 @@ var hud: Control = null
 # keeps inside what it shows. Whoever goes down lies there until the other brings them back; with both down the run
 # is over.
 const TWO_REACH := 26.0            # how near one stands to bring the other back
-const TWO_REVIVE := 2.5            # seconds the use key is held for it
+const TWO_BACK := 20.0             # (Luz, 25 Nov 2026) one of you down: the other holds out this long alone, then they are back with half their health
+const TWO_SWARM := 1.6             # the swarm for two: this many times as many come (and in the flood)
 const TWO_GUN_REACH := 170.0       # how far the second player's sidearm carries
 const TWO_GUN_GAP := 0.4           # seconds between two of its shots
 var two: Walker = null             # the second player's figure (null: one player)
@@ -226,7 +227,8 @@ var two_hurt_cd := 0.0
 var two_cool := 0.0
 var two_flash := 0.0
 var one_down := false              # the first player is down and waits for the second
-var rev_k := 0.0                   # how far the one standing is with bringing the other back (0 … 1)
+var rev_k := 0.0                   # how much of the time alone is done (0 … 1)
+var back_t := 0.0                  # seconds the one standing has held out alone
 # third part: an arsenal each. Every weapon belongs to who took its card and fires from where they stand
 # (run["own2"]: the ids of the second player's); boni are for both. With a new level each picks a card.
 var two_face := Vector2.DOWN       # which way the second player looks (what they throw ahead goes that way)
@@ -235,6 +237,7 @@ var two_face := Vector2.DOWN       # which way the second player looks (what the
 # weapon crate's draw goes to one of the two by lot. Each begins with a weapon of their own.
 var mods2: Dictionary = {}
 var draw_seat := -1                # tests: whose the next weapon crate is (-1: by lot)
+var give_seat := 0                 # who opened the crate an item comes from (0 you, 1 the second player)
 var last_draw_seat := 0            # whose the last one was
 var card_seat := 0                 # whose cards are on the table (0 you, 1 the second player)
 var _over: Node2D = null
@@ -600,6 +603,17 @@ func two_join() -> void:
 	two_hp = two_max()
 
 
+## Can something reach the second player right now, beside you? (Standing, you standing too, not in their dodge, no
+## crate's shield up, not right after a hit. While you are down the stage is after them anyway: see _hurt.)
+func two_open() -> bool:
+	return two_up() and not one_down and two_hurt_cd <= 0.0 and two_dash_t <= 0.0 and shield_t <= 0.0
+
+
+## How many more come for two than for one.
+func swarm_k() -> float:
+	return TWO_SWARM if two != null else 1.0
+
+
 func two_up() -> bool:
 	return two != null and is_instance_valid(two) and not two_down
 
@@ -629,8 +643,9 @@ func two_hurt(dmg: float) -> void:
 		two.moving = false
 		two.modulate = Color.WHITE
 		rev_k = 0.0
+		back_t = 0.0
 		if not one_down:
-			say("", "%s IS DOWN" % two_name().to_upper())
+			say("", "%s IS DOWN: HOLD OUT %d SECONDS" % [two_name().to_upper(), int(TWO_BACK)])
 		Audio.play("hit_hull", "survivor: the second player is down", -4.0)
 
 
@@ -639,12 +654,13 @@ func _one_goes_down() -> void:
 	one_down = true
 	run["hp"] = 0.0
 	rev_k = 0.0
+	back_t = 0.0
 	dash_t = 0.0
 	kb_t = 0.0
 	view.pilot.down = true
 	view.pilot.moving = false
 	view.pilot.modulate = Color.WHITE
-	say("", "YOU ARE DOWN")
+	say("", "YOU ARE DOWN: %s HOLDS OUT %d SECONDS" % [two_name().to_upper(), int(TWO_BACK)])
 	Audio.play("hit_hull", "survivor: the first player is down", -4.0)
 
 
@@ -656,6 +672,7 @@ func _one_back() -> void:
 	view.pilot.down = false
 	view.story_cam = Vector2.INF
 	rev_k = 0.0
+	back_t = 0.0
 	say("", "BACK UP")
 	Audio.play("sv_level", "survivor: the first player is back up", -4.0)
 
@@ -666,6 +683,7 @@ func _two_back() -> void:
 	two_hurt_cd = 2.5
 	two.down = false
 	rev_k = 0.0
+	back_t = 0.0
 	say("", "%s IS BACK UP" % two_name().to_upper())
 	Audio.play("sv_level", "survivor: the second player is back up", -4.0)
 
@@ -714,9 +732,12 @@ func _two_step(delta: float) -> void:
 					two.position = fr * S
 		# what touches them (while you stand; while you are down the stage is after them anyway)
 		if not one_down and not frozen and two_hurt_cd <= 0.0 and two_dash_t <= 0.0:
-			var tc: Array = touching(two.pos, 8.0)
-			if not tc.is_empty():
-				two_hurt(_dmg[fk[tc[0]]] * (1.5 if fal[tc[0]] != 0 else 1.0))
+			for tj in touching(two.pos, 64.0):
+				var tk: int = fk[tj]
+				var near: float = (_rad[tk] + 6.0) if _beh[tk] >= SD.BOSS_BEH else 8.0      # (a boss is as wide as it is: to touch it hurts)
+				if fp[tj].distance_to(two.pos) < near and fovr[tj] <= 0.0 and not _under(tj):
+					two_hurt(_dmg[tk] * (1.5 if fal[tj] != 0 else 1.0))
+					break
 		if float(mods2.get("regen", 0.0)) > 0.0:
 			two_hp = minf(two_max(), two_hp + float(mods2["regen"]) * delta)      # (their Nanite Weave)
 		# shards near them fly to whoever gathers (what they are worth is for both of you)
@@ -725,17 +746,17 @@ func _two_step(delta: float) -> void:
 			for k in sn:
 				if spull[k] == 0 and sp[k].distance_squared_to(two.pos) < mag2:
 					spull[k] = 1
-	# the use key held beside whoever is down
-	var near: bool = two.pos.distance_to(me) <= TWO_REACH
-	if two_down and not one_down and near and view.input_enabled and Input.is_action_pressed("interact"):
-		rev_k += delta / TWO_REVIVE
-		if rev_k >= 1.0:
-			_two_back()
-	elif one_down and two_up() and near and Players.pressed(1, "interact"):
-		rev_k += delta / TWO_REVIVE
-		if rev_k >= 1.0:
-			_one_back()
+	# one of you down: the other holds out alone; after twenty seconds the one down is back
+	if (two_down and not one_down) or (one_down and two_up()):
+		back_t += delta
+		rev_k = clampf(back_t / TWO_BACK, 0.0, 1.0)
+		if back_t >= TWO_BACK:
+			if two_down:
+				_two_back()
+			else:
+				_one_back()
 	else:
+		back_t = 0.0
 		rev_k = 0.0
 
 
@@ -757,11 +778,10 @@ func _two_draw(o: Node2D) -> void:
 	var word := ""
 	if two_down and not one_down:
 		who = tp
-		word = "DOWN: hold %s beside them" % Keybinds.key_text("interact")
 	elif one_down:
 		who = view.pilot.pos * S
-		var key2: String = Keybinds.key_text("interact") if Players.on_keys(1) else Pad.binding_text(Pad.binding("ground", "interact"))
-		word = "DOWN: P2 holds %s beside you" % key2
+	if who != Vector2.INF:
+		word = "DOWN: back in %d s" % int(ceil(TWO_BACK - back_t))
 	if who != Vector2.INF:
 		var ws := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
 		o.draw_rect(Rect2(who + Vector2(-ws.x * 0.5 - 6.0, 16.0), Vector2(ws.x + 12.0, 20.0)), Color(0.02, 0.02, 0.05, 0.75))
@@ -1089,7 +1109,7 @@ func _director(delta: float, pp: Vector2) -> void:
 	if soft_b != "" and t >= SD.SOFT_BOSS and not boss_done.has(soft_b):
 		boss_start(soft_b)
 		return
-	_acc += SD.spawn_rate(t) * delta
+	_acc += SD.spawn_rate(t) * delta * swarm_k()
 	while _acc >= 1.0:
 		_acc -= 1.0
 		if n >= foe_cap:
@@ -1104,7 +1124,7 @@ func _director(delta: float, pp: Vector2) -> void:
 			foe_cap = maxi(foe_cap, SD.FLOOD_FOES)
 			say("flood")
 			Audio.play("sv_alarm", "survivor: the flood", -4.0)
-		_flood_acc += SD.FLOOD_RATE * delta
+		_flood_acc += SD.FLOOD_RATE * delta * swarm_k()
 		while _flood_acc >= 1.0:
 			_flood_acc -= 1.0
 			if n >= foe_cap:
@@ -1964,6 +1984,8 @@ func _apex(i: int, p: Vector2, d: Vector2, dl: float, delta: float, pp: Vector2)
 				fp[i] = q
 			else:
 				t = 0.0                                         # (a wall, or what stands in the hall: there it lands)
+			if two_open() and fp[i].distance_to(two.pos) < 22.0:      # (split screen: the second player stands in it too)
+				two_hurt(float(ad["pounce"]))
 			if can_hurt() and fp[i].distance_to(pp) < 22.0:
 				_hurt(float(ad["pounce"]))
 				throw_you(dir, 0.3)
@@ -2031,6 +2053,8 @@ func _mastermind(i: int, p: Vector2, delta: float, pp: Vector2) -> void:
 	_boss_pull = -d / dl * float(md["pull"])
 	if float(bst["tick"]) <= 0.0:
 		bst["tick"] = 0.5
+		if two_open() and p.distance_to(two.pos) < float(md["ring_r"]):      # (split screen: the second player inside its ring)
+			two_hurt(float(md["ring"]))
 		if can_hurt() and dl < float(md["ring_r"]):
 			_hurt(float(md["ring"]))
 	if float(bst["grey"]) <= 0.0:
@@ -2162,6 +2186,8 @@ func _lab_step(delta: float, pp: Vector2) -> void:
 		if float(hu["t"]) >= float(hu["len"]):
 			var hat: Vector2 = hu["to"]
 			var hur := float(SD.FOES["mastermind"]["hurl_r"])
+			if two_open() and hat.distance_to(two.pos) < hur:      # (split screen: the second player stands in it too)
+				two_hurt(float(SD.FOES["mastermind"]["hurl"]))
 			if can_hurt() and hat.distance_to(pp) < hur:
 				_hurt(float(SD.FOES["mastermind"]["hurl"]))
 			if blasts.size() < 40:
@@ -2199,6 +2225,8 @@ func _lab_step(delta: float, pp: Vector2) -> void:
 			purge["lit"] = true
 			purge["tick"] = 0.0
 			Audio.play("sv_bomb", "survivor: the purge", -4.0)
+			if two_open() and pr.has_point(two.pos):      # (split screen: the second player stands in it too)
+				two_hurt(SD.PURGE_DMG)
 			if can_hurt() and pr.has_point(pp):
 				_hurt(SD.PURGE_DMG)
 		if bool(purge["lit"]):
@@ -2211,6 +2239,8 @@ func _lab_step(delta: float, pp: Vector2) -> void:
 					if i < n and _beh[fk[i]] != 5 and _beh[fk[i]] < SD.BOSS_BEH and pr.has_point(fp[i]):
 						_hit(i, SD.PURGE_FOES * grow, fp[i])
 				_kbk = 1.0
+				if two_open() and pr.has_point(two.pos) and pt > SD.PURGE_WARN + 0.3:      # (split screen: the second player stands in it too)
+					two_hurt(SD.PURGE_TICK)
 				if can_hurt() and pr.has_point(pp) and pt > SD.PURGE_WARN + 0.3:
 					_hurt(SD.PURGE_TICK)
 			if pt >= SD.PURGE_WARN + SD.PURGE_BURN:
@@ -2228,6 +2258,8 @@ func _lab_step(delta: float, pp: Vector2) -> void:
 			g["on"] = on
 			if not on:
 				continue
+			if two_open() and _near_line(two.pos, ga, gb) < 7.0:      # (split screen: the second player stands in it too)
+				two_hurt(SD.GRID_DMG)
 			if can_hurt() and _near_line(pp, ga, gb) < 7.0:
 				_hurt(SD.GRID_DMG)
 				var back := pp - Geometry2D.get_closest_point_to_segment(pp, ga, gb)
@@ -2515,6 +2547,8 @@ func _stomp(i: int) -> void:
 	var pp: Vector2 = view.pilot.pos
 	tele.append({"kind": "stomp", "pos": p, "r": STOMP_R, "t": 0.0, "len": 0.4})
 	Audio.play("sv_stomp", "survivor: a stamp", -8.0)
+	if two_open() and p.distance_to(two.pos) < STOMP_R:      # (split screen: the second player stands in it too)
+		two_hurt(22.0 * (1.5 if fal[i] != 0 else 1.0))
 	if can_hurt() and p.distance_to(pp) < STOMP_R:
 		_hurt(22.0 * (1.5 if fal[i] != 0 else 1.0))
 		throw_you((pp - p).normalized(), 0.28)
@@ -2591,6 +2625,9 @@ func _thrown(delta: float, pp: Vector2) -> void:
 	while q >= 0:
 		var w: Dictionary = waves[q]
 		w["r"] = float(w["r"]) + float(w["speed"]) * delta
+		if not bool(w.get("hit2", false)) and two_open() and absf((w["pos"] as Vector2).distance_to(two.pos) - float(w["r"])) < 9.0:
+			w["hit2"] = true                                   # (split screen: a shock wave runs over the second player too)
+			two_hurt(float(w["dmg"]))
 		if not bool(w["hit"]) and absf((w["pos"] as Vector2).distance_to(pp) - float(w["r"])) < 9.0 and can_hurt():
 			w["hit"] = true
 			_hurt(float(w["dmg"]))
@@ -2939,6 +2976,8 @@ func _boss(delta: float, pp: Vector2) -> void:
 			"charge":
 				var before := fp[i]
 				_boss_go(i, (bst["dir"] as Vector2) * 300.0, delta)
+				if two_open() and fp[i].distance_to(two.pos) < 20.0:      # (split screen: the second player stands in it too)
+					two_hurt(24.0)
 				if can_hurt() and fp[i].distance_to(pp) < 20.0:
 					_hurt(24.0)
 					throw_you(bst["dir"], 0.3)
@@ -2956,6 +2995,8 @@ func _boss(delta: float, pp: Vector2) -> void:
 				if t <= 0.0:
 					for sp1 in bst["spots"]:
 						blasts.append({"pos": sp1, "r": 28.0, "t": 0.0})
+						if two_open() and (sp1 as Vector2).distance_to(two.pos) < 28.0:      # (split screen: the second player stands in it too)
+							two_hurt(20.0)
 						if can_hurt() and (sp1 as Vector2).distance_to(pp) < 28.0:
 							_hurt(20.0)
 					Audio.play("sv_boom", "survivor: containers", -6.0)
@@ -3069,6 +3110,8 @@ func _worm(i: int, p: Vector2, delta: float, pp: Vector2) -> void:
 				tele.append({"kind": "erupt", "pos": at, "r": er * 1.25, "t": 0.0, "len": 0.5})
 				Audio.play("sv_ice", "survivor: the worm breaks out", -4.0)
 				Audio.play("sv_stomp", "survivor: the worm breaks out", -8.0)
+				if two_open() and at.distance_to(two.pos) < er:      # (split screen: the second player stands in it too)
+					two_hurt(float(wd["erupt"]))
 				if can_hurt() and at.distance_to(pp) < er:
 					_hurt(float(wd["erupt"]))
 					throw_you(pp - at, 0.3)
@@ -3185,6 +3228,11 @@ func _warden(i: int, p: Vector2, d: Vector2, dl: float, delta: float, pp: Vector
 	var ph := int(boss_info()["phase"])
 	bst["warm"] = maxf(0.0, float(bst["warm"]) - delta)
 	bst["a"] = fposmod(float(bst["a"]) + float([0.8, 1.0, 1.15][ph - 1]) * delta, TAU)
+	if float(bst["warm"]) <= 0.0 and two_open():            # (split screen: the arm sweeps over the second player too)
+		for arm2 in (2 if ph == 3 else 1):
+			if _near_line(two.pos, p, p + Vector2.from_angle(float(bst["a"]) + arm2 * PI) * float(fd["arm"])) < 6.0:
+				two_hurt(float(fd["arm_dmg"]))
+				break
 	if float(bst["warm"]) <= 0.0 and can_hurt():            # the arm: to touch it hurts, and throws you outwards
 		for arm in (2 if ph == 3 else 1):
 			if _near_line(pp, p, p + Vector2.from_angle(float(bst["a"]) + arm * PI) * float(fd["arm"])) < 6.0:
@@ -3237,6 +3285,8 @@ func _core(p: Vector2, delta: float, pp: Vector2) -> void:
 				am["t"] = 0.35
 				Audio.play("sv_beam", "survivor: a pylon's beam", -10.0)
 		else:
+			if two_open() and _near_line(two.pos, from, from + (am["dir"] as Vector2) * 700.0) < 6.0:      # (split screen: the second player stands in it too)
+				two_hurt(float(fd["beam"]))
 			if can_hurt() and _near_line(pp, from, from + (am["dir"] as Vector2) * 700.0) < 6.0:
 				_hurt(float(fd["beam"]))
 			if float(am["t"]) <= 0.0:
@@ -3253,6 +3303,8 @@ func _core(p: Vector2, delta: float, pp: Vector2) -> void:
 		elif float(fl["t"]) >= float(fl["len"]) and not bool(fl.get("done", false)):
 			fl["done"] = true
 			boomed = true
+			if two_open() and (fl["r"] as Rect2).has_point(two.pos):      # (split screen: the second player stands in it too)
+				two_hurt(float(fd["field"]))
 			if can_hurt() and (fl["r"] as Rect2).has_point(pp):
 				_hurt(float(fd["field"]))
 		qf -= 1
@@ -3274,6 +3326,11 @@ func _core(p: Vector2, delta: float, pp: Vector2) -> void:
 	# ---- the cross: four arms of light turning round it
 	bst["warm"] = maxf(0.0, float(bst["warm"]) - delta)
 	bst["a"] = fposmod(float(bst["a"]) + (0.45 if ph == 2 else 0.34) * delta, TAU)
+	if float(bst["warm"]) <= 0.0 and two_open():            # (split screen: the cross of light over the second player too)
+		for arm2 in 4:
+			if _near_line(two.pos, p, p + Vector2.from_angle(float(bst["a"]) + arm2 * PI * 0.5) * SD.CROSS_LEN) < 6.0:
+				two_hurt(float(fd["beam"]))
+				break
 	if float(bst["warm"]) <= 0.0 and can_hurt():
 		for arm in 4:
 			if _near_line(pp, p, p + Vector2.from_angle(float(bst["a"]) + arm * PI * 0.5) * SD.CROSS_LEN) < 6.0:
@@ -3432,6 +3489,9 @@ func _walls(delta: float) -> void:
 		barrier_k = minf(1.0, barrier_k + delta / 1.0)
 		if barrier_k >= 1.0:
 			var inner := barrier.grow(-6.0)
+			if two != null and is_instance_valid(two) and not inner.has_point(two.pos):      # (split screen: the walls of light hold the second player in too)
+				two.pos = Vector2(clampf(two.pos.x, inner.position.x, inner.end.x), clampf(two.pos.y, inner.position.y, inner.end.y))
+				two.position = two.pos * S
 			var pp: Vector2 = view.pilot.pos
 			if not inner.has_point(pp):
 				var held := Vector2(clampf(pp.x, inner.position.x, inner.end.x), clampf(pp.y, inner.position.y, inner.end.y))
@@ -3463,7 +3523,9 @@ func _crates(delta: float, pp: Vector2) -> void:
 			else:
 				crates.remove_at(q)
 				drew = drew or bool(c.get("weapon", false))
+				give_seat = 1 if (not one_down and two_up() and (c["pos"] as Vector2).distance_squared_to(two.pos) < (c["pos"] as Vector2).distance_squared_to(view.pilot.pos)) or (one_down and two_up()) else 0
 				open_crate(c)
+				give_seat = 0
 		q -= 1
 	for bm in bombs:
 		bm["t"] = float(bm["t"]) + delta
@@ -3580,7 +3642,8 @@ func give(id: String) -> void:
 	if not SD.ITEMS.has(id):
 		return
 	var it: Dictionary = SD.ITEMS[id]
-	var pp: Vector2 = view.pilot.pos
+	var by_two: bool = give_seat == 1 and two_up()         # (split screen: the second player opened the crate: round them, for them)
+	var pp: Vector2 = two.pos if by_two else view.pilot.pos
 	match id:
 		"shield":
 			shield_t = float(it["time"]) * float(mods.get("dur", 1.0))
@@ -3588,7 +3651,10 @@ func give(id: String) -> void:
 		"magnet":
 			magnet_t = 3.0
 		"medkit":
-			run["hp"] = minf(SD.max_hp(run), float(run["hp"]) + float(it["heal"]))
+			if by_two:
+				two_hp = minf(two_max(), two_hp + float(it["heal"]))
+			else:
+				run["hp"] = minf(SD.max_hp(run), float(run["hp"]) + float(it["heal"]))
 			heals.append({"t": 0.0})
 		"stasis":
 			stasis_t = float(it["time"]) * float(mods.get("dur", 1.0))
@@ -4271,6 +4337,8 @@ func _wo_events(delta: float, pp: Vector2) -> void:
 			for j in touching(br.get_center(), br.size.x * 0.75):
 				if j < n and br.has_point(fp[j]) and _beh[fk[j]] != 5:
 					_hit(j, bdmg, fp[j])
+			if two_open() and br.has_point(two.pos):      # (split screen: the second player stands in it too)
+				two_hurt(SD.BREAK_DMG)
 			if can_hurt() and br.has_point(pp):
 				_hurt(SD.BREAK_DMG)
 			Audio.play("sv_ice", "survivor: the ice breaks", -8.0)
@@ -4335,6 +4403,8 @@ func _events(delta: float, pp: Vector2) -> void:
 		for j2 in touching(bp, br):
 			if j2 < n:
 				_hit(j2, float(SD.FOES["seeker"]["boom_foes"]), bp)
+		if two_open() and bp.distance_to(two.pos) < br:      # (split screen: the second player stands in it too)
+			two_hurt(float(SD.FOES["seeker"]["boom"]))
 		if can_hurt() and bp.distance_to(pp) < br:
 			_hurt(float(SD.FOES["seeker"]["boom"]))
 		if blasts.size() < 40:
@@ -4374,6 +4444,8 @@ func _events(delta: float, pp: Vector2) -> void:
 				for j3 in touching(at, sr):
 					if j3 < n:
 						_hit(j3, float(sh["foes"]), at)
+			if two_open() and at.distance_to(two.pos) < sr:      # (split screen: the second player stands in it too)
+				two_hurt(float(sh["dmg"]))
 			if can_hurt() and at.distance_to(pp) < sr:
 				_hurt(float(sh["dmg"]))
 			if bool(sh.get("zap", false)):                    # (part 9c) a bolt of The Storm Heart's lightning
@@ -4402,6 +4474,8 @@ func _events(delta: float, pp: Vector2) -> void:
 			if float(pd["t"]) <= 0.0:
 				var pat: Vector2 = pd["pos"]
 				pd["husk"] = 3.0
+				if two_open() and pat.distance_to(two.pos) < 16.0:      # (split screen: the second player stands in it too)
+					two_hurt(10.0)
 				if can_hurt() and pat.distance_to(pp) < 16.0:
 					_hurt(10.0)
 				for q2 in 3:
@@ -4420,6 +4494,11 @@ func _events(delta: float, pp: Vector2) -> void:
 			var kd: Vector2 = kl["dir"]
 			var rel := pp - ((kl["c"] as Vector2) + kd * float(kl["s"]))
 			var lat := rel.dot(kd.orthogonal())
+			if two_open():                                       # (split screen: the line runs over the second player too)
+				var rel2: Vector2 = two.pos - ((kl["c"] as Vector2) + kd * float(kl["s"]))
+				var lat2 := rel2.dot(kd.orthogonal())
+				if absf(rel2.dot(kd)) < 5.0 and absf(lat2) < float(kl["half"]) and not (kl["gaps"] as Array).any(func(g2): return absf(lat2 - float(g2)) < SD.LINE_GAP * 0.5):
+					two_hurt(20.0)
 			if can_hurt() and absf(rel.dot(kd)) < 5.0 and absf(lat) < float(kl["half"]) and not (kl["gaps"] as Array).any(func(g): return absf(lat - float(g)) < SD.LINE_GAP * 0.5):
 				_hurt(20.0)
 			if float(kl["s"]) >= float(kl["far"]):
