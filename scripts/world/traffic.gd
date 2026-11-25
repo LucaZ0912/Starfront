@@ -63,6 +63,31 @@ func _exit_tree() -> void:
 
 # ---------------------------------------------------------------- Helpers
 
+## Stage 4 of the split screen (each flies their own ship): the contract with this id, whoever of the two holds it
+## ({}: none), the escort contract of a live convoy, and the ships out here of who holds a contract: what the
+## traffic asks of "the pilot" (be with the convoy, fly the rounds) it asks of them.
+func _contract(id) -> Dictionary:
+	for m in GameState._held():
+		if m["id"] == id:
+			return m
+	return {}
+
+
+func _escort_of(e: Dictionary) -> Dictionary:
+	for m in GameState._held():
+		if String(m["type"]) == "escort" and int(m.get("convoy", -1)) == int(e["c"]["id"]):
+			return m
+	return {}
+
+
+func _with_group(pl: Ship, leader: Ship, ships: Array, near: float) -> bool:
+	if pl.is_docked():
+		return false
+	var d: float = pl.position.distance_to(leader.position)
+	if d <= near:
+		return true
+	return String(pl.order.get("type", "")) == "follow" and pl.order.get("node") in ships and d <= GATHER_FOLLOW_RANGE
+
 func npc_count() -> int:
 	var n := 0
 	for s in view.ship_layer.get_children():
@@ -313,18 +338,20 @@ func on_docked(s: Ship, st_node) -> void:
 func on_jump(s: Ship, next: int) -> void:
 	view.spawn_fx(Fx.flash(s.position, Color(0.75, 0.45, 1.0), s.radius * 4.0))
 	# the pilot follows this convoy: jump after it (package 17)
-	var pl = view.player
-	if pl != null and is_instance_valid(pl) and String(pl.order.get("type", "")) == "follow":
+	for pl in view.pilots():
+		if String(pl.order.get("type", "")) != "follow":
+			continue
 		var fol = pl.order.get("node")
 		for e0 in convoys.values():
 			if fol in e0["ships"] and s in e0["ships"]:
 				GameState.follow_convoy = int(e0["c"]["id"])
-				if GameState.can_jump(pl.fit, next) == "":
+				var cannot: String = GameState.with_seat(maxi(view.pilot_seat(pl), 0), GameState.can_jump.bind(pl.fit, next))
+				if cannot == "":
 					pl.fit.route = [next]
 					pl.set_order({"type": "travel"})
-					GameState.log_msg("The convoy jumps to %s: you follow." % Universe.systems[next]["name"], GameState.COL_INFO)
+					view.tell_pilot(pl, "The convoy jumps to %s: you follow." % Universe.systems[next]["name"], GameState.COL_INFO)
 				else:
-					GameState.log_msg("The convoy jumped to %s, you cannot follow: %s" % [Universe.systems[next]["name"], GameState.can_jump(pl.fit, next)], GameState.COL_WARN)
+					view.tell_pilot(pl, "The convoy jumped to %s, you cannot follow: %s" % [Universe.systems[next]["name"], cannot], GameState.COL_WARN)
 				break
 	for id in convoys.keys():
 		var e: Dictionary = convoys[id]
@@ -775,7 +802,7 @@ func _update_patrols(dt: float) -> void:
 			patrols.erase(g)
 			_patrol_wait[g["gov"]] = PATROL_RESPAWN
 			if g.has("mission"):
-				for m9 in GameState.missions.duplicate():
+				for m9 in GameState._held():
 					if m9["id"] == g["mission"]:
 						GameState.fail_mission(m9, "the patrol was destroyed")
 			continue
@@ -1358,8 +1385,7 @@ func _update_faction_jobs(dt: float) -> void:
 		if float(e["ambush_t"]) <= 0.0:
 			e.erase("ambush_t")
 			ambush(e)
-	var pl = view.player
-	for m in GameState.missions:
+	for m in GameState._held():
 		if int(m["progress"]) >= 1 or int(m["target_system"]) != sid:
 			continue
 		match String(m["type"]):
@@ -1371,16 +1397,19 @@ func _update_faction_jobs(dt: float) -> void:
 				if mg.is_empty():
 					spawn_mission_patrol(m)  # contract groups ignore the NPC limit
 					continue
-				if pl == null or not is_instance_valid(pl) or pl.is_docked() or mg.get("gather", false):
+				if mg.get("gather", false):
 					continue
-				var near := false
-				for ps in mg["ships"]:
-					near = near or (_alive(ps) and ps.position.distance_to(pl.position) <= Missions.PATROL_RANGE)
+				var near := false                           # (the ship of who holds the contract flies with the patrol)
+				for pl in view.holder_ships(m):
+					if pl.is_docked():
+						continue
+					for ps in mg["ships"]:
+						near = near or (_alive(ps) and ps.position.distance_to(pl.position) <= Missions.PATROL_RANGE)
 				if near:
 					m["progress_t"] = float(m["progress_t"]) + dt
 					if float(m["progress_t"]) >= float(m["amount"]):
 						m["progress"] = 1
-						GameState.log_msg("Patrol flown with the %s: report back to the issuing station." % FactionData.short_of(String(m["faction"])), GameState.COL_GOOD)
+						GameState.tell_holders(m, "Patrol flown with the %s: report back to the issuing station." % FactionData.short_of(String(m["faction"])), GameState.COL_GOOD)
 						GameState.missions_changed.emit()
 						release_mission_patrol(mg)
 			"smuggler":
@@ -1400,7 +1429,7 @@ func _update_faction_jobs(dt: float) -> void:
 			smugglers.erase(e3)
 			view.spawn_fx(Fx.flash(sm.position, Color(0.75, 0.45, 1.0), sm.radius * 4.0))
 			_despawn(sm)
-			for m2 in GameState.missions.duplicate():
+			for m2 in GameState._held():
 				if m2["id"] == e3["mission"]:
 					GameState.fail_mission(m2, "the smuggler reached the gate and jumped out")
 		elif _idle(sm):
@@ -1410,11 +1439,14 @@ func _update_faction_jobs(dt: float) -> void:
 ## Package 39a: thieves after the ballot cores – in a system on the way (not Landfall) they may strike once,
 ## a little while after the pilot came in.
 func _ballot_thieves() -> void:
-	var pl = view.player
-	if pl == null or not is_instance_valid(pl) or pl.is_docked() or pl.in_warp():
-		return
-	for m in GameState.missions:
+	for m in GameState._held():
 		if not m.get("ballot", false) or int(m["target_system"]) == sid:
+			continue
+		var pl: Ship = null                              # (the ship of who holds the contract, out in space)
+		for hp in view.holder_ships(m):
+			if pl == null and not hp.is_docked() and not hp.in_warp():
+				pl = hp
+		if pl == null:
 			continue
 		var amb: Dictionary = m.get("amb", {})
 		var key := str(sid)
@@ -1430,7 +1462,7 @@ func _ballot_thieves() -> void:
 			p.home = pl.position
 			p.set_order({"type": "attack", "target": pl})
 			view.spawn_fx(Fx.flash(p.position, Color(1.0, 0.4, 0.3), p.radius * 3.0))
-		GameState.log_msg("Ballot thieves! %d ships drop out of warp: they want the ballot cores." % n, GameState.COL_WARN)
+		GameState.tell_holders(m, "Ballot thieves! %d ships drop out of warp: they want the ballot cores." % n, GameState.COL_WARN)
 		GameState.news.radio("Pirates try to seize ballots bound for The Vote!", sid, pl.position)
 
 
@@ -1488,13 +1520,10 @@ const GATHER_FOLLOW_RANGE := 8000.0  # or follow one of its ships and be at leas
 
 ## A gathering escort convoy sets off once the pilot has been close for a few seconds.
 func _check_gather(e: Dictionary, leader: Ship) -> void:
-	var pl = view.player
-	if pl == null or not is_instance_valid(pl) or pl.is_docked() or leader.is_docked():
-		e["gather_t"] = 0.0
-		return
-	var with_it: bool = pl.position.distance_to(leader.position) <= GATHER_RANGE
-	if String(pl.order.get("type", "")) == "follow" and pl.order.get("node") in e["ships"] and pl.position.distance_to(leader.position) <= GATHER_FOLLOW_RANGE:
-		with_it = true               # following the convoy is enough
+	var with_it := false             # (close to it, or following it: following the convoy is enough)
+	if not leader.is_docked():
+		for pl in view.holder_ships(_escort_of(e)):
+			with_it = with_it or _with_group(pl, leader, e["ships"], GATHER_RANGE)
 	if not with_it:
 		e["gather_t"] = 0.0
 		return
@@ -1508,7 +1537,7 @@ func depart_gathered(e: Dictionary) -> void:
 	e["gather"] = false
 	e["c"]["gathering"] = false
 	GameState.news.radio("Convoy departing: stay close!", sid)
-	GameState.log_msg("%s sets off for %s: stay with it." % [ConvoySimScript.label(e["c"]), Universe.systems[int(e["c"]["dst"])]["name"]], GameState.COL_GOOD)
+	GameState.tell_holders(_escort_of(e), "%s sets off for %s: stay with it." % [ConvoySimScript.label(e["c"]), Universe.systems[int(e["c"]["dst"])]["name"]], GameState.COL_GOOD)
 	_plan_ambush(e)
 	_order_convoy(e)
 
@@ -1601,11 +1630,12 @@ func pull_out_of_warp(e: Dictionary, leader: Ship) -> void:
 			GameState.story.set_flag(String(c9["story_flag"]), true)
 	GameState.news.radio("Convoy pulled out of warp near %s: pirates closing in!" % where, sid, leader.position)
 	_convoy_call(e, "Mayday, they've pulled us out of warp near %s! %d pirates closing in. Escort, cover us!" % [where, k], true)
-	var pl = view.player
-	if pl != null and is_instance_valid(pl) and pl in dropped:
-		GameState.log_msg("Interdicted! Pirates pulled the convoy, and you, out of warp. %d pirates attack." % k, GameState.COL_BAD)
-	elif pl != null and is_instance_valid(pl):
-		GameState.log_msg("Pirates pulled your convoy out of warp near %s!" % where, GameState.COL_BAD)
+	var mine: Array = view.holder_ships(_escort_of(e))
+	for pl in view.pilots():
+		if pl in dropped:
+			view.tell_pilot(pl, "Interdicted! Pirates pulled the convoy, and you, out of warp. %d pirates attack." % k, GameState.COL_BAD)
+		elif pl in mine:
+			view.tell_pilot(pl, "Pirates pulled your convoy out of warp near %s!" % where, GameState.COL_BAD)
 
 
 ## Convoy id of a live convoy ship (-1 = none).
@@ -1652,13 +1682,10 @@ func convoy_threat(e: Dictionary) -> bool:
 ## True when the pilot is with the convoy: following it (within the gather follow range) or right
 ## next to it.
 func pilot_with(e: Dictionary, leader: Ship) -> bool:
-	var pl = view.player
-	if pl == null or not is_instance_valid(pl) or pl.is_docked() or pl.in_warp():
-		return false
-	var d: float = pl.position.distance_to(leader.position)
-	if d <= HOLD_NEAR:
-		return true
-	return String(pl.order.get("type", "")) == "follow" and pl.order.get("node") in e["ships"] and d <= GATHER_FOLLOW_RANGE
+	for pl in view.holder_ships(_escort_of(e)):
+		if not pl.in_warp() and _with_group(pl, leader, e["ships"], HOLD_NEAR):
+			return true
+	return false
 
 
 ## An escorted convoy under attack holds where it is – no fleeing, no warp – until no pirate is left
@@ -1748,13 +1775,10 @@ func _mark_group(g: Dictionary, ships: Array, leader) -> void:
 
 
 func _check_patrol_gather(g: Dictionary, leader: Ship) -> void:
-	var pl = view.player
-	if pl == null or not is_instance_valid(pl) or pl.is_docked() or leader.is_docked():
-		g["gather_t"] = 0.0
-		return
-	var with_it: bool = pl.position.distance_to(leader.position) <= GATHER_RANGE
-	if String(pl.order.get("type", "")) == "follow" and pl.order.get("node") in g["ships"] and pl.position.distance_to(leader.position) <= GATHER_FOLLOW_RANGE:
-		with_it = true
+	var with_it := false
+	if not leader.is_docked():
+		for pl in view.holder_ships(_contract(g.get("mission", ""))):
+			with_it = with_it or _with_group(pl, leader, g["ships"], GATHER_RANGE)
 	if not with_it:
 		g["gather_t"] = 0.0
 		return
@@ -1764,7 +1788,7 @@ func _check_patrol_gather(g: Dictionary, leader: Ship) -> void:
 	g["gather"] = false
 	g["on_beat"] = false
 	GameState.news.radio("Patrol departing: stay close!", sid)
-	GameState.log_msg("The %s patrol sets off on its rounds: stay with it." % FactionData.short_of(String(g["gov"])), GameState.COL_GOOD)
+	GameState.tell_holders(_contract(g.get("mission", "")), "The %s patrol sets off on its rounds: stay with it." % FactionData.short_of(String(g["gov"])), GameState.COL_GOOD)
 	_next_waypoint(g, leader)
 
 

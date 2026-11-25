@@ -69,13 +69,13 @@ func holds(w: Node) -> bool:
 ## The first gate takes the half's player as the pilot for everything of the half that runs in this frame's
 ## _process, the last one gives it back.
 func _gate(into: bool) -> void:
-	if into and visible and seat == 1 and _space() and int(main.view.eye) == 0:
+	if into and visible and seat == 1 and _space() and not _own_view() and int(main.view1.eye) == 0:
 		_eyed = true
-		main.view.eye_as(1)                              # (their look as the view's too: a window of theirs asks the view for their ship)
+		main.view1.eye_as(1)                             # (their look as the view's too: a window of theirs asks the view for their ship)
 		return
 	if not into and _eyed:
 		_eyed = false
-		main.view.eye_as(0)
+		main.view1.eye_as(0)
 		return
 	if into:
 		if visible and GameState.has_pilot2() and GameState.acting != seat:
@@ -88,11 +88,17 @@ func _gate(into: bool) -> void:
 
 ## An event into this half, in its player's name. True if something in the half took it.
 func push(event: InputEvent, local: bool = false) -> bool:
-	if _space():
-		main.view.in_eye(seat, vp.push_input.bind(event, local))
+	if _space() and not (seat == 1 and _own_view()):
+		main.view1.in_eye(seat, vp.push_input.bind(event, local))
 	else:
 		GameState.with_seat(seat, vp.push_input.bind(event, local))
 	return vp.is_input_handled()
+
+
+## Stage 5: the second player has a space view of their own (another system). Then their turn alone makes it "the
+## view" (main hears of the turn); the shared view's second look is not theirs to take.
+func _own_view() -> bool:
+	return main != null and main.has_method("_v2") and main._v2()
 
 
 func _space() -> bool:

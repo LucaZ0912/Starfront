@@ -467,6 +467,39 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.46 (stage 5B): main `_seat_turn(seat)`: what main does for the second player while they have a view of
+  their own begins with `if _seat_turn(seat): GameState.with_seat(1, <itself>); return` (window actions, their
+  station window and deck, service windows, every step of the way down to a planet and up, the city's take-off
+  question), so `view`, `GameState.current_system` and `hud` are theirs inside. `view2` hears `descended`,
+  `descent_ending` and `ascended` as the first view does. `_lift2_step()` and the fall helpers ask `view_of(seat)` /
+  `GameState.system_of(seat)`. `SystemView.eye_get()` / `eye_put()` know a one-look view's own seat;
+  `win_half.gd` `_own_view()`.
+- 0.8.75.45 (stage 5A, two systems): `GameState.current_system2` is swapped with the acting player (so
+  `current_system` is always the acting player's), `system_of(seat)`, `set_system_of()`, `seat_hook` (called by
+  `act_as()`), `_fly_step()` for each player's ship (the jump's end, the scanners), `ship_along()` does nothing any
+  more. `scripts/world/world_half.gd`: the half of the second player's own view, a world of its own, with gates that
+  run its `_process` and `_physics_process` in their name. main: `view1` (the first player's view, always),
+  `view2` / `whalf2` / `hud_v2` (the second player's own, made and dropped by `_view2_step()` exactly while the
+  two systems differ), `_seat_scope()` (in their turn `view`, `Commands.world` and `hud` are theirs), `view_of()`,
+  `pship()`, `as_pilot()`, `_jumped_out2()`, `in_hyperspace2`. `SystemView.owner_seat` / `look_seat()` (a view with
+  one look that is the second player's), `STAGE5`. `HUD.own_view`.
+- 0.8.75.44 (a city's window for the second player): main `_aboard_at` (the city in whose hangar they went aboard),
+  `open_station2()` also for a city (`Commands.docked_station()` as seat 1), `ask_city_takeoff(seat)` with
+  `_takeoff_layer2` in `halves[1]`, `_takeoff_of()` / `_takeoff_end()`; `p2_deck` is set wherever a view of their
+  own is made (`_ground2_new()`, `_part_now()`).
+- 0.8.75.43 (each player's own out in space): `GameState.wingmen2` / `rescued2` (swapped with the acting player,
+  saved), a pod's `"seat"`; `SystemView.EYE_VARS` gain `wing_nodes`, `market_buyers`, `market_runway`, `_market_t`,
+  `_market_pirate_t`, `_interdict`; `_slow_look()` (the second look's market, wingmen, platform ship),
+  `_own_in()` when the looks end, `_save_wing_states_eye()`, `Ship.wing_seat` (`pilot_seat()` knows wingmen),
+  `interdict_tap()`; `market_drone.gd` steps in its host's player's look; `interdict_game.gd` `seat`.
+- 0.8.75.42 (contracts by their holder's ship): `GameState.holders(m)` (seats), `tell_holders(m, text, col)`,
+  `holder_fit(m, ok)`, `_ballot_drop(m)`; `SystemView.holder_ships(m)` (the ships out here of who holds a contract;
+  `{}`: every pilot's) and `tell_pilot(ship, text, col)`; `traffic.gd` reads `GameState._held()` and asks
+  `holder_ships()` where it asked `view.player` (`_contract(id)`, `_escort_of(e)`, `_with_group()`).
+- 0.8.75.41 (the station's window for the second player): main `p2_deck` (they chose the deck; else docked means
+  aboard), `open_station2()`, `_walk_deck2()`, `_aboard2()`, `_hub2_due` (set by `_on_station_docked` for seat 1);
+  `_undock2()` also from aboard; `win_action(1, "station" / "help")`. `StationUI._concourse_narrow()` (below
+  `UI.NARROW_W`), `undock()` of seat 1 goes to `main._undock2()`.
 - 0.8.75.40 (a fall is the faller's alone): main `_fallen(reason, seat, both)`: in a split screen `_fall_alone(seat,
   how, who)` brings only who fell, with `GameState.active_of(seat)`, to `_fall_place(seat)` (the nearest clinic
   city of this system, else a station of this system); seat 0: `close_deck(false, true)` leaves a guest behind,

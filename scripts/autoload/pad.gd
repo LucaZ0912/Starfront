@@ -209,6 +209,8 @@ func _kind_of(dev: int) -> String:
 ## The half of the picture this player's wheel, hints and list are in (null: there is one picture).
 func _half():
 	var m := _main()
+	if m != null and seat == 1 and "view2" in m and m.view2 != null and is_instance_valid(m.view2) and m.in_space(1):
+		return m.whalf2                                  # (stage 5: the second player's own view of another system)
 	if m != null and m.view != null and is_instance_valid(m.view) and "eyes_two" in m.view and m.view.eyes_two and m.in_space(seat):
 		return m.view.eye_half(seat)                     # (while this player flies: on foot their wheel is where their windows are)
 	return null

@@ -46,8 +46,20 @@ func _runway_free() -> bool:
 	return (view.market_runway == null or view.market_runway == self) and int(host.deck_queue) == (1 if _deck_held else 0)
 
 
+## Split screen: the seat of the player whose market ship this drone flies to (-1: it is right as it is).
+func _whose() -> int:
+	if view == null or not ("eyes_two" in view) or not view.eyes_two:
+		return -1
+	var s: int = view.pilot_seat(host)
+	return s if s >= 0 and s != int(view.eye) else -1
+
+
 func _release() -> void:
-	if view != null and view.market_runway == self:
+	if view != null and "eyes_two" in view and view.eyes_two:
+		for sq in 2:
+			if view.eye_get(sq, "market_runway") == self:
+				view.eye_put(sq, "market_runway", null)
+	elif view != null and view.market_runway == self:
 		view.market_runway = null
 	if _deck_held:
 		_deck_held = false
@@ -56,7 +68,11 @@ func _release() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	step(delta)
+	var s := _whose()
+	if s >= 0:
+		view.in_eye(s, step.bind(delta))                 # (the runway, the market and the trade are its host's player's)
+	else:
+		step(delta)
 
 
 func step(delta: float) -> void:

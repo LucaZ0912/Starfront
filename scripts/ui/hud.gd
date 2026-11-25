@@ -102,15 +102,22 @@ var _lay_sig := ""
 
 
 ## Runs f as this HUD's player (their look as the view's, they as the pilot).
+## Stage 5: this HUD is the second player's in a view of their own (another system): one of two HUDs, though its
+## view has one look. What it does it does in its player's name.
+var own_view := false
+
+
 func _me(f: Callable) -> void:
-	if view != null and is_instance_valid(view) and view.eyes_two and view.eye != seat:
+	if own_view:
+		GameState.with_seat(seat, f)
+	elif view != null and is_instance_valid(view) and view.eyes_two and view.eye != seat:
 		view.in_eye(seat, f)
 	else:
 		f.call()
 
 
 func two_up() -> bool:
-	return view != null and is_instance_valid(view) and view.eyes_two
+	return own_view or (view != null and is_instance_valid(view) and view.eyes_two)
 
 
 ## A narrow half of a split screen (alone the HUD is laid out as it always was, whatever the window's size).
@@ -509,7 +516,7 @@ func set_view(v: SystemView) -> void:
 	view = v
 	# (two looks: the view says these for either player's look; a HUD hears its own player's)
 	view.hover_changed.connect(func(t): if not view.eyes_two or view.eye == seat: _on_hover(t))
-	view.object_selected.connect(func(id): if not view.eyes_two or view.eye == seat: show_selected(id))
+	view.object_selected.connect(func(id): if not view.eyes_two or view.eye == seat: _me(show_selected.bind(id)))
 	selected_id = ""
 	_lock_sig = "-"
 	_module_sig = "-"

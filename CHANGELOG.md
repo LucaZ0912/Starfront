@@ -3,6 +3,167 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.46 – 2026-11-26
+
+**Package 75, split screen, stage 5B: in a system of their own the second player does what they do in yours.**
+- **Docking there:** the station's window (that station's, with its services, its prices, their ship and balance)
+  opens over their half; "Walk the deck" puts them on its deck in a view of their own, a counter's service opens in
+  their window, the stairs bring them aboard and the window back, "Undock" takes them out.
+- **Their windows there:** their ship's menu shows the ship of their own view, their galaxy map stands in their
+  system.
+- **A planet there:** the way down (the planet's map over their half, the flight, a city's hatch), on foot in a view
+  of their own, and up again into the space of their system.
+- **You stay behind on foot or they do:** who stands on a deck when the other jumps away stays there and plays on;
+  they follow when they like, by their own ship through their own gate.
+- You fly on in your system all the while; outside the second player's turn the game is the first player's.
+- **How:** what main does for the second player (their windows, their deck, their way down and up) is done in
+  their turn while they have a view of their own, so "the view", "the current system" and "the HUD" are theirs in it.
+- **Found on the way:**
+  - A window's half took the second player's look of the shared view as theirs, also when they had a view of their
+    own, and then gave the turn back to nobody. It takes their turn alone now.
+  - A view with one look answered questions about "the look of seat 1" with nothing, also when that look was the
+    second player's own.
+- **Still open in stage 5 (5C), said outright:**
+  - Your own jump is over the whole picture; the second player's world waits for those seconds. The second
+    player's jump is a dark half with a line of text.
+  - When you jump out of the system you share, or into the system the second player is in, their surroundings are
+    built anew.
+  - Shot down or fallen on foot: the rules of stage 4 and 0.8.75.40 (not yet "to their own last station, wherever
+    it is").
+  - The notorious pirates' ships follow the first player's system. The story is the first player's.
+  - Not tried in a system of their own: a fight, a loss, contracts and what the traffic does for them, a save
+    written and read, a wormhole, two real controllers. Two systems at once: not measured.
+- **Seen and not changed:** a codex entry new to both is said once for each entry in the second player's list too
+  ("New Codex entry: Cities" three times in a row when they first walk a city).
+- Smoke test groups `split32` (6 checks, with the pictures `split32_station.png`, `split32_planetenkarte.png`,
+  `split32_zu_fuss.png` at 1920 x 1080); `split28` written anew for stage 5: you jump alone while they stand on a
+  deck, and they follow by themselves (5 checks, with `split28_allein_gesprungen.png`).
+
+## alpha 0.8.75.45 – 2026-11-25
+
+**Package 75, split screen, stage 5A: two systems at once. Each player jumps for themselves (Luz: "on with stage
+5"; the rules of stage 5 are my readings, in the Steckbrief, not confirmed one by one).**
+- **Each jumps for themselves.** The question at the gate ("Do you want to jump along?", stage 4E) is gone: who
+  flies into a gate jumps, the other stays.
+- **Each half shows its player's system.** In different systems the second player has a space view of their own,
+  in their half: their system with its stations, traffic and dangers, their ship, their HUD, their controller.
+  Both fly at once, each in their system. In the same system the two of you share one world, as before.
+- **The second player's jump:** their half is the jump (dark, with the word where to) while you play on; arrived,
+  their view of the new system stands, and the first line of their list says where each of you is.
+- **Your jump:** the second player stays where they are and flies on after it, in a view of their own.
+- **Together again:** who jumps into the other's system arrives in the one world there, with two looks.
+- **Each player's "current system" is their own:** what the game does in a player's name (their windows, their
+  contracts, their counters, their scanners) sees their system.
+- **Docked in a system of their own**, the second player's station window is the station's of that system.
+- **Known, said outright (stages 5B and 5C):**
+  - Your own jump is over the whole picture still (the tunnel, the map); the second player's world waits for those
+    seconds.
+  - The second player's jump has no tunnel and no map yet: a dark half with a line of text.
+  - When you jump out of the system you share, or into the system the second player is in, their surroundings are
+    built anew (the traffic there begins afresh; their ship keeps its place and state).
+  - Not built for the second player in a system of their own: the way down to a planet. Not tried there: docking,
+    the station's window, the deck, their windows (map, ship, pilot), contracts, a fight, a loss.
+  - What the galaxy brings to life "where the pilot is" (the notorious pirates' ships) follows the first player's
+    system.
+  - Who falls on foot or is shot down: the rules of 0.8.75.40 and stage 4 still hold (to their own last station
+    wherever it is: stage 5C).
+  - Two systems are reckoned at once: not measured.
+- The code of the jump for two is still there, switched off (`SystemView.STAGE5`).
+- **Found on the way:** three places asked "is this the look's own seat?" by comparing with the look's number; in a
+  view of the second player's own that ran in a circle and crashed the game. They ask the look's seat now.
+- Smoke test group `split31` (6 checks, with the pictures `split31_sprung.png` and `split31_zwei_systeme.png` at
+  1920 x 1080).
+
+## alpha 0.8.75.44 – 2026-11-25
+
+**Package 75, split screen, stage 4: a city's window from aboard for the second player.**
+- **The stairs in a city's hangar** bring the second player aboard, and the city's window opens over their half, as
+  yours does (it was: their stairs took them up and out, to orbit).
+- **"Undock" there asks where to**, in their half: back to orbit, to the planet's map for another place, or stay.
+  Then the hatch and the way up, as before.
+- A view of their own always means they are on foot; aboard in a hangar no view of the ground is opened for them.
+- **Not tried:** "To the planet map" and "Stay" from their question (the test takes "Back to orbit"); the question
+  walked by a real controller (the test presses its button).
+- Smoke test group `split27`: its third check walks the city's window and the question (5 checks, with the picture
+  `split27_stadtfenster_abflug.png` at 1920 x 1080).
+
+## alpha 0.8.75.43 – 2026-11-25
+
+**Package 75, split screen, stage 4: wingmen, the platform ship, escape pods, the on-board market and the
+interdictor's game are each player's own.**
+- **Wingmen.** Each player has their own wingmen under contract (kept in the save). A wingman the second player
+  hires flies with their ship, takes their orders, shares in their income and is theirs to lose; its end stands in
+  their list. It was one list for both: by the code, a wingman hired by the second player flew with the first
+  player's ship.
+- **The Citadel's platform ship** is launched and kept for the ship of the player who flies the Citadel.
+- **Escape pods.** A pod belongs to who lost the ship. It is taken aboard by that player's own ship (their crew,
+  their posts); who finds no post rides along with them to the next station. "The signal has faded" stands in their
+  list. My reading: the other player's ship does not take it aboard.
+- **The on-board market** (a ship with a market, standing still): the traders, the cargo drone on the runway and the
+  pirates it attracts are counted for each player's own ship.
+- **The interdictor's game** stands over the half of the player whose interdictor caught the ship, and their own key
+  or button hits the timing window.
+- When the picture becomes one (both on foot, a jump), the second player's wingmen go in with their ship and are
+  out again with it; their state is kept.
+- **Not tried:** the platform ship and the on-board market for the second player (no test flies them; they run by
+  the same lines as the first player's, once more in the second player's name); a kill by the second player's
+  wingman; the wing panel in the second player's HUD; a save written to the disk with wingmen of theirs; the
+  interdictor's button on a real controller (the test calls what the button calls).
+- Smoke test group `split30` (5 checks).
+
+## alpha 0.8.75.42 – 2026-11-25
+
+**Package 75, split screen, stage 4: a contract out in space is flown by the ship of who holds it.**
+- What a contract asks of "your ship" it asks of the ship of **who holds it** (each player has their own contracts;
+  held by both, either of you is enough). It was the first player's ship for every contract.
+  - **Patrol contract:** its patrol waits at the meeting point for the holder's ship, and its rounds count while the
+    holder's ship flies with it.
+  - **Escort contract:** the convoy sets off when the holder's ship is with it, holds under attack until the holder
+    is with it again, and the time "with the convoy" is the time the holder's own ship is out in its system.
+  - **Measurement probe:** it measures while the holder's ship is out in the target system.
+  - **Ballot cores:** the thieves strike at the ship of who carries them; when the polls close, the urns leave the
+    hold of who carries them.
+  - **Following a convoy through a gate** works for either player's ship.
+- **The words go to who they are for:** "sets off", "Patrol flown", "Measurements complete", "Ballot thieves",
+  "Interdicted" stand in the list of who holds the contract (or whose ship it happened to).
+- **My reading, said outright:** Luz's reading of stage 2 was that what happens out there counts for both players'
+  contracts while they travel together. Now each flies their own ship, so I took "your ship" to be the holder's.
+  A kill for a bounty or a hunt is the doer's, as since stage 4C.
+- **Not changed, known:** after a jump along with a convoy only the first player's ship follows it again by itself;
+  "… delivered its cargo" and "… was destroyed" stand in the first player's list.
+- **Not tried:** the ballot thieves, the probe, a convoy pulled out of warp and following a convoy through a gate
+  with the second player's ship (built by the same lines as what the test walks); a contract held by both.
+- **Found and not changed:** `notorious` fails its first check when it runs after `faction_jobs`, `landfall`,
+  `durchbruch`, `patrol_beat` and `law` in one go, and passes alone; the last commit does the same (113 checks pass
+  in that run, before and after).
+- Smoke test group `split29` (4 checks).
+
+## alpha 0.8.75.41 – 2026-11-25
+
+**Package 75, split screen, stage 4: the station's own window and the help for the second player.**
+- **Docked, the second player is aboard, as you are:** the station's window opens over their half, the same window
+  as yours: their ship with its state, the ship's services, the station with its services, their balance, and
+  "Ship", "Walk the deck", "Undock" and "Close" in its head. (It was: docked, they stood on the deck at once.)
+  - **"Walk the deck"** puts them on the deck in a view of their own; in the same place as you, you are together.
+  - **The stairs to their ship** bring them aboard again, and the window opens (it was: the stairs undocked them).
+  - **"Undock"** takes their ship out through a hangar bay. Their station key (and "Station" on their window wheel)
+    shuts and opens the window; shut, they stay aboard.
+  - A service opens from the list in the same window and goes back to the list.
+- **The station's window in half a picture** (a narrow layout, for either player in a split screen): the ship with
+  its services and the station with its services side by side, as in the wide picture; the commander and the news
+  below them, by scrolling.
+- **The help** (their help key): their own HUD's help, in their half, while they are in their ship.
+- **Who is where after what:** shot down, they come to on the deck of the station they are brought to (as before);
+  left behind on a deck when you leave it, they stay on the deck; a game loaded puts them on the deck if they stood
+  on one when it was saved, else aboard.
+- **Not built, said outright:** a city's window from aboard for the second player (from a city's hangar their
+  stairs still take them up and out, to orbit); the help on foot (the first player has none there either); the
+  help shows the keyboard's keys also to a player with a controller (so it does for the first player).
+- **Found and not changed:** `pad80` fails when it runs after `stationwin`, `gear`, `landing` and `debug_ground` in
+  one go, and passes alone; the last commit does the same.
+- Smoke test group `split26` written anew for it (6 checks, with the picture `split26_stationsfenster.png` at
+  1920 x 1080); `split28` walks the deck before it asks; the look tool `winlook` has the page `station_hub`.
+
 ## alpha 0.8.75.40 – 2026-11-25
 
 **Package 75, split screen: only who goes down is brought to the clinic (Luz: "only the one who dies should go to
@@ -19,7 +180,7 @@ the clinic").**
   - You come out of black in your own half; the other's half stays as it is.
 - **Both down together in a fight** (side by side, nobody left to bring the other back): both died, both are brought,
   each with their ship, as before.
-- **Where to, when the system has no city with a clinic** (my readings, said outright: a single player is flown to
+- **Where to, when the system has no city with a clinic** (my readings, Luz has said they fit: a single player is flown to
   their last station, wherever it is; in a split screen that can be another system, the game shows one system, and
   the other shall not be moved):
   - **A station in this system:** who fell is flown there with their ship: the station they come back to if it is

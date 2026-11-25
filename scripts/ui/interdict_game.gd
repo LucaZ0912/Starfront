@@ -16,6 +16,7 @@ const TIME_LIMIT := 14.0
 const SPEEDUP := 1.15          # the marker gets faster after every hit
 const BAR := Vector2(440, 30)
 
+var seat := 0                      # split screen: whose game it is (it stands in their half, their key hits)
 var target_name := ""
 var size := 1
 var duration := 10.0
@@ -93,8 +94,15 @@ func _process(delta: float) -> void:
 		_x = 0.0
 		_dir = 1.0
 	_flash = maxf(0.0, _flash - delta)
+	var shift := 0.0                                     # (a split screen: over the middle of its player's half)
+	if Players.split and GameState.has_pilot2():
+		var mn = get_tree().current_scene
+		if mn != null and mn.has_method("half_rect"):
+			shift = (mn.half_rect(seat) as Rect2).get_center().x - get_viewport().get_visible_rect().size.x * 0.5
+	_panel.offset_left = shift - BAR.x * 0.5 - 18
+	_panel.offset_right = shift + BAR.x * 0.5 + 18
 	_info.text = "Press [%s] or click when the marker is in the green window  •  hits %d/%d  •  misses %d/%d  •  %d s" % [
-		Keybinds.key_text("interdict_hit"), _hits, need, _misses, MAX_MISSES, int(ceil(maxf(duration - _t, 0.0)))]
+		Keybinds.key_text("interdict_hit") if not Players.split else Players.key_text(seat, "interdict_hit", "space"), _hits, need, _misses, MAX_MISSES, int(ceil(maxf(duration - _t, 0.0)))]
 	_canvas.queue_redraw()
 	if _t >= duration:
 		_end(false)
@@ -103,6 +111,10 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if _done:
 		return
+	if Players.split and GameState.has_pilot2():
+		var mn2 = get_tree().current_scene               # (the other player's key is not this game's)
+		if mn2 != null and mn2.has_method("_event_seat") and int(mn2._event_seat(event)) != seat:
+			return
 	if event.is_action_pressed("interdict_hit") and not event.is_echo():
 		_hit()
 		get_viewport().set_input_as_handled()

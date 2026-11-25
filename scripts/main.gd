@@ -117,6 +117,7 @@ func _ready() -> void:
 	ship_menu.closed.connect(_update_input)
 	pilot_window.closed.connect(_update_input)
 	pause_menu.closed.connect(_pause_done)
+	GameState.seat_hook = _seat_scope                    # (stage 5: whose turn it is: their own space view, their HUD)
 	GameState.ship_jumped_out.connect(_on_jumped_out)
 	GameState.ship_arrived_system.connect(_on_arrived_system)
 	GameState.active_changed.connect(_on_active_changed)
@@ -169,6 +170,9 @@ var last_load_ms := 0.0                 # package 35: how long building the last
 
 
 func load_system(sys: int) -> void:
+	if GameState.acting == 1 and GameState.has_pilot2():
+		return                                           # (the second player's own view of their system: _view2_step())
+	_view2_drop()                                        # (made anew for where they are, once yours stands)
 	var t0 := Time.get_ticks_usec()
 	if view != null and is_instance_valid(view):
 		view.eyes_off()                                    # (two looks in space: the HUDs come home before the view goes)
@@ -186,10 +190,211 @@ func load_system(sys: int) -> void:
 	view.descent_ending.connect(_on_descent_ending)
 	view.ascended.connect(_update_input)
 	Commands.world = view
+	view1 = view
 	view.eyes_hook = _on_eyes
 	view.eye_scope = _eye_scope
 	hud.set_view(view)
 	_update_input()
+
+
+# ---------------------------------------------------------------- stage 5: two systems (Luz, 25 Nov 2026: each jumps for themselves)
+##
+## Each player is in the system they flew to (GameState.current_system is the acting player's, current_system2 the
+## other's). In the same system the two of you share one world with two looks (stage 4). In different systems the
+## second player has a space view of their own: `view2`, the same SystemView with one look, built for their system,
+## in a half of its own (world_half.gd) where everything runs in their name. While it is their turn (GameState's
+## seat_hook), `view` is their view, `Commands.world` too, and `hud` is their HUD; outside of that `view` is the first
+## player's, as always. `view1` is the first player's view whoever's turn it is: what lays the picture out asks it.
+const WorldHalf = preload("res://scripts/world/world_half.gd")
+var view1: SystemView = null
+var view2: SystemView = null
+var whalf2 = null                     # the half the second player's own view stands in
+var _whost: CanvasLayer = null
+var hud_p1: HUD = null                # the first player's HUD, whoever's turn it is
+var hud_e1: HUD = null                # the second player's HUD of the shared view (its second look)
+var hud_v2: HUD = null                # … and of their own view
+var in_hyperspace2 := false           # the second player is in a jump of their own
+var _hyper2: CanvasLayer = null
+
+
+## Is this something to be done in the second player's turn (they have a space view of their own, and it is not
+## their turn yet)? What main does for them asks this first and then does it in their turn: their view is "the view",
+## their system the current one, their HUD the HUD.
+func _seat_turn(seat: int) -> bool:
+	return seat == 1 and GameState.acting == 0 and GameState.has_pilot2() and _v2()
+
+
+func _v2() -> bool:
+	return view2 != null and is_instance_valid(view2)
+
+
+## The space view a player flies in.
+func view_of(seat: int) -> SystemView:
+	return view2 if seat == 1 and _v2() else view1
+
+
+## The ship a player flies, out in space or docked (null: none there).
+func pship(seat: int) -> Ship:
+	var v := view_of(seat)
+	if v == null or not is_instance_valid(v):
+		return null
+	var p = v.player if (v == view2 or not v.eyes_two) else v.player_of(seat)
+	if v == view1 and not v.eyes_two and seat == 1:
+		return null
+	return p if p != null and is_instance_valid(p) else null
+
+
+## Runs f as a player in space: in their own view, or with their look as the shared view's.
+func as_pilot(seat: int, f: Callable) -> Variant:
+	if seat == 1 and _v2():
+		return GameState.with_seat(1, f)
+	if view1 != null and is_instance_valid(view1):
+		return view1.in_eye(seat, f)
+	return GameState.with_seat(seat, f)
+
+
+## GameState says whose turn it is now.
+func _seat_scope(seat: int) -> void:
+	if not _v2():
+		return
+	var want: SystemView = view2 if seat == 1 else view1
+	if want != null and is_instance_valid(want) and view != want:
+		view = want
+		Commands.world = want
+	if huds.size() == 2 and is_instance_valid(huds[seat]):
+		hud = huds[seat]
+	Pad.as_seat(seat)
+
+
+func _huds_set() -> void:
+	var second = hud_v2 if (hud_v2 != null and is_instance_valid(hud_v2)) else (hud_e1 if (hud_e1 != null and is_instance_valid(hud_e1)) else null)
+	if second == null or hud_p1 == null or not is_instance_valid(hud_p1):
+		huds = []
+	else:
+		huds = [hud_p1, second]
+
+
+## Each frame: the second player's own view is there exactly while they are in another system than you.
+func _view2_step() -> void:
+	if GameState.acting != 0:
+		return
+	var f2 := GameState.active_of(1) if GameState.has_pilot2() else null
+	if f2 != null and not f2.in_transit():
+		GameState.set_system_of(1, f2.system_id)         # (their system is where their ship is)
+	var want: bool = Players.split and f2 != null and not f2.in_transit() and GameState.system_of(1) != GameState.system_of(0) \
+			and view1 != null and is_instance_valid(view1) and not (loading != null and is_instance_valid(loading))
+	if not want:
+		if _v2():
+			_view2_drop()
+		return
+	if not _v2() or int(view2.system_id) != GameState.system_of(1):
+		_view2_make(GameState.system_of(1))
+	# their ship in it (a new one after a loss, another one from a hangar)
+	var p2 = view2.player
+	if (p2 == null or not is_instance_valid(p2) or p2.fit != f2) and GameState.loss_offer_of(1).is_empty():
+		GameState.with_seat(1, view2.sync_player)
+	# the half at its place, the view free to be flown
+	var r := view1.eye_frame(1) if view1.eyes_two else half_rect(1)
+	(whalf2 as Control).position = r.position
+	(whalf2 as Control).size = r.size
+	(whalf2 as Control).visible = not on_foot(1) and not in_hyperspace and not _whole_scene()
+	whalf2.process_mode = Node.PROCESS_MODE_DISABLED if in_hyperspace else Node.PROCESS_MODE_INHERIT      # (your jump is over the whole picture still: their world waits)
+	var whole: bool = in_hyperspace or pause_menu.visible
+	p2 = view2.player
+	var free2: bool = not whole and not (halves.size() > 1 and (halves[1] as Control).visible) and not on_foot(1)
+	view2.input_enabled = free2 and p2 != null and is_instance_valid(p2) and not p2.is_docked()
+	if free2 and bool(view2.input_enabled) and not Players.on_keys(1) and not get_tree().paused:
+		GameState.with_seat(1, Pad.seat_step.bind(get_process_delta_time()))
+
+
+func _view2_make(sys: int) -> void:
+	_view2_drop()
+	if hud_p1 == null or not is_instance_valid(hud_p1):
+		hud_p1 = hud
+	if _whost == null or not is_instance_valid(_whost):
+		_whost = CanvasLayer.new()
+		_whost.layer = 2                                 # (over the shared view's halves, under the ground and the windows)
+		add_child(_whost)
+	whalf2 = WorldHalf.new()
+	_whost.add_child(whalf2)
+	var v := SystemView.new()
+	v.owner_seat = 1
+	whalf2.take(v)
+	view2 = v
+	GameState.with_seat(1, v.build.bind(sys))
+	v.station_docked.connect(_on_station_docked)
+	v.descended.connect(_on_descended)
+	v.descent_ending.connect(_on_descent_ending)
+	v.ascended.connect(_update_input)
+	var h := HUD.new()
+	h.seat = 1
+	h.own_view = true
+	whalf2.take(h)
+	hud_v2 = h
+	_huds_set()
+	GameState.with_seat(1, h.set_view.bind(v))
+	# (their list is new with their view: where they are, and that the other is elsewhere)
+	GameState.with_seat(1, GameState.log_msg.bind("You are in %s. %s is in %s." % [String(Universe.systems[sys]["name"]), String(GameState.pilot_of(0).get("name", "The other player")), String(Universe.systems[GameState.system_of(0)]["name"])], GameState.COL_INFO))
+	_update_input()
+
+
+func _view2_drop() -> void:
+	if not _v2():
+		view2 = null
+		return
+	GameState.with_seat(1, view2.sync_to_fits)           # (their ship's place and state: kept in its fit)
+	Pad.as_seat(0)
+	Pad.seat_forget()
+	if whalf2 != null and is_instance_valid(whalf2):
+		whalf2.queue_free()
+	view2 = null
+	whalf2 = null
+	hud_v2 = null
+	if view1 != null and is_instance_valid(view1):
+		view = view1
+		Commands.world = view1
+	_huds_set()
+	if GameState.acting == 0 and hud_p1 != null and is_instance_valid(hud_p1):
+		hud = hud_p1
+
+
+## The second player's own jump: their half is the jump until they arrive; you play on.
+func _jumped_out2(f: ShipFitting) -> void:
+	in_hyperspace2 = true
+	if view != null and is_instance_valid(view):
+		view.remove_player()                             # (their ship: this is their turn, the view's look is theirs)
+	for w2 in _wins2():
+		if w2.visible:
+			w2.close.call_deferred()
+	_hyper2_show.call_deferred("Hyperspace jump → %s" % Universe.systems[int(f.transit_to)]["name"])
+
+
+func _hyper2_show(text: String) -> void:
+	_hyper2_hide()
+	if not in_hyperspace2:
+		return
+	_hyper2 = CanvasLayer.new()
+	_hyper2.layer = 30
+	add_child(_hyper2)
+	var r := half_rect(1)
+	var bg := ColorRect.new()
+	bg.color = Color(0.01, 0.0, 0.04, 1.0)
+	bg.position = r.position
+	bg.size = r.size
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hyper2.add_child(bg)
+	var l := UI.label(text, 22, Color(0.75, 0.55, 1.0))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.position = r.position
+	l.size = r.size
+	_hyper2.add_child(l)
+
+
+func _hyper2_hide() -> void:
+	if _hyper2 != null and is_instance_valid(_hyper2):
+		_hyper2.queue_free()
+	_hyper2 = null
 
 
 func _update_input() -> void:
@@ -390,6 +595,9 @@ func _seat_now() -> int:
 
 ## Down on a body: the planet map with its places to land.
 func _on_descended(body_id: String, seat: int = -1) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, _on_descended.bind(body_id, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if seat < 0:
 		seat = _seat_now()
 	var f := GameState.active_of(seat)
@@ -413,6 +621,9 @@ func _on_descended(body_id: String, seat: int = -1) -> void:
 
 
 func _close_planet_map(seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, _close_planet_map.bind(seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	var pm = _scene(seat, "planet_map")
 	if pm != null:
 		pm.queue_free()
@@ -421,6 +632,9 @@ func _close_planet_map(seat: int = 0) -> void:
 
 ## The flight down through the air to the place you picked – then the touchdown.
 func fly_down_to(body: Dictionary, site: Dictionary, seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, fly_down_to.bind(body, site, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	_close_planet_map(seat)
 	var fl := FlightScene.new()
 	_scene_put(seat, "flight", fl)
@@ -443,6 +657,9 @@ func fly_down_to(body: Dictionary, site: Dictionary, seat: int = 0) -> void:
 
 ## Down at a place: the landing field, your ship on the pad (touchdown: she comes down onto it first).
 func land_at(body: Dictionary, site: Dictionary, touchdown: bool = false, seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, land_at.bind(body, site, touchdown, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	_close_planet_map(seat)
 	var settle: bool = String(site.get("kind", "")) in ["outpost", "mine", "research"]
 	if seat == 1:
@@ -523,6 +740,9 @@ func _p2_with_check() -> void:
 ## Package 50b (0.7.50.5): the city's landing hatch – down: the ship sinks below the ground, then you are in the
 ## city's hangar; up: she rises out of it and climbs away.
 func _city_hatch(body: Dictionary, site: Dictionary, down: bool, dest: String = "orbit", seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, _city_hatch.bind(body, site, down, dest, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if Universe.is_giant(body):
 		# 0.7.54.3 (Luz): a cloud city has no hatch – the flight brought her in through the hangar's gate; out again
 		# the same way, up through the cloud decks
@@ -558,6 +778,9 @@ func _city_hatch(body: Dictionary, site: Dictionary, down: bool, dest: String = 
 
 
 func _cloud_climb(body: Dictionary, site: Dictionary, dest: String, seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, _cloud_climb.bind(body, site, dest, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	_close_planet_map(seat)
 	var fl := FlightScene.new()
 	_scene_put(seat, "flight", fl)
@@ -578,6 +801,9 @@ func _cloud_climb(body: Dictionary, site: Dictionary, dest: String, seat: int = 
 ## Into a city: it works like a station – you are in its hangar beside your ship, the lifts take you to its
 ## shopping street and up to the bar high in its towers.
 func enter_city(body: Dictionary, site: Dictionary, seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, enter_city.bind(body, site, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	var f := GameState.active_of(seat)
 	if f == null:
 		return
@@ -602,6 +828,9 @@ func enter_city(body: Dictionary, site: Dictionary, seat: int = 0) -> void:
 
 ## Out of the city: the hatch opens, the ship rises and climbs away (dest: "orbit" or "map" – 0.7.50.15).
 func leave_city(dest: String = "orbit", seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, leave_city.bind(dest, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	var f := GameState.active_of(seat)
 	if f == null:
 		return
@@ -621,6 +850,9 @@ func leave_city(dest: String = "orbit", seat: int = 0) -> void:
 ## Up again: from the landing field or the planet map back to orbit – the ascent. 0.7.50.15 (Luz): or, dest "map",
 ## back to the planet map to pick another place.
 func take_off(dest: String = "orbit", seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, take_off.bind(dest, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	var f := GameState.active_of(seat)
 	_close_planet_map(seat)
 	if seat == 1:
@@ -654,10 +886,12 @@ func take_off(dest: String = "orbit", seat: int = 0) -> void:
 
 ## The second player's ascent begins: their look at space is there, their ship in it.
 func _lift2_step() -> void:
-	if _lift2.is_empty() or view == null or not is_instance_valid(view) or not view.eyes_two:
+	if _lift2.is_empty() or view1 == null or not is_instance_valid(view1) or not (view1.eyes_two or _v2()):
 		return
+	if GameState.system_of(1) != GameState.system_of(0) and not _v2():
+		return                                           # (their own view of their system is not there yet)
 	var f2 := GameState.active_of(1)
-	var p2: Ship = view.player_of(1)
+	var p2: Ship = pship(1)
 	if f2 == null:
 		_lift2 = {}
 		return
@@ -666,7 +900,7 @@ func _lift2_step() -> void:
 	var body_id := String(_lift2["body"])
 	_lift2 = {}
 	f2.docked_at = ""
-	view.in_eye(1, view.start_ascent.bind(body_id))
+	as_pilot(1, view_of(1).start_ascent.bind(body_id))
 	fade_put(1, Color(1.0, 0.95, 0.85, 1.0))
 	fade_for(1, Color(1.0, 0.95, 0.85, 0.0), 1.1)
 	_update_input()
@@ -675,6 +909,9 @@ func _lift2_step() -> void:
 ## 0.7.50.15 (Luz): back up by the landing drone – it climbs off the pad and the ship catches it; then on to orbit
 ## or the planet map.
 func drone_up(body: Dictionary, site: Dictionary, dest: String, seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, drone_up.bind(body, site, dest, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if seat == 1:
 		if apart():
 			_apart_end(false, false)
@@ -837,7 +1074,7 @@ func _fallen(reason: String = "", seat: int = 0, both: bool = false) -> void:
 ## Where who fell alone is brought in a split screen: the nearest city with a clinic in this system, else a station
 ## of this system. {} if the system has neither.
 func _fall_place(seat: int) -> Dictionary:
-	var sys := GameState.current_system
+	var sys := GameState.system_of(seat)
 	var f := GameState.active_of(seat)
 	if f == null:
 		return {}
@@ -868,10 +1105,11 @@ func _fall_place(seat: int) -> Dictionary:
 ## clinic with their own ship and wakes there; the other is not touched: not their place, not their ship, not what
 ## they are doing. They read one line. False if this system has no place to bring them to.
 func _fall_alone(seat: int, how: String, who: String) -> bool:
-	var sys := GameState.current_system
+	var sys := GameState.system_of(seat)
 	var f := GameState.active_of(seat)
 	var dest := _fall_place(seat)
-	if f == null or dest.is_empty() or view == null or not is_instance_valid(view):
+	var fview := view_of(seat)                           # (stage 5: the space view of the system they are in)
+	if f == null or dest.is_empty() or fview == null or not is_instance_valid(fview):
 		return false
 	var is_city := bool(dest.get("city", false))
 	var dname := String(dest.get("name", "the city" if is_city else "the station"))
@@ -894,9 +1132,9 @@ func _fall_alone(seat: int, how: String, who: String) -> bool:
 			f.system_id = sys
 			f.docked_at = String(dest["id"])
 			f.position = dest["pos"]
-			if view.player != null and is_instance_valid(view.player):
-				view.player.queue_free()
-				view.player = null
+			if view1.player != null and is_instance_valid(view1.player):
+				view1.player.queue_free()
+				view1.player = null
 			GameState.wake_pending = true
 			GameState.active_changed.emit()
 			_wake_after_loss.call_deferred()
@@ -920,8 +1158,8 @@ func _fall_alone(seat: int, how: String, who: String) -> bool:
 	f.set_meta("joined", "placed")                       # (its picture in space anew, where it was put)
 	_fall_open2(msg, dname, wake)
 	var at: Dictionary = dest
-	if not is_city and view.stations.has(f.docked_at):
-		at = view.stations[f.docked_at].data
+	if not is_city and fview.stations.has(f.docked_at):
+		at = fview.stations[f.docked_at].data
 	_open_ground2_at(at)
 	if apart():
 		scope_in(1)
@@ -1065,6 +1303,8 @@ func _station_win(seat: int) -> StationUI:
 		station_panel2.seat = 1
 		halves[1].take(station_panel2)
 		station_panel2.closed.connect(_update_input)
+		station_panel2.walk_requested.connect(_walk_deck2)
+		station_panel2.ship_menu_requested.connect(func(): _toggle_two.call_deferred("ship"))
 		station_panel2.closed.connect(func():
 			_look2()
 			if apart():
@@ -1074,8 +1314,73 @@ func _station_win(seat: int) -> StationUI:
 	return station_panel2
 
 
+## Stage 4, the station's own window for the second player (Luz: exactly what the first player has). Docked at a
+## station they are aboard, as you are: the station's window with its list of services opens over their half, with
+## "Ship", "Walk the deck", "Undock" and "Close". From the deck the stairs to their ship bring the window back.
+## `p2_deck`: they chose the deck (or stood there when the game was saved, or were left there): their own view of
+## the station is opened for them (_deck2_step()).
+var p2_deck := false
+var _aboard_at := ""                  # the city in whose hangar they went aboard by the stairs (no view of the ground is opened for them there)
+var _hub2_due := false                # their ship has just docked: their station window opens once this frame's work is done
+
+
+func open_station2() -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, open_station2)     # (stage 5: in their turn, with their own view as the view)
+		return
+	var f2 := GameState.active_of(1)
+	if f2 == null or f2.docked_at == "" or view == null or not is_instance_valid(view) or on_foot(1) or on_the_way(1) or not halves_on():
+		return
+	var v2s := view_of(1)
+	if v2s == null or f2.system_id != int(v2s.system_id) or (loss_window2 != null and loss_window2.visible) or in_hyperspace or in_hyperspace2:
+		return
+	var st2: Dictionary = v2s.stations[f2.docked_at].data if v2s.stations.has(f2.docked_at) else {}
+	if st2.is_empty():
+		var cst: Dictionary = GameState.with_seat(1, Commands.docked_station)      # (a city's window, aboard in its hangar)
+		if bool(cst.get("city", false)):
+			st2 = cst
+	if st2.is_empty():
+		return
+	var sp := _station_win(1)
+	for o in _wins2():
+		if o != sp and o.visible:
+			o.close()
+	_halves_step()                                       # (in its place before it lays itself out)
+	sp.on_foot = false
+	sp.open(st2, v2s)
+	_update_input()
+
+
+## "Walk the deck" in their station window: out of the ship, onto the deck, in a view of their own.
+func _walk_deck2() -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, _walk_deck2)     # (stage 5: in their turn, with their own view as the view)
+		return
+	if station_panel2 != null and station_panel2.visible:
+		station_panel2.close()
+	GameState.with_seat(1, func(): GameState.gear.aboard())
+	p2_deck = true
+
+
+## The stairs to their ship, on a station's deck: aboard again, and the station's window opens (as yours does).
+func _aboard2() -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, _aboard2)     # (stage 5: in their turn, with their own view as the view)
+		return
+	if not apart():
+		return
+	_apart_end(false, false)
+	p2_deck = false
+	var fa2 := GameState.active_of(1)
+	_aboard_at = String(fa2.docked_at) if fa2 != null else ""
+	open_station2()
+
+
 ## What the second player wears shows on their figure (after a shop, after the buy-back).
 func _look2() -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, _look2)     # (stage 5: in their turn, with their own view as the view)
+		return
 	if apart():
 		if ground2.pilot != null and is_instance_valid(ground2.pilot):
 			scope_in(1)
@@ -1090,6 +1395,9 @@ func _look2() -> void:
 ## A shop's or a service's window opens for the player who stands at its counter: in their name, and in a split
 ## picture over their half, while the other plays on.
 func _open_service(seat: int, z: Dictionary) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, _open_service.bind(seat, z))     # (stage 5: in their turn, with their own view as the view)
+		return
 	GameState.ship_along()
 	var st: Dictionary = GameState.with_seat(seat, func():
 		var f := GameState.active()
@@ -1291,6 +1599,7 @@ func _part_now(spot: Dictionary, use_now: bool) -> void:
 		return
 	ground.two_drop()
 	p2_with = false
+	p2_deck = true
 	_ghalves_make()
 	_ghalves_place()
 	_hold2 = false
@@ -1389,6 +1698,9 @@ func _ground_place() -> void:
 ## The second player's own deck of the station their ship is docked at (stage 4D: they docked there themselves, or
 ## they are left there). In their half; you fly on.
 func _open_ground2_at(st: Dictionary) -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, _open_ground2_at.bind(st))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if apart() or st.is_empty():
 		return
 	var avail: Dictionary = GameState.with_seat(1, _services_for.bind(st, 1))
@@ -1401,6 +1713,7 @@ func _ground2_new(setup: Callable) -> void:
 	if apart():
 		return
 	p2_with = false
+	p2_deck = true                                       # (a view of their own: they are on foot)
 	_ghalves_make()
 	_ghalves_place()
 	_hold2 = false
@@ -1422,6 +1735,9 @@ func _ground2_new(setup: Callable) -> void:
 ## them, a game just begun): the city's hangar, the landing field or the settlement again; if the place is not to be
 ## found, the planet's map to pick one.
 func _resume_ground2(f2: ShipFitting) -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, _resume_ground2.bind(f2))     # (stage 5: in their turn, with their own view as the view)
+		return
 	var st: Dictionary = GameState.with_seat(1, Commands.docked_station)
 	if bool(st.get("city", false)):
 		_open_ground2_at(st)
@@ -1457,6 +1773,8 @@ func _deck2_step() -> void:
 		var fj1 := GameState.active_of(0)
 		var fj2 := GameState.active_of(1)
 		p2_with = ground != null and is_instance_valid(ground) and fj1 != null and fj2 != null and fj1.docked_at == fj2.docked_at
+		p2_deck = not GameState.on_foot2.is_empty()      # (a game loaded: they stood on a deck when it was saved)
+		_hub2_due = false
 	_split_was = now
 	if not now:
 		p2_with = false
@@ -1470,33 +1788,51 @@ func _deck2_step() -> void:
 		# (their deck: gone with their ship; a place on a planet is theirs only while your ship stands there too)
 		var here := String(ground2.station.get("id", ""))
 		var landed: bool = String(ground2.level) in ["landing", "dungeon", "settlement"]
-		var gone: bool = f2.docked_at == "" or f2.system_id != GameState.current_system or (not landed and here != f2.docked_at) or (landed and not f2.docked_at.begins_with("land:"))
+		var gone: bool = f2.docked_at == "" or f2.system_id != GameState.system_of(1) or f2.in_transit() or (not landed and here != f2.docked_at) or (landed and not f2.docked_at.begins_with("land:"))
 		if gone and ground2.idle():
 			_apart_end(false, false)
 		return
-	if f2.system_id != GameState.current_system or f2.docked_at == "" or not GameState.loss_offer_of(1).is_empty():
+	var v2d := view_of(1)                                # (stage 5: the view of the system they are in)
+	if v2d == null or f2.system_id != int(v2d.system_id) or f2.in_transit() or f2.docked_at == "" or not GameState.loss_offer_of(1).is_empty():
 		p2_with = p2_with and f2.docked_at != ""
+		if f2.docked_at == "":
+			p2_deck = false                              # (out in space: the next station begins aboard again)
+			_hub2_due = false
+		elif not GameState.loss_offer_of(1).is_empty():
+			p2_deck = true                               # (shot down: they come to on the deck of the station they are brought to)
 		return
 	if on_the_way(1):
 		return                                           # (their planet's map, their flight down or up)
 	if p2_with and ground != null and is_instance_valid(ground):
 		return                                           # (with you on the ground)
-	if f2.docked_at.begins_with("land:") or not view.stations.has(f2.docked_at):
+	if f2.docked_at.begins_with("land:") or not v2d.stations.has(f2.docked_at):
 		var f1 := GameState.active_of(0)
-		if f1 != null and f1.docked_at == f2.docked_at and ground != null and is_instance_valid(ground):
+		if f1 != null and f1.docked_at == f2.docked_at and f1.system_id == f2.system_id and ground != null and is_instance_valid(ground):
 			p2_with = true                               # (both ships stand at the same place on a planet, and you walk there: they are with you)
 			return
 		p2_with = false
+		if not p2_deck and _aboard_at == f2.docked_at:
+			return                                       # (aboard in a city's hangar, by its stairs: the city's window is theirs to open)
 		_resume_ground2(f2)                              # (down on a planet: their own place there)
 		return
 	p2_with = false
-	_open_ground2_at(view.stations[f2.docked_at].data)
+	if not p2_deck:
+		# aboard their ship, docked: the station's window when they have just docked, or when they ask for it
+		if _hub2_due:
+			_hub2_due = false
+			open_station2()
+		return
+	_hub2_due = false
+	_open_ground2_at(v2d.stations[f2.docked_at].data)
 
 
 ## The second player undocks from their own deck: up to their ship and out. (From a planet: not for themselves yet.)
 func _undock2() -> void:
-	if not apart():
+	if _seat_turn(1):
+		GameState.with_seat(1, _undock2)     # (stage 5: in their turn, with their own view as the view)
 		return
+	if on_foot(1) and not apart():
+		return                                           # (your guest on the ground: their own way out begins by parting)
 	var f2 := GameState.active_of(1)
 	if f2 == null or f2.docked_at == "":
 		return
@@ -1506,13 +1842,18 @@ func _undock2() -> void:
 			return "The %s cannot undock yet: %s" % [f2.hull()["name"], te]
 		return GameState.crew_error(f2))
 	if err != "":
-		ground2._say_toast(err, 4.0)
+		if apart():
+			ground2._say_toast(err, 4.0)
+		else:
+			GameState.with_seat(1, GameState.log_msg.bind(err, GameState.COL_WARN))      # (from their station window, aboard)
 		return
-	var st_node = view.stations.get(f2.docked_at)
-	var p2: Ship = view.player_of(1) if view.eyes_two else null
-	_apart_end(false, false)
+	var st_node = view_of(1).stations.get(f2.docked_at)
+	var p2: Ship = pship(1)
+	if apart():
+		_apart_end(false, false)
+	p2_deck = false
 	if p2 != null and p2.fit == f2:
-		view.in_eye(1, p2.undock)                        # (out of a hangar bay, as you leave)
+		as_pilot(1, p2.undock)                           # (out of a hangar bay, as you leave)
 	else:
 		f2.docked_at = ""
 		if st_node != null and is_instance_valid(st_node):
@@ -1619,10 +1960,12 @@ func _on_deck_use2(z: Dictionary) -> void:
 					drone_up.call_deferred(ground2._body, ground2._site, dest2, 1)
 				else:
 					take_off.call_deferred(dest2, 1)
-			elif bool(ground2.station.get("city", false)):
+			elif bool(ground2.station.get("city", false)) and z.has("dest"):
 				leave_city.call_deferred(dest2, 1)
+			elif bool(ground2.station.get("city", false)):
+				_aboard2.call_deferred()                 # (a city's stairs: aboard, and its window opens, as yours does)
 			else:
-				_undock2.call_deferred()
+				_aboard2.call_deferred()                 # (a station: aboard, and its window opens, as yours does)
 		_:
 			ground2._say_toast("Not while the two of you are in different places yet.", 3.0)
 
@@ -1656,7 +1999,7 @@ func half_rect(seat: int) -> Rect2:
 	if ghalves.size() == 2:
 		return Rect2((ghalves[seat] as Control).position, (ghalves[seat] as Control).size)
 	if space_two():
-		return view.eye_frame(seat)
+		return view1.eye_frame(seat)
 	if ground != null and is_instance_valid(ground) and ground.split_open():
 		var src: Control = ground._split["fa" if seat == 0 else "fb"]
 		return Rect2(src.position, src.size)
@@ -1999,6 +2342,7 @@ func close_deck(open_window: bool = true, leave: bool = false) -> void:
 		else:
 			ground.two_drop()                              # (a place that cannot be left to them as it is: they stand at its entrance again, _deck2_step())
 			p2_with = false
+			p2_deck = true
 	if Players.guest:
 		_apart_end(false)
 		Players.stop_split()                           # (a split screen for the Colosseum: it ends with the walk on the ground)
@@ -2087,6 +2431,9 @@ func col_locked(seat: int = 0) -> bool:
 ## Package 29: the Pilot window – also over the station. 0.5.30.5: U always opens the Pilot tab (Info);
 ## the HUD hint for tiles / perk points opens the tab it is about.
 func toggle_pilot_window(p_tab: int = 0, seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, toggle_pilot_window.bind(p_tab, seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if seat == 1:
 		_toggle_two("pilot", p_tab)
 		return
@@ -2117,7 +2464,7 @@ func halves_on() -> bool:
 
 ## Two looks at the one space right now (SystemView, stage 4: a split screen with at least one of you in space)?
 func space_two() -> bool:
-	return view != null and is_instance_valid(view) and view.eyes_two
+	return view1 != null and is_instance_valid(view1) and view1.eyes_two
 
 
 ## The pilot window of a player (the second player's is made when first asked for, in their half).
@@ -2159,6 +2506,9 @@ func _wins2() -> Array:
 
 ## The second player's window of this kind opens over their half (again: it shuts). One of theirs at a time.
 func _toggle_two(kind: String, p_tab: int = 0) -> void:
+	if _seat_turn(1):
+		GameState.with_seat(1, _toggle_two.bind(kind, p_tab))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if not halves_on() or in_hyperspace or (loss_window2 != null and loss_window2.visible):
 		return                                           # (their buy-back window: a decision is needed first)
 	var w = _win2(kind)
@@ -2189,7 +2539,7 @@ func _halves_step() -> void:
 	var on := halves_on()
 	if on and space_two() and ghalves.size() != 2:
 		for s0 in 2:
-			var fr: Rect2 = view.eye_frame(s0)                 # (in space: each player's windows over their look's half)
+			var fr: Rect2 = view1.eye_frame(s0)                # (in space: each player's windows over their look's half)
 			(halves[s0] as Control).position = fr.position
 			(halves[s0] as Control).size = fr.size
 	elif on:
@@ -2236,6 +2586,9 @@ func win_hide(_seat: int) -> void:
 
 ## The second player goes back: their window on top shuts; with none up the game pauses, for both.
 func win_back(seat: int) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, win_back.bind(seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	if seat == 0:
 		return
 	var up: Array = _wins2().filter(func(w): return w.visible)
@@ -2254,6 +2607,9 @@ func win_back(seat: int) -> void:
 
 ## … and what they picked on their window wheel, or with a window's key.
 func win_action(seat: int, what: String) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, win_action.bind(seat, what))     # (stage 5: in their turn, with their own view as the view)
+		return
 	match what:
 		"pilot_window":
 			toggle_pilot_window(0, seat)
@@ -2269,13 +2625,15 @@ func win_action(seat: int, what: String) -> void:
 				_toggle_two("galaxy")
 			else:
 				toggle_galaxy()
-		_:
-			var not_yet := "%s: not the second player's own yet." % String({"station": "The station's window", "help": "The help"}.get(what, what))
-			if seat == 1 and ground != null and is_instance_valid(ground):
-				ground.two_say(not_yet)
-			elif seat == 1 and space_two():
-				GameState.with_seat(1, GameState.log_msg.bind(not_yet, GameState.COL_WARN))
-				Audio.play("ui_error", "second player: no such window yet")
+		"station":
+			if seat == 1:
+				if station_panel2 != null and station_panel2.visible:
+					station_panel2.close()
+				elif not on_foot(1):                         # (on foot the station is around you)
+					open_station2()
+		"help":
+			if seat == 1 and in_space(1) and huds.size() > 1 and huds[1] != null:
+				huds[1].toggle_help()                        # (their own HUD's help, in their half)
 
 
 ## The pause is theirs who pressed it (their device walks its menu) and holds the game for both.
@@ -2319,6 +2677,9 @@ func _on_routes_changed() -> void:
 # ---------------------------------------------------------------- Hyperspace
 
 func _on_jumped_out(f: ShipFitting) -> void:
+	if GameState.acting == 1 and GameState.has_pilot2():
+		_jumped_out2(f)                                  # (stage 5: the second player's own jump, in their half)
+		return
 	in_hyperspace = true
 	if f.transit_to != null:
 		warmup.queue_system(int(f.transit_to))       # package 35: the jump hides the loading of the next system
@@ -2336,6 +2697,11 @@ func _on_jumped_out(f: ShipFitting) -> void:
 
 
 func _on_arrived_system(f: ShipFitting) -> void:
+	if GameState.acting == 1 and GameState.has_pilot2():
+		in_hyperspace2 = false                           # (their own view of that system, or their ship in yours: _view2_step(), SystemView._other_ship())
+		_hyper2_hide()
+		GameState.pending_arrival = {}
+		return
 	in_hyperspace = false
 	galaxy.close()
 	transit_fx.play("jump", "Arrival: %s" % Universe.systems[f.system_id]["name"], 1.0)
@@ -2387,18 +2753,25 @@ func open_station() -> void:
 var _takeoff_layer: CanvasLayer = null
 
 
-func ask_city_takeoff() -> void:
-	var st := Commands.docked_station()
-	station_panel.close()
-	if _takeoff_layer != null and is_instance_valid(_takeoff_layer):
-		_takeoff_layer.queue_free()
-	_takeoff_layer = CanvasLayer.new()
-	_takeoff_layer.layer = 26
-	add_child(_takeoff_layer)
+func ask_city_takeoff(seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, ask_city_takeoff.bind(seat))     # (stage 5: in their turn, with their own view as the view)
+		return
+	var st: Dictionary = GameState.with_seat(seat, Commands.docked_station)
+	_station_win(seat).close()
+	_takeoff_end(seat)
+	var tl := CanvasLayer.new()
+	tl.layer = 26
+	if seat == 1:
+		halves[1].take(tl)                               # (the second player's: over their half, by their own device)
+		_takeoff_layer2 = tl
+	else:
+		add_child(tl)
+		_takeoff_layer = tl
 	Audio.play("ui_open", "city: take off")
 	var c := CenterContainer.new()
 	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_takeoff_layer.add_child(c)
+	tl.add_child(c)
 	var p := UI.neon_panel(Color(0.4, 1.0, 0.6, 0.85), Color(0.03, 0.05, 0.06, 0.96), 2)
 	p.custom_minimum_size = Vector2(440, 0)
 	c.add_child(p)
@@ -2409,33 +2782,56 @@ func ask_city_takeoff() -> void:
 	var bname := String(Universe.find_body(GameState.current_system, String(st.get("body", ""))).get("name", "the planet"))
 	v.add_child(UI.label("Out of %s, up through the hatch. Where to?" % String(st.get("name", "the city")), 13, UI.TEXT_DIM))
 	var go := func(dest: String):
-		_takeoff_layer.queue_free()
-		_takeoff_layer = null
-		leave_city(dest)
+		_takeoff_end(seat)
+		if seat == 1:
+			_aboard_at = ""
+		leave_city(dest, seat)
+	var stay := func():
+		if _takeoff_of(seat) == null:
+			return
+		_takeoff_end(seat)
+		if seat == 1:
+			open_station2.call_deferred()
+		else:
+			open_station()
 	var b1 := UI.button("1.  Back to orbit", go.bind("orbit"))
 	b1.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	v.add_child(b1)
 	var b2 := UI.button("2.  To the planet map: another place on %s" % bname, go.bind("map"))
 	b2.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	v.add_child(b2)
-	v.add_child(UI.button("Stay [Esc]", func():
-		_takeoff_layer.queue_free()
-		_takeoff_layer = null
-		open_station()))
+	v.add_child(UI.button("Stay [%s]" % ("Esc" if seat == 0 else Players.win_key(1, "menu_back")), stay))
 	var esc := _EscCatcher.new()                       # Esc / ◯: stay
-	esc.on_esc = func():
-		if _takeoff_layer != null and is_instance_valid(_takeoff_layer):
-			_takeoff_layer.queue_free()
-			_takeoff_layer = null
-			open_station()
-	_takeoff_layer.add_child(esc)
+	esc.on_esc = stay
+	tl.add_child(esc)
+	tl.set_meta("buttons", [b1, b2])
 	b1.grab_focus()
 	_update_input()
 
 
+var _takeoff_layer2: CanvasLayer = null   # … the second player's own question, in their half
+
+
+func _takeoff_of(seat: int) -> CanvasLayer:
+	var tl = _takeoff_layer2 if seat == 1 else _takeoff_layer
+	return tl if tl != null and is_instance_valid(tl) else null
+
+
+func _takeoff_end(seat: int) -> void:
+	var tl := _takeoff_of(seat)
+	if tl != null:
+		tl.queue_free()
+	if seat == 1:
+		_takeoff_layer2 = null
+	else:
+		_takeoff_layer = null
+
+
 func _on_station_docked(_station_id: String) -> void:
 	if GameState.acting == 1 and GameState.has_pilot2():
-		return                                           # (the second player docked: they stand on the station's deck, in their half: _deck2_step())
+		p2_deck = false
+		_hub2_due = true                                 # (the second player docked: their station window opens over their half: _deck2_step())
+		return
 	GameState.story.event("dock", {"id": _station_id})        # package 55
 	if not station_panel.visible and not galaxy.visible:
 		open_station()
@@ -2613,6 +3009,10 @@ func handle_input(event: InputEvent) -> void:
 		if event.is_action_pressed("menu_back", false, true):
 			win_back(1)
 			return
+	if seat == 1 and _v2() and not on_foot(1):
+		if bool(view2.input_enabled):
+			GameState.with_seat(1, seat_event.bind(event))   # (stage 5: their own view of another system)
+		return
 	if seat == 1 and view != null and is_instance_valid(view) and view.eyes_two and not on_foot(1):
 		# (two looks in space: the keyboard is the second player's; what it does for their ship so far)
 		if bool(view.eye_get(1, "input_enabled")):
@@ -2728,6 +3128,7 @@ var huds: Array = []                  # two looks: [the first player's HUD, the 
 func _space_step() -> void:
 	if view == null or not is_instance_valid(view):
 		return
+	_view2_step()                                        # (stage 5: their own view while they are in another system)
 	# (stage 4D: two looks while at least one of you is not on foot; who is on foot has their ground view over their half)
 	view.two_wanted = Players.split and GameState.has_pilot2() and not (on_foot(0) and on_foot(1)) and not in_hyperspace and not _whole_scene()
 	_lift2_step()
@@ -2758,28 +3159,32 @@ func _on_eyes(on: bool) -> void:
 	if not is_inside_tree() or view == null or not is_instance_valid(view):
 		return
 	if on:
-		if huds.size() == 2:
+		if hud_e1 != null and is_instance_valid(hud_e1):
 			return
 		var theirs := HUD.new()
 		theirs.seat = 1
-		huds = [hud, theirs]
+		hud_p1 = hud
+		hud_e1 = theirs
+		_huds_set()
 		view.eye_half(0).take(hud)
 		view.eye_half(1).take(theirs)
 		view.in_eye(1, theirs.set_view.bind(view))
 		return
-	if huds.size() == 2:
-		hud = huds[0]
-		if is_instance_valid(huds[1]):
-			huds[1].queue_free()
-	huds = []
+	if hud_p1 != null and is_instance_valid(hud_p1):
+		hud = hud_p1
+	if hud_e1 != null and is_instance_valid(hud_e1):
+		hud_e1.queue_free()
+	hud_e1 = null
+	_huds_set()
 	if hud.get_parent() != self:
 		if hud.get_parent() != null:
 			hud.get_parent().remove_child(hud)
 		add_child(hud)
 	hud.set_overview(false)
 	hud.visible = true
-	Pad.as_seat(0)
-	Pad.seat_forget()
+	if not _v2():
+		Pad.as_seat(0)
+		Pad.seat_forget()
 
 
 ## The look changed (SystemView.eye_as): `hud` and the controller code are that player's from here on.
@@ -2986,6 +3391,8 @@ func seat_event(ev: InputEvent) -> void:
 	if ev.is_action_pressed("menu_back", false, true):
 		win_back.call_deferred(1)                         # (their window shuts, or the game pauses for both; once this turn of theirs is over)
 		return
+	if ev.is_action_pressed("interdict_hit", false, true) and view != null and is_instance_valid(view) and view.interdict_tap():
+		return                                           # (their interdictor's game: the timing window)
 	for wa in ["galaxy_map", "ship_menu", "pilot_window", "journal", "station", "help"]:
 		if ev.is_action_pressed(wa, false, true):
 			win_action.call_deferred(1, wa)               # (their own window, over their half: the other player flies on)
@@ -2997,7 +3404,7 @@ func seat_event(ev: InputEvent) -> void:
 ## a split screen the overview. For the player whose turn it is (their look as the view's, their HUD as `hud`).
 func _ship_keys(event: InputEvent) -> void:
 	if event.is_action_pressed("overview", false, true):
-		if view != null and is_instance_valid(view) and view.eyes_two:
+		if view != null and is_instance_valid(view) and hud != null and hud.two_up():
 			hud.toggle_overview()                         # (Luz: in a split screen the list only when you open it)
 	elif event.is_action_pressed("boost", false, false) and view != null and view.player != null and is_instance_valid(view.player):
 		var be: String = view.player.boost_error()            # 0.6.75.2: the thrust burst (Shift – modifiers ignored)
@@ -3047,6 +3454,9 @@ func _ship_keys(event: InputEvent) -> void:
 
 ## Package 55: the journal – the pilot window on its Journal tab (again: closed).
 func open_journal(seat: int = 0) -> void:
+	if _seat_turn(seat):
+		GameState.with_seat(1, open_journal.bind(seat))     # (stage 5: in their turn, with their own view as the view)
+		return
 	var w = _pilot_win(seat)
 	if w.visible and w.tab == w.TAB_JOURNAL:
 		w.close()

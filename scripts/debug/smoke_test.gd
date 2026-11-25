@@ -783,6 +783,10 @@ func _process(delta: float) -> void:
 				await _test_split26(main.view)          # split screen, stage 4D: docking and undocking each for themselves, the ground in one half and space in the other
 				await _test_split27(main.view)          # split screen, stage 4D: the way down to a planet and up again, each for themselves
 				await _test_split28(main.view)          # split screen, stage 4E: a jump asks the other player, a course of their own, the save, the story in space
+				await _test_split29(main.view)          # split screen, stage 4: a contract out in space is flown by the ship of who holds it
+				await _test_split30(main.view)          # split screen, stage 4: wingmen, escape pods and the interdictor's game, each player's own
+				await _test_split31(main.view)          # split screen, stage 5A: each jumps for themselves, two systems at once
+				await _test_split32(main.view)          # split screen, stage 5B: docking, the deck, windows and a planet in a system of their own
 				_shooting = false
 				timer = 0.0
 				return
@@ -36344,6 +36348,7 @@ func _test_split26(view0: SystemView) -> void:
 			break
 	main.station_panel.close()
 	var dock2_ok := false
+	var hub26_ok := false
 	var out2_ok := false
 	var dock1_ok := false
 	var meet_ok := false
@@ -36385,19 +36390,43 @@ func _test_split26(view0: SystemView) -> void:
 					if not docked and not sh.is_docked() and String(sh.order.get("type", "")) != "undocking":
 						return true
 				return false
-			# ---- the second player docks for themselves: on the deck in their half, and you fly on
+			# ---- the second player docks for themselves: aboard, their station window over their half, and you fly on
 			var e_d2: String = v.in_eye(1, func(): return Commands.execute({"type": "dock", "id": home26}))
 			var docked2: bool = await wait_dock.call(1, true, 60000)
+			var th26 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - th26 < 6000 and not (main.station_panel2 != null and main.station_panel2.visible):
+				await get_tree().process_frame
+			for f1a in 30:
+				await get_tree().process_frame
+			var sp2 = main.station_panel2
+			var hub_first: bool = e_d2 == "" and docked2 and sp2 != null and sp2.visible and int(sp2.seat) == 1 and not bool(sp2.on_foot) and String(sp2.current_service) == "" \
+				and int(sp2.concourse_tiles) > 6 and main.halves[1].holds(sp2) and String(sp2.station.get("id", "")) == home26 and (sp2._head_btns as Array).all(func(hb): return hb.visible) \
+				and not main.apart() and main.ground == null and not main.on_foot(1) and not main.station_panel.visible and v.eyes_two and is_instance_valid(p1) and not p1.is_docked() \
+				and String(GameState.active_of(1).docked_at) == home26 and String(GameState.active().docked_at) == "" and GameState.acting == 0
+			# (the window is theirs: their ship in it, their purse)
+			var hub_theirs: bool = sp2 != null and String(sp2.title_label.text) == String(v.stations[home26].data.get("name", "?"))
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split26_stationsfenster.png")
+			var a0: Vector2 = p1.position
+			Players.sim["0:move"] = Vector2(1.0, 0.0)
+			for f1c in 120:
+				await get_tree().process_frame
+			Players.sim.clear()
+			var you_fly: bool = p1.position.distance_to(a0) > flown26
+			# … "Walk the deck": onto the deck in a view of their own
+			if sp2 != null:
+				sp2.walk_requested.emit()
 			var ta26 := Time.get_ticks_msec()
 			while Time.get_ticks_msec() - ta26 < 6000 and not main.apart():
 				await get_tree().process_frame
 			for f1 in 20:
 				await get_tree().process_frame
 			var n = main.ground2
-			var theirs_deck: bool = e_d2 == "" and docked2 and main.apart() and n != null and String(n.level) == "hangar" and String(n.station.get("id", "")) == home26 \
+			var theirs_deck: bool = hub_first and hub_theirs and you_fly and main.apart() and n != null and String(n.level) == "hangar" and String(n.station.get("id", "")) == home26 \
 				and main.ghalves.size() == 2 and main.ghalves[1].holds(n) and (main.ghalves[1] as Control).visible and not (main.ghalves[0] as Control).visible \
 				and main.ground == null and main.on_foot(1) and not main.on_foot(0) and not main.p2_with and v.eyes_two and is_instance_valid(p1) and not p1.is_docked() \
-				and main.huds[0].visible and not main.huds[1].visible and String(GameState.active_of(1).docked_at) == home26 and String(GameState.active().docked_at) == ""
+				and main.huds[0].visible and not main.huds[1].visible and String(GameState.active_of(1).docked_at) == home26 and String(GameState.active().docked_at) == "" \
+				and not sp2.visible
 			var a1: Vector2 = p1.position
 			var w2: Vector2 = n.pilot.pos if n != null else Vector2.ZERO
 			Players.sim["0:move"] = Vector2(1.0, 0.0)
@@ -36408,22 +36437,77 @@ func _test_split26(view0: SystemView) -> void:
 			var both_go: bool = p1.position.distance_to(a1) > flown26 and n != null and is_instance_valid(n) and n.pilot.pos.distance_to(w2) > 3.0
 			dock2_ok = theirs_deck and both_go and GameState.acting == 0 and int(v.eye) == 0
 			if not dock2_ok:
-				print("SPLIT26 they dock: order '", e_d2, "' docked ", docked2, " their deck ", theirs_deck, " (apart ", main.apart(), " level ", (n.level if n != null else "-"), " halves ", main.ghalves.size(), " on foot ", [main.on_foot(0), main.on_foot(1)],
+				print("SPLIT26 they dock: order '", e_d2, "' docked ", docked2, " window first ", hub_first, " theirs ", hub_theirs, " you fly ", you_fly, " their deck ", theirs_deck, " (apart ", main.apart(), " level ", (n.level if n != null else "-"), " halves ", main.ghalves.size(), " on foot ", [main.on_foot(0), main.on_foot(1)],
 					" huds ", [main.huds[0].visible, main.huds[1].visible] if main.huds.size() == 2 else [], ") both go ", both_go, " (", p1.position.distance_to(a1), ")")
+				if sp2 != null:
+					print("SPLIT26 their window: visible ", sp2.visible, " seat ", sp2.seat, " on foot ", sp2.on_foot, " tiles ", sp2.concourse_tiles, " in their half ", main.halves[1].holds(sp2), " title '", sp2.title_label.text, "'")
 			if shots:
 				for fs in 20:
 					await get_tree().process_frame
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split26_deck_und_all.png")
-			# ---- … and out again by their own ship
-			main._undock2()
+			# ---- the stairs to their ship: aboard again, and the station's window opens; their station key shuts and opens it
+			main._on_deck_use2({"kind": "exit"})
+			var tx26 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tx26 < 6000 and not (not main.apart() and sp2 != null and sp2.visible):
+				await get_tree().process_frame
+			for f1d in 10:
+				await get_tree().process_frame
+			var back_aboard: bool = not main.apart() and not main.on_foot(1) and sp2 != null and sp2.visible and not bool(sp2.on_foot) and String(GameState.active_of(1).docked_at) == home26 \
+				and main.ghalves.is_empty() and v.eyes_two
+			main.win_action(1, "station")
+			for f1e in 6:
+				await get_tree().process_frame
+			var key_shuts: bool = sp2 != null and not sp2.visible and not main.apart()
+			for f1f in 30:
+				await get_tree().process_frame
+			var stays_shut: bool = sp2 != null and not sp2.visible and not main.apart() and not main.on_foot(1)      # (shut, they stay aboard: no deck by itself)
+			main.win_action(1, "station")
+			for f1g in 6:
+				await get_tree().process_frame
+			var key_opens: bool = sp2 != null and sp2.visible
+			# … a service from the list: opened in their window, and back to the list
+			var svc26 := ""
+			if sp2 != null:
+				for sv26 in GameData.services:
+					if svc26 == "" and String(sp2.service_available(sv26)) == "" and String(sv26["id"]) in ["hangar", "outfitter", "market", "bulletin"]:
+						svc26 = String(sv26["id"])
+				if svc26 != "":
+					GameState.with_seat(1, sp2.open_service.bind(svc26))
+			for f1h in 10:
+				await get_tree().process_frame
+			var svc_open: bool = svc26 != "" and sp2 != null and sp2.visible and String(sp2.current_service) == svc26 and GameState.acting == 0
+			if sp2 != null:
+				GameState.with_seat(1, sp2.show_concourse.bind(false))
+			for f1i in 6:
+				await get_tree().process_frame
+			var svc_back: bool = sp2 != null and sp2.visible and String(sp2.current_service) == "" and int(sp2.concourse_tiles) > 6
+			hub26_ok = back_aboard and key_shuts and stays_shut and key_opens and svc_open and svc_back and GameState.acting == 0
+			if not hub26_ok:
+				print("SPLIT26 window: back aboard ", back_aboard, " key shuts ", key_shuts, " stays shut ", stays_shut, " key opens ", key_opens, " service '", svc26, "' open ", svc_open, " back ", svc_back, " apart ", main.apart())
+			# ---- … and out again by their own ship: "Undock" in their window
+			if sp2 != null and sp2.visible:
+				sp2.undock()
+			else:
+				main._undock2()
 			var out2: bool = await wait_dock.call(1, false, 30000)
 			for f2 in 10:
 				await get_tree().process_frame
 			var p2b: Ship = v.player_of(1)
 			out2_ok = out2 and not main.apart() and main.ghalves.is_empty() and p2b != null and not p2b.is_docked() and String(GameState.active_of(1).docked_at) == "" \
-				and not main.on_foot(1) and main.huds.size() == 2 and main.huds[1].visible and v.eyes_two and bool(v.eye_get(1, "input_enabled")) and is_instance_valid(p1) and not p1.is_docked()
+				and not main.on_foot(1) and main.huds.size() == 2 and main.huds[1].visible and v.eyes_two and bool(v.eye_get(1, "input_enabled")) and is_instance_valid(p1) and not p1.is_docked() \
+				and sp2 != null and not sp2.visible
+			# … their help: their own HUD's, in their half
+			main.win_action(1, "help")
+			for f2b in 4:
+				await get_tree().process_frame
+			var hp26: Control = main.huds[1].help_panel if main.huds.size() == 2 else null
+			var help_up: bool = hp26 != null and hp26.visible and not main.huds[0].help_panel.visible
+			main.win_action(1, "help")
+			for f2c in 4:
+				await get_tree().process_frame
+			out2_ok = out2_ok and help_up and hp26 != null and not hp26.visible
 			if not out2_ok:
-				print("SPLIT26 they undock: out ", out2, " apart ", main.apart(), " halves ", main.ghalves.size(), " their ship ", p2b, " huds ", main.huds.size())
+				print("SPLIT26 they undock: out ", out2, " apart ", main.apart(), " halves ", main.ghalves.size(), " their ship ", p2b, " huds ", main.huds.size(), " help ", help_up)
 			# ---- you dock: your station window and your deck in your half, and they fly on
 			Commands.execute({"type": "dock", "id": home26})
 			var docked1: bool = await wait_dock.call(0, true, 60000)
@@ -36451,6 +36535,12 @@ func _test_split26(view0: SystemView) -> void:
 			# ---- they dock where you walk: in the same place you are together, in one picture
 			v.in_eye(1, func(): return Commands.execute({"type": "dock", "id": home26}))
 			var docked2b: bool = await wait_dock.call(1, true, 60000)
+			var tn26 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tn26 < 6000 and not (sp2 != null and sp2.visible):
+				await get_tree().process_frame
+			docked2b = docked2b and sp2 != null and sp2.visible and not main.apart() and g != null and is_instance_valid(g) and g.p2_walker() == null
+			if sp2 != null:
+				sp2.walk_requested.emit()                # ("Walk the deck")
 			var tm26 := Time.get_ticks_msec()
 			while Time.get_ticks_msec() - tm26 < 10000 and not (g != null and is_instance_valid(g) and g.p2_walker() != null and not main.apart()):
 				await get_tree().process_frame
@@ -36479,10 +36569,11 @@ func _test_split26(view0: SystemView) -> void:
 					print("SPLIT26 stay: they stay ", stays, " you are out ", out1, " apart ", main.apart(), " their ship ", GameState.active_of(1).docked_at)
 				if shots:
 					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split26_regel9.png")
-	check(dock2_ok, "split26: the second player docks for themselves: they stand on the station's deck in their half and walk, and you fly on in yours")
-	check(out2_ok, "split26: … and they undock again by their own ship: their half is space again, with their HUD")
+	check(dock2_ok, "split26: the second player docks for themselves: the station's window with its list of services opens over their half, theirs, while you fly on; \"Walk the deck\" puts them on the deck in a view of their own")
+	check(hub26_ok, "split26: the stairs to their ship bring them aboard and their station window back; their station key shuts and opens it, shut they stay aboard; a service opens from the list and goes back to it")
+	check(out2_ok, "split26: … and they undock again by \"Undock\" in their window: their half is space again, with their HUD, and their help key shows their own HUD's help")
 	check(dock1_ok, "split26: you dock: your station window and then your deck stand in your half, without the second player in it, and they fly on")
-	check(meet_ok, "split26: they dock where you walk: in the same place of the same station you are together again, in one picture")
+	check(meet_ok, "split26: they dock where you walk: their station window first, and with \"Walk the deck\" you are together again in the same place, in one picture")
 	check(stay_ok, "split26: you leave the deck and undock: the second player is not fetched aboard, they stay on the deck, and their ship stays docked")
 	# tidy up: the game as it was
 	Players.sim.clear()
@@ -36642,10 +36733,30 @@ func _test_split27(view0: SystemView) -> void:
 					" scenes ", [main.planet_map2, main.flight2, main.hatch2], ")")
 			if shots:
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split27_stadt.png")
-			# ---- they leave the city by their own ship: the hatch, the ascent, and they fly
+			# ---- they leave the city by their own ship: the stairs bring them aboard and the city's window up, "Undock" asks
+			# where to in their half, and with "orbit": the hatch, the ascent, and they fly
 			if main.apart():
 				main._on_deck_use2({"kind": "exit"})
-			var free2: bool = await wait_free2.call(60000)
+			var tcw27 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tcw27 < 6000 and not (not main.apart() and main.station_panel2 != null and main.station_panel2.visible):
+				await get_tree().process_frame
+			for f2w in 40:
+				await get_tree().process_frame
+			var sp27 = main.station_panel2
+			var win27: bool = sp27 != null and sp27.visible and not main.apart() and not main.on_foot(1) and bool(sp27.station.get("city", false)) and int(sp27.seat) == 1 				and not bool(sp27.on_foot) and main.halves[1].holds(sp27) and String(GameState.active_of(1).docked_at) == city_id and not main.station_panel.visible
+			if sp27 != null:
+				sp27.undock()
+			for f2x in 6:
+				await get_tree().process_frame
+			var tl27 = main._takeoff_layer2
+			var ask27: bool = tl27 != null and is_instance_valid(tl27) and main.halves[1].holds(tl27) and sp27 != null and not sp27.visible 				and (main._takeoff_layer == null or not is_instance_valid(main._takeoff_layer)) and String(GameState.active_of(1).docked_at) == city_id
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split27_stadtfenster_abflug.png")
+			if ask27:
+				((tl27.get_meta("buttons") as Array)[0] as Button).pressed.emit()      # ("Back to orbit")
+			if not (win27 and ask27):
+				print("SPLIT27 city window: window ", win27, " (", sp27, " apart ", main.apart(), " docked ", GameState.active_of(1).docked_at, ") asked ", ask27, " ", tl27)
+			var free2: bool = (await wait_free2.call(60000)) and win27 and ask27
 			for f3 in 10:
 				await get_tree().process_frame
 			var p2b: Ship = v.player_of(1)
@@ -36717,7 +36828,7 @@ func _test_split27(view0: SystemView) -> void:
 					print("SPLIT27 yours: your map in your half ", your_map, " they fly ", they_fly, " you are up again ", back_up)
 	check(map_ok, "split27: the second player goes down to a planet by their own ship: the planet's map is theirs and stands over their half, and you fly on")
 	check(city_ok, "split27: … their flight down and the city's hatch too: then they stand in the city's hangar, in a view of their own, and walk")
-	check(up_ok, "split27: they leave the city by their own ship: up through the hatch, the ascent, and their half is space again")
+	check(up_ok, "split27: they leave the city by their own ship: the stairs bring them aboard and the city's window up over their half, \"Undock\" asks where to in their half, and with orbit: up through the hatch, the ascent, and their half is space again")
 	check(field_ok, "split27: the same at a landing field: down to it, on foot there in a view of their own, and up again by their own ship")
 	check(yours_ok, "split27: your own way down stands over your half and holds you alone: the second player flies on, and you come up again")
 	# tidy up: the game as it was
@@ -36915,7 +37026,8 @@ func _test_split28(view0: SystemView) -> void:
 			save_ok = kept2 and placed and one and p2 != null and p2.position.distance_to(far) < 1500.0 and p2.position.distance_to(p1.position) > 20000.0
 			if not save_ok:
 				print("SPLIT28 save: their ship's place in the save ", kept2, " placed ", placed, " one picture ", one, " after: ", (p2.position.distance_to(far) if p2 != null else -1.0), " to you ", (p2.position.distance_to(p1.position) if p2 != null else -1.0))
-			# ---- rule 7: you are at the gate and ask; they stand on a deck. No: nobody jumps
+			# ---- stage 5 (it was rule 7, the question at the gate): you fly into the gate while they stand on a deck. Nobody
+			# is asked: you jump alone, and they stay on their deck in the system you left
 			if p2 != null and home28 != "" and v.stations.has(home28):
 				var st28 = v.stations[home28]
 				p2.position = st28.position + Vector2(float(st28.radius) + 300.0, 0.0)
@@ -36923,102 +37035,81 @@ func _test_split28(view0: SystemView) -> void:
 				var td28 := Time.get_ticks_msec()
 				while Time.get_ticks_msec() - td28 < 60000 and not main.apart():
 					await get_tree().process_frame
+					if main.station_panel2 != null and main.station_panel2.visible:
+						main._walk_deck2()                    # (docked, their station window is up: "Walk the deck")
 				for f4a in 20:
 					await get_tree().process_frame
 			var on_deck: bool = main.apart() and main.on_foot(1)
 			var gate = v.gates[dest]
 			var gid := String(gate.data["id"])
+			f1.fuel = float(f1.stats()["fuel_max"])
 			p1.position = gate.position + Vector2(220.0, 0.0)
 			p1.velocity = Vector2.ZERO
 			var e_j: String = Commands.execute({"type": "jump", "id": gid})
+			var asked := false
 			var tq28 := Time.get_ticks_msec()
-			while Time.get_ticks_msec() - tq28 < 20000 and main._jump_q.is_empty():
+			while Time.get_ticks_msec() - tq28 < 120000:
 				await get_tree().process_frame
-			for f4b in 20:
-				await get_tree().process_frame
-			var q: Dictionary = main._jump_q
-			var asked: bool = e_j == "" and not q.is_empty() and int(q.get("from", -1)) == 0 and int(q.get("sys", -1)) == dest and String(q.get("ans", "x")) == "" \
-				and q.get("panel") != null and bool(mid28.call(q["panel"], 1)) and not bool(mid28.call(q["panel"], 0)) and bool(mid28.call(q["wait"], 0)) \
-				and not main.in_hyperspace and GameState.current_system == origin
-			if shots:
-				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split28_frage.png")
-			Players.sim["1:foot_dodge"] = true
-			for f4c in 6:
-				await get_tree().process_frame
-			Players.sim.clear()
-			for f4d in 60:
-				await get_tree().process_frame
-			no_ok = on_deck and asked and main._jump_q.is_empty() and not main.in_hyperspace and GameState.current_system == origin and f1.route.is_empty() \
-				and String(p1.order.get("type", "")) != "travel" and main.apart() and f1.transit_kind == ""
-			if not no_ok:
-				print("SPLIT28 no: they stand on a deck ", on_deck, " asked ", asked, " ('", e_j, "' ", q.keys(), ") after: question ", main._jump_q, " route ", f1.route, " order ", p1.order.get("type", ""), " hyperspace ", main.in_hyperspace)
-			# ---- … yes: both come out of the gate in the next system, and who stood on a deck has gone aboard
-			var fuel2: float = f2.fuel
-			p1.position = gate.position + Vector2(220.0, 0.0)
-			Commands.execute({"type": "jump", "id": gid})
-			var ty28 := Time.get_ticks_msec()
-			while Time.get_ticks_msec() - ty28 < 20000 and main._jump_q.is_empty():
-				await get_tree().process_frame
-			for f5a in 10:
-				await get_tree().process_frame
-			Players.sim["1:interact"] = true
-			for f5b in 6:
-				await get_tree().process_frame
-			Players.sim.clear()
-			var ta28 := Time.get_ticks_msec()
-			while Time.get_ticks_msec() - ta28 < 120000:
-				await get_tree().process_frame
-				if GameState.current_system == dest and not main.in_hyperspace and main.view != null and is_instance_valid(main.view) and main.view.eyes_two and main.view.player_of(1) != null \
-						and (main.loading == null or not is_instance_valid(main.loading)):
+				asked = asked or not main._jump_q.is_empty()
+				if f1.in_transit():
+					f1.transit = minf(float(f1.transit), 0.3)
+				if GameState.current_system == dest and not f1.in_transit() and not main.in_hyperspace and (main.loading == null or not is_instance_valid(main.loading)):
 					break
-			for f5c in 60:
+			for f4b in 60:
 				await get_tree().process_frame
-			var v2 = main.view
-			var q1: Ship = v2.player
-			var q2: Ship = v2.player_of(1) if v2.eyes_two else null
-			yes_ok = GameState.current_system == dest and int(f1.system_id) == dest and int(f2.system_id) == dest and q1 != null and is_instance_valid(q1) and q2 != null \
-				and not q2.is_docked() and String(f2.docked_at) == "" and not main.apart() and q2.position.distance_to(q1.position) < 6000.0 and f2.fuel < fuel2 and not main.in_hyperspace
-			if not yes_ok:
-				print("SPLIT28 yes: system ", GameState.current_system, " (wanted ", dest, ") ships in ", [f1.system_id, f2.system_id], " their ship ", q2, " apart ", main.apart(), " fuel ", [fuel2, f2.fuel], " hyperspace ", main.in_hyperspace)
-			# ---- the second player asks the same way: you say yes, and both are back
-			if yes_ok and v2.gates.has(origin):
-				var gate_b = v2.gates[origin]
-				q1.position = gate_b.position + Vector2(30000.0, 0.0)           # (you are somewhere else in the system)
-				q2.position = gate_b.position + Vector2(220.0, 0.0)
-				q2.velocity = Vector2.ZERO
-				var e_b: String = v2.in_eye(1, func(): return Commands.execute({"type": "jump", "id": String(gate_b.data["id"])}))
-				var tb28 := Time.get_ticks_msec()
-				while Time.get_ticks_msec() - tb28 < 20000 and main._jump_q.is_empty():
+			var w1 = main.view1
+			var n28 = main.ground2
+			no_ok = on_deck and e_j == "" and not asked and GameState.current_system == dest and w1 != null and is_instance_valid(w1) and int(w1.system_id) == dest \
+				and w1.player != null and is_instance_valid(w1.player) and w1.player.fit == f1 and main.apart() and main.on_foot(1) and n28 != null and is_instance_valid(n28) \
+				and String(n28.station.get("id", "")) == home28 and int(f2.system_id) == origin and String(f2.docked_at) == home28 and GameState.system_of(1) == origin \
+				and main._v2() and int(main.view2.system_id) == origin and n28.input_enabled and GameState.acting == 0
+			if not no_ok:
+				print("SPLIT28 alone: they stood on a deck ", on_deck, " order '", e_j, "' asked ", asked, " your system ", GameState.current_system, " (wanted ", dest, ") theirs ", GameState.system_of(1),
+					" apart ", main.apart(), " their ship ", [f2.system_id, f2.docked_at], " their view ", main.view2)
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split28_allein_gesprungen.png")
+			# ---- … and they follow by themselves: aboard, out of the hangar, into their gate; arrived, it is one world again
+			if no_ok:
+				main._on_deck_use2({"kind": "exit"})
+				for f5a in 20:
 					await get_tree().process_frame
-				for f6a in 10:
+				if main.station_panel2 != null and main.station_panel2.visible:
+					main.station_panel2.undock()
+				var tu28 := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tu28 < 40000:
 					await get_tree().process_frame
-				var qb: Dictionary = main._jump_q
-				var asked_you: bool = e_b == "" and not qb.is_empty() and int(qb.get("from", -1)) == 1 and qb.get("panel") != null and bool(mid28.call(qb["panel"], 0)) and bool(mid28.call(qb["wait"], 1))
-				Players.sim["0:interact"] = true
-				for f6b in 6:
-					await get_tree().process_frame
-				Players.sim.clear()
-				var tc28 := Time.get_ticks_msec()
-				while Time.get_ticks_msec() - tc28 < 120000:
-					await get_tree().process_frame
-					if GameState.current_system == origin and not main.in_hyperspace and main.view != null and is_instance_valid(main.view) and main.view.eyes_two and main.view.player_of(1) != null \
-							and (main.loading == null or not is_instance_valid(main.loading)):
+					var pq = main.pship(1)
+					if pq != null and not pq.is_docked() and String(pq.order.get("type", "")) != "undocking":
 						break
-				for f6c in 60:
+				var q2: Ship = main.pship(1)
+				var out2: bool = q2 != null and main._v2() and main.view2.player == q2 and not q2.is_docked() and not main.apart()
+				var e_f := "?"
+				if out2 and main.view2.gates.has(dest):
+					var gate2 = main.view2.gates[dest]
+					f2.fuel = float(f2.stats()["fuel_max"])
+					q2.position = gate2.position + Vector2(220.0, 0.0)
+					q2.velocity = Vector2.ZERO
+					e_f = String(main.as_pilot(1, func(): return Commands.execute({"type": "jump", "id": String(gate2.data["id"])})))
+				var ta28 := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - ta28 < 120000:
 					await get_tree().process_frame
-				var v3 = main.view
-				var r1: Ship = v3.player
-				var r2: Ship = v3.player_of(1) if v3.eyes_two else null
-				theirs_ok = asked_you and GameState.current_system == origin and int(f1.system_id) == origin and int(f2.system_id) == origin and r1 != null and is_instance_valid(r1) and r2 != null \
-					and r2.position.distance_to(r1.position) < 6000.0 and not main.in_hyperspace and GameState.acting == 0
-				if not theirs_ok:
-					print("SPLIT28 theirs: '", e_b, "' asked you ", asked_you, " system ", GameState.current_system, " ships in ", [f1.system_id, f2.system_id], " their ship ", r2)
+					if f2.in_transit():
+						f2.transit = minf(float(f2.transit), 0.3)
+					if int(f2.system_id) == dest and not f2.in_transit() and not main.in_hyperspace2 and main.view1 != null and main.view1.eyes_two and main.view1.player_of(1) != null:
+						break
+				for f5c in 40:
+					await get_tree().process_frame
+				var z1 = main.view1
+				yes_ok = out2 and e_f == "" and int(f2.system_id) == dest and not main._v2() and z1 != null and is_instance_valid(z1) and z1.eyes_two and z1.player_of(1) != null \
+					and z1.player_of(1).fit == f2 and z1.player != null and z1.player.fit == f1 and GameState.system_of(1) == dest and main._jump_q.is_empty() and GameState.acting == 0
+				if not yes_ok:
+					print("SPLIT28 follow: out of the hangar ", out2, " order '", e_f, "' their system ", f2.system_id, " (wanted ", dest, ") in transit ", f2.in_transit(), " their own view ", main.view2,
+						" two looks ", (z1.eyes_two if z1 != null and is_instance_valid(z1) else false))
 	check(course_ok, "split28: the second player sets a course of their own on their own map: their ship takes it, yours has none")
 	check(story_ok, "split28: the story in space: its talk is over the whole picture and holds both ships, its radio call stands in the first player's half")
 	check(save_ok, "split28: the save keeps where each ship is, and a split screen begun again leaves the second player's ship where it was")
-	check(no_ok, "split28: at a gate you ask the second player, who stands on a deck: the question is in their half, and with their no nobody jumps")
-	check(yes_ok, "split28: … with their yes both come out of the gate in the next system: they have gone aboard, their ship is beside yours, and it has paid its own fuel")
-	check(theirs_ok, "split28: the second player asks the same way from their gate: you say yes from somewhere else in the system, and both are through")
+	check(no_ok, "split28: stage 5: you fly into a gate while the second player stands on a deck: nobody is asked, you jump alone, and they stay on their deck in the system you left, free to walk")
+	check(yes_ok, "split28: … and they follow by themselves: aboard, out of the hangar, into their own gate with nobody asked; arrived, the two of you share one world again")
 	# tidy up: the game as it was
 	Players.sim.clear()
 	get_tree().paused = false
@@ -37049,6 +37140,862 @@ func _test_split28(view0: SystemView) -> void:
 			break
 		await get_tree().process_frame
 	main.station_panel.close()
+
+
+## Split screen, stage 4 (each flies their own ship): what a contract asks of "your ship" out in space it asks of the
+## ship of who holds it. A patrol contract of the second player's: its patrol waits for their ship (not for yours),
+## its rounds count while their ship flies with it, and the word that it is flown stands in their list. An escort
+## contract of theirs counts the time their ship is out with the convoy, not yours.
+func _test_split29(view0: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var snap29: Dictionary = GameState.to_dict()
+	var t_keep29 := GameState.play_time
+	_story_quiet()
+	for wl29 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl29b in 20:
+		await get_tree().process_frame
+	main.station_panel.close()
+	var v = main.view if main.view != null and is_instance_valid(main.view) else view0
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t029 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t029 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var st29 := {}
+	for sq29 in v.layout["stations"]:
+		if st29.is_empty() and String(sq29.get("faction", "")) in ["assembly", "covenant", "directorate"]:
+			st29 = sq29
+	var wait_ok := false
+	var rounds_ok := false
+	var told_ok := false
+	var escort_ok := false
+	var sys29: int = v.system_id
+	if st29.is_empty() or v.player == null or not is_instance_valid(v.player) or v.player.is_docked():
+		print("SPLIT29 start: a government's station ", not st29.is_empty(), " your ship ", v.player)
+	else:
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts29 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts29 < 8000 and not (v.eyes_two and v.player_of(1) != null and main.huds.size() == 2):
+			await get_tree().process_frame
+		for f0 in 20:
+			await get_tree().process_frame
+		if main.huds.size() == 2 and v.player_of(1) != null:
+			var p1: Ship = v.player
+			var p2: Ship = v.player_of(1)
+			var tr = v.traffic
+			var rng29 := RandomNumberGenerator.new()
+			rng29.seed = 2929
+			GameState.rep.reset()
+			GameState.with_seat(1, func(): GameState.rep.reset())
+			# ---- a patrol contract of the second player's
+			var mp: Dictionary = Missions.generate_faction(sys29, st29, rng29)
+			for tq in 300:
+				if String(mp["type"]) == "patrol":
+					break
+				mp = Missions.generate_faction(sys29, st29, rng29)
+			mp["meet"] = {"id": String(st29["id"]), "name": String(st29["name"])}
+			var e_acc: String = GameState.with_seat(1, GameState.accept_mission.bind(mp))
+			var held: bool = e_acc == "" and (GameState.holders(mp) as Array) == [1] and not GameState._same_in(GameState.missions, mp)
+			tr._update_faction_jobs(0.5)
+			var mg: Dictionary = {}
+			for gq in tr.patrols:
+				if gq.get("mission", "") == mp["id"]:
+					mg = gq
+			if String(mp["type"]) == "patrol" and held and not mg.is_empty():
+				var plead: Ship = mg["ships"][0]
+				plead.fit.docked_at = ""
+				plead.position = mg["gather_pos"]
+				var far: Vector2 = plead.position + Vector2(400000.0, 0.0)
+				var ships_of: Array = v.holder_ships(mp)
+				# the patrol waits for the ship of who holds the contract: yours beside it is not enough
+				p1.position = plead.position + Vector2(600.0, 0.0)
+				p2.position = far
+				mg["gather"] = true
+				mg["gather_t"] = 0.0
+				for k1 in 7:
+					tr._check_patrol_gather(mg, plead)
+				var not_for_you: bool = bool(mg["gather"]) and is_zero_approx(float(mg["gather_t"]))
+				p1.position = far
+				p2.position = plead.position + Vector2(600.0, 0.0)
+				for k2 in 7:
+					tr._check_patrol_gather(mg, plead)
+				var for_them: bool = not bool(mg["gather"])
+				wait_ok = ships_of.size() == 1 and ships_of[0] == p2 and not_for_you and for_them and String(main.huds[1].log_label.get_parsed_text()).contains("patrol sets off") \
+					and not String(main.huds[0].log_label.get_parsed_text()).contains("patrol sets off")
+				if not wait_ok:
+					print("SPLIT29 wait: holder's ships ", ships_of, " theirs ", p2, " not for you ", not_for_you, " (", mg["gather"], " ", mg["gather_t"], ") for them ", for_them)
+				# its rounds count while their ship flies with it, not while yours does
+				mp["progress_t"] = 0.0
+				p1.position = plead.position + Vector2(2000.0, 0.0)
+				p2.position = far
+				tr._update_faction_jobs(10.0)
+				var yours_no: bool = is_zero_approx(float(mp["progress_t"]))
+				p1.position = far
+				p2.position = plead.position + Vector2(2000.0, 0.0)
+				tr._update_faction_jobs(10.0)
+				var theirs_yes: bool = float(mp["progress_t"]) >= 9.9
+				rounds_ok = yours_no and theirs_yes and int(mp["progress"]) < 1
+				if not rounds_ok:
+					print("SPLIT29 rounds: yours counts not ", yours_no, " theirs counts ", theirs_yes, " t ", mp["progress_t"])
+				# flown: the word is in their list, the contract is done for them
+				tr._update_faction_jobs(Missions.PATROL_TIME + 1.0)
+				told_ok = int(mp["progress"]) == 1 and String(main.huds[1].log_label.get_parsed_text()).contains("Patrol flown") \
+					and not String(main.huds[0].log_label.get_parsed_text()).contains("Patrol flown") and GameState.acting == 0
+				if not told_ok:
+					print("SPLIT29 told: progress ", mp["progress"], " their list '", String(main.huds[1].log_label.get_parsed_text()).right(200), "'")
+			else:
+				print("SPLIT29 patrol: type ", mp["type"], " accepted '", e_acc, "' held by ", GameState.holders(mp), " its group ", not mg.is_empty())
+			# ---- an escort contract of theirs: the time with the convoy is their ship's
+			var me: Dictionary = Missions.generate_faction(sys29, st29, rng29)
+			for tq2 in 300:
+				if String(me["type"]) == "escort":
+					break
+				me = Missions.generate_faction(sys29, st29, rng29)
+			var e_acc2: String = GameState.with_seat(1, GameState.accept_mission.bind(me))
+			var cv: Dictionary = GameState.convoys.find(int(me.get("convoy", -1))) if String(me["type"]) == "escort" else {}
+			if e_acc2 == "" and not cv.is_empty():
+				var f1 = GameState.active_of(0)
+				var f2 = GameState.active_of(1)
+				cv["gathering"] = false
+				cv["cur"] = sys29
+				me["with_t"] = 0.0
+				me["total_t"] = 0.0
+				var keep2 := String(f2.docked_at)
+				f2.docked_at = "elsewhere"                         # (their ship is docked: yours out in space does not count for their contract)
+				GameState._update_faction_jobs(5.0)
+				var yours_not: bool = is_zero_approx(float(me["with_t"])) and float(me["total_t"]) >= 4.9 and String(f1.docked_at) == ""
+				f2.docked_at = ""
+				GameState._update_faction_jobs(5.0)
+				var theirs_is: bool = float(me["with_t"]) >= 4.9
+				f2.docked_at = keep2
+				escort_ok = yours_not and theirs_is and (GameState.holders(me) as Array) == [1]
+				if not escort_ok:
+					print("SPLIT29 escort: yours counts not ", yours_not, " theirs counts ", theirs_is, " times ", [me["with_t"], me["total_t"]], " held by ", GameState.holders(me))
+			else:
+				print("SPLIT29 escort: type ", me["type"], " accepted '", e_acc2, "' convoy ", not cv.is_empty())
+		else:
+			print("SPLIT29: no second ship in space  huds ", main.huds.size())
+	check(wait_ok, "split29: a patrol contract of the second player's: its patrol waits for their ship, yours beside it does not send it off; the word that it sets off stands in their list")
+	check(rounds_ok, "split29: the patrol's rounds count while the ship of who holds the contract flies with it, not while the other's does")
+	check(told_ok, "split29: flown, the contract is done and the word stands in the list of who holds it")
+	check(escort_ok, "split29: an escort contract of the second player's counts the time their own ship is out with the convoy, not the first player's")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.stop_split()
+	Pad.seat_forget()
+	GameState.act_as(0)
+	for f9 in 6:
+		await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap29)
+	GameState.play_time = t_keep29
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i929 in 30:
+		await get_tree().process_frame
+	for wl929 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+
+
+## Split screen, stage 4 (everything their own): a wingman the second player hires flies with their ship, takes their
+## orders and is theirs to lose, and the first player's wing is not touched; the pod of a ship one of you lost is
+## taken aboard by that player's own ship; the interdictor's game is its player's, in their half.
+func _test_split30(view0: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var snap30: Dictionary = GameState.to_dict()
+	var t_keep30 := GameState.play_time
+	_story_quiet()
+	for wl30 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl30b in 20:
+		await get_tree().process_frame
+	main.station_panel.close()
+	var v = main.view if main.view != null and is_instance_valid(main.view) else view0
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t030 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t030 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var wing_ok := false
+	var lost_ok := false
+	var yours_ok := false
+	var pod_ok := false
+	var game_ok := false
+	if v.player == null or not is_instance_valid(v.player) or v.player.is_docked():
+		print("SPLIT30 start: your ship ", v.player)
+	else:
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts30 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts30 < 8000 and not (v.eyes_two and v.player_of(1) != null and main.huds.size() == 2):
+			await get_tree().process_frame
+		for f0 in 20:
+			await get_tree().process_frame
+		if main.huds.size() == 2 and v.player_of(1) != null:
+			var p1: Ship = v.player
+			var p2: Ship = v.player_of(1)
+			GameState.wingmen.clear()
+			# ---- the second player hires a wingman: it flies with their ship and takes their orders; yours is not touched
+			var w2: Dictionary = GameState.with_seat(1, func():
+				GameState.pilot["tree_all"] = true
+				var wq: Dictionary = GameState.new_wingman("A")
+				GameState.wing_hire(wq, 30)
+				return wq)
+			var id2 := int(w2["id"])
+			v._sync_wingmen()
+			v.in_eye(1, v._slow_look)
+			var theirs: Dictionary = v.eye_get(1, "wing_nodes")
+			var n2 = theirs.get(id2)
+			var flies: bool = GameState.wingmen.is_empty() and GameState.wingmen2.size() == 1 and (v.wing_nodes as Dictionary).is_empty() and theirs.size() == 1 \
+				and n2 != null and is_instance_valid(n2) and n2.faction == "player" and int(n2.wing_seat) == 1 and n2.order.get("node") == p2 and n2.wing_lead == p2 \
+				and n2.position.distance_to(p2.position) < 3000.0 and int(v.pilot_seat(n2)) == 1
+			var e_st: String = v.in_eye(1, func(): return Commands.execute({"type": "wing_stance", "id": -1, "stance": "aggressive"}))
+			var ordered: bool = e_st == "" and n2 != null and is_instance_valid(n2) and String(n2.fit.stance) == "aggressive" and String(GameState.wingmen2[0]["stance"]) == "aggressive"
+			for f1 in 30:
+				await get_tree().process_frame
+			var stays: bool = n2 != null and is_instance_valid(n2) and (v.eye_get(1, "wing_nodes") as Dictionary).has(id2) and (v.wing_nodes as Dictionary).is_empty() and GameState.acting == 0 and int(v.eye) == 0
+			wing_ok = flies and ordered and stays
+			if not wing_ok:
+				print("SPLIT30 wing: flies ", flies, " ordered ", ordered, " '", e_st, "' stays ", stays, " lists ", [GameState.wingmen.size(), GameState.wingmen2.size()], " nodes ", [(v.wing_nodes as Dictionary).size(), theirs.size()],
+					" its seat ", (n2.wing_seat if n2 != null and is_instance_valid(n2) else "?"), " lead theirs ", (n2 != null and is_instance_valid(n2) and n2.wing_lead == p2))
+			# ---- its end is theirs: their contract is over, the word stands in their list
+			if n2 != null and is_instance_valid(n2):
+				v.on_ship_destroyed(n2, null)
+				n2.queue_free()
+			lost_ok = GameState.wingmen2.is_empty() and not (v.eye_get(1, "wing_nodes") as Dictionary).has(id2) and String(main.huds[1].log_label.get_parsed_text()).contains("was killed") \
+				and not String(main.huds[0].log_label.get_parsed_text()).contains("was killed") and GameState.acting == 0 and int(v.eye) == 0
+			if not lost_ok:
+				print("SPLIT30 lost: their list ", GameState.wingmen2.size(), " nodes ", (v.eye_get(1, "wing_nodes") as Dictionary).keys(), " said '", String(main.huds[1].log_label.get_parsed_text()).right(160), "'")
+			# ---- … and yours is yours
+			var tree_keep: bool = bool(GameState.pilot.get("tree_all", false))
+			GameState.pilot["tree_all"] = true
+			var w1: Dictionary = GameState.new_wingman("F")
+			GameState.wing_hire(w1, 30)
+			v._sync_wingmen()
+			v.in_eye(1, v._slow_look)
+			var n1 = (v.wing_nodes as Dictionary).get(int(w1["id"]))
+			yours_ok = GameState.wingmen.size() == 1 and GameState.wingmen2.is_empty() and n1 != null and is_instance_valid(n1) and int(n1.wing_seat) == 0 and n1.wing_lead == p1 \
+				and (v.eye_get(1, "wing_nodes") as Dictionary).is_empty() and int(v.pilot_seat(n1)) == 0
+			if not yours_ok:
+				print("SPLIT30 yours: lists ", [GameState.wingmen.size(), GameState.wingmen2.size()], " node ", n1, " theirs ", (v.eye_get(1, "wing_nodes") as Dictionary).keys())
+			GameState.wingmen.clear()
+			v._sync_wingmen()
+			GameState.pilot["tree_all"] = tree_keep
+			# ---- the pod of a ship the second player lost: taken aboard by their ship, not by yours
+			var at30: Vector2 = p1.position + Vector2(20000.0, 9000.0)
+			var far30: Vector2 = at30 + Vector2(300000.0, 0.0)
+			var mate: Dictionary = GameState.new_crew("gunner", "C", "")
+			GameState.pods.append({"id": "pod_split30", "system": v.system_id, "pos": at30, "crew": [{"m": mate, "until": GameState.play_time + 900.0}], "seat": 1})
+			p1.position = at30
+			p2.position = far30
+			v._pod_pickup_check()
+			var not_yours: bool = GameState.pods.any(func(pq): return String(pq["id"]) == "pod_split30")
+			p1.position = far30
+			p2.position = at30
+			v._pod_pickup_check()
+			var taken: bool = not GameState.pods.any(func(pq): return String(pq["id"]) == "pod_split30")
+			var f2 = GameState.active_of(1)
+			var with_them: bool = GameState.rescued2.has(mate) or (f2.crew as Array).has(mate)
+			pod_ok = not_yours and taken and with_them and not GameState.rescued.has(mate) and String(main.huds[1].log_label.get_parsed_text()).contains("rescued") \
+				and not String(main.huds[0].log_label.get_parsed_text()).contains("rescued") and GameState.acting == 0
+			if not pod_ok:
+				print("SPLIT30 pod: not yours ", not_yours, " taken ", taken, " with them ", with_them, " yours ", GameState.rescued.has(mate))
+			# ---- the interdictor's game: its player's, over their half, by their own button
+			var tgt: Ship = v.spawn_npc("civ_shuttle", p2.position + Vector2(900.0, 0.0), "civilian")
+			var slot30 := String((p2.fit.modules as Dictionary).keys()[0]) if not (p2.fit.modules as Dictionary).is_empty() else "h0"
+			v.in_eye(1, v.start_interdict.bind(p2, tgt, slot30, {"name": "Interdictor"}))
+			for f2a in 6:
+				await get_tree().process_frame
+			var q: Dictionary = v.eye_get(1, "_interdict")
+			var gm = q.get("game")
+			var hr30: Rect2 = main.half_rect(1)
+			var theirs_game: bool = not q.is_empty() and (v._interdict as Dictionary).is_empty() and gm != null and is_instance_valid(gm) and int(gm.seat) == 1 and bool(tgt.warp_frozen) \
+				and absf((gm._panel.offset_left + gm._panel.offset_right) * 0.5 + get_viewport().get_visible_rect().size.x * 0.5 - hr30.get_center().x) < 3.0
+			var hits0: int = int(gm._hits) + int(gm._misses) if gm != null and is_instance_valid(gm) else -1
+			var tapped: bool = v.in_eye(1, v.interdict_tap) and not bool(v.interdict_tap())
+			var counted: bool = gm != null and is_instance_valid(gm) and int(gm._hits) + int(gm._misses) == hits0 + 1
+			v.in_eye(1, v._finish_interdict.bind(false))
+			for f2b in 4:
+				await get_tree().process_frame
+			game_ok = theirs_game and tapped and counted and (v.eye_get(1, "_interdict") as Dictionary).is_empty() and not bool(tgt.warp_frozen) and GameState.acting == 0 and int(v.eye) == 0
+			if not game_ok:
+				print("SPLIT30 game: theirs ", theirs_game, " tapped ", tapped, " counted ", counted, " state ", q.keys(), " yours ", (v._interdict as Dictionary).keys(), " frozen ", tgt.warp_frozen,
+					" half ", hr30.get_center().x)
+			if is_instance_valid(tgt):
+				tgt.queue_free()
+		else:
+			print("SPLIT30: no second ship in space  huds ", main.huds.size())
+	check(wing_ok, "split30: a wingman the second player hires is in their own list and flies with their ship, takes their order, and stays theirs; the first player's wing is empty")
+	check(lost_ok, "split30: its end is theirs: their contract is over and the word stands in their list")
+	check(yours_ok, "split30: a wingman of the first player's flies with the first player's ship, and the second player's wing is empty")
+	check(pod_ok, "split30: the pod of a ship the second player lost is not taken aboard by your ship, and is by theirs: the survivor is with them, the word in their list")
+	check(game_ok, "split30: the interdictor's game the second player starts is theirs: over their half, their button counts, and yours has none")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.stop_split()
+	Pad.seat_forget()
+	GameState.act_as(0)
+	for f9 in 6:
+		await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap30)
+	GameState.play_time = t_keep30
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i930 in 30:
+		await get_tree().process_frame
+	for wl930 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+
+
+## Split screen, stage 5A (Luz: each jumps for themselves; each half shows its player's system). The second player
+## jumps alone: their half is the jump while you fly on; arrived, they have a space view of their own for their
+## system, in their half, with their HUD, and both fly, each in their system. Back in your system the two of you
+## share one world again. You jump alone: they stay and fly on in a view of their own, and your return brings you
+## together again. SPLIT31_SHOTS=1 (in a window) saves a picture, SPLIT31_SIZE sets the window's size.
+func _test_split31(view0: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT31_SHOTS") != ""
+	if OS.get_environment("SPLIT31_SIZE") != "":
+		var wh31 := OS.get_environment("SPLIT31_SIZE").split("x")
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		for fw in 5:
+			await get_tree().process_frame
+		DisplayServer.window_set_size(Vector2i(int(wh31[0]), int(wh31[1])))
+		DisplayServer.window_set_position(Vector2i(40, 40))
+	var snap31: Dictionary = GameState.to_dict()
+	var t_keep31 := GameState.play_time
+	_story_quiet()
+	for wl31 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl31b in 20:
+		await get_tree().process_frame
+	main.station_panel.close()
+	var v = main.view if main.view != null and is_instance_valid(main.view) else view0
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t031 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t031 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var out_ok := false
+	var own_ok := false
+	var fly_ok := false
+	var back_ok := false
+	var you_ok := false
+	var meet_ok := false
+	var origin: int = GameState.current_system
+	var dest := -1
+	for lk in Universe.systems[origin]["links"]:
+		if dest < 0:
+			dest = int(lk)
+	# waits until a player's jump is over and the picture has settled
+	var wait_jump := func(seat: int, ms: int) -> bool:
+		var tw := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tw < ms:
+			await get_tree().process_frame
+			var fq = GameState.active_of(seat)
+			if fq != null and not fq.in_transit() and not main.in_hyperspace and not main.in_hyperspace2 and (main.loading == null or not is_instance_valid(main.loading)):
+				for fx in 30:
+					await get_tree().process_frame
+				return true
+		return false
+	if dest < 0 or v.player == null or not is_instance_valid(v.player) or v.player.is_docked():
+		print("SPLIT31 start: a neighbour ", dest, " your ship ", v.player)
+	else:
+		v.set_level(0)
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts31 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts31 < 8000 and not (v.eyes_two and v.player_of(1) != null and main.huds.size() == 2):
+			await get_tree().process_frame
+		for f0 in 20:
+			await get_tree().process_frame
+		if main.huds.size() == 2 and v.player_of(1) != null:
+			var p1: Ship = v.player
+			var f1 = GameState.active_of(0)
+			var f2 = GameState.active_of(1)
+			f1.fuel = float(f1.stats()["fuel_max"])
+			f2.fuel = float(f2.stats()["fuel_max"])
+			# ---- the second player jumps alone: their half is the jump, you fly on
+			var went: bool = bool(main.as_pilot(1, GameState.begin_jump.bind(f2, dest)))
+			for f1a in 6:
+				await get_tree().process_frame
+			var a1: Vector2 = p1.position
+			Players.sim["0:move"] = Vector2(1.0, 0.0)
+			for f1b in 60:
+				await get_tree().process_frame
+			Players.sim.clear()
+			out_ok = went and f2.in_transit() and main.in_hyperspace2 and not main.in_hyperspace and v.player_of(1) == null and is_instance_valid(p1) and p1.position.distance_to(a1) > 10.0 \
+				and main._hyper2 != null and is_instance_valid(main._hyper2) and GameState.current_system == origin and main.view == v and not f1.in_transit() and GameState.acting == 0
+			if not out_ok:
+				print("SPLIT31 out: went ", went, " in transit ", f2.in_transit(), " their jump ", main.in_hyperspace2, " yours ", main.in_hyperspace, " their ship here ", v.player_of(1), " you flew ", p1.position.distance_to(a1))
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split31_sprung.png")
+			# ---- arrived: a space view of their own for their system, in their half, with their HUD
+			f2.transit = minf(float(f2.transit), 0.3)
+			var arr: bool = await wait_jump.call(1, 30000)
+			var v2 = main.view2
+			var hr31: Rect2 = main.half_rect(1)
+			own_ok = arr and v2 != null and is_instance_valid(v2) and int(v2.system_id) == dest and int(v2.owner_seat) == 1 and GameState.system_of(1) == dest and GameState.system_of(0) == origin \
+				and GameState.current_system == origin and main.view == v and main.view1 == v and int(v.system_id) == origin and Commands.world == v \
+				and v2.player != null and is_instance_valid(v2.player) and v2.player.fit == f2 and int(f2.system_id) == dest and not v2.eyes_two \
+				and main.whalf2 != null and main.whalf2.holds(v2) and main.hud_v2 != null and main.whalf2.holds(main.hud_v2) and main.huds.size() == 2 and main.huds[1] == main.hud_v2 \
+				and main.hud_v2.view == v2 and (main.whalf2 as Control).visible and absf((main.whalf2 as Control).position.x - hr31.position.x) < 2.0 \
+				and v.eyes_two and v.player == p1 and is_instance_valid(p1) and v.player_of(1) == null and not main.in_hyperspace2 and main._hyper2 == null and GameState.acting == 0
+			if not own_ok:
+				print("SPLIT31 own: arrived ", arr, " their view ", v2, " of ", (v2.system_id if v2 != null and is_instance_valid(v2) else -1), " (wanted ", dest, ") systems ", [GameState.system_of(0), GameState.system_of(1)],
+					" yours the view ", main.view == v, " their ship ", (v2.player if v2 != null and is_instance_valid(v2) else null), " huds ", main.huds.size(), " half ", main.whalf2, " two looks ", v.eyes_two)
+			# ---- both fly, each in their system; the word of their arrival is in their list
+			if v2 != null and is_instance_valid(v2) and v2.player != null and is_instance_valid(v2.player):
+				var q2: Ship = v2.player
+				var b1: Vector2 = p1.position
+				var b2: Vector2 = q2.position
+				Players.sim["0:move"] = Vector2(0.0, 1.0)
+				Players.sim["1:move"] = Vector2(1.0, 0.0)
+				for f2a in 150:
+					await get_tree().process_frame
+				Players.sim.clear()
+				var where2: String = String(GameState.with_seat(1, func(): return Universe.systems[GameState.current_system]["name"]))
+				fly_ok = is_instance_valid(p1) and is_instance_valid(q2) and p1.position.distance_to(b1) > 10.0 and q2.position.distance_to(b2) > 10.0 and bool(v2.input_enabled) \
+					and where2 == String(Universe.systems[dest]["name"]) and String(main.hud_v2.log_label.get_parsed_text()).contains("You are in %s" % String(Universe.systems[dest]["name"])) \
+					and not String(main.hud_p1.log_label.get_parsed_text()).contains("You are in %s" % String(Universe.systems[dest]["name"])) and GameState.acting == 0 and main.view == v and main.hud == main.hud_p1
+				if not fly_ok:
+					print("SPLIT31 fly: you ", p1.position.distance_to(b1), " they ", q2.position.distance_to(b2), " free ", v2.input_enabled, " their system '", where2, "' acting ", GameState.acting,
+						" their list '", String(main.hud_v2.log_label.get_parsed_text()).right(120), "'")
+				if shots:
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split31_zwei_systeme.png")
+			# ---- they jump back: one world again, with two looks
+			f2.fuel = float(f2.stats()["fuel_max"])
+			var went_b: bool = bool(main.as_pilot(1, GameState.begin_jump.bind(f2, origin)))
+			for f3a in 4:
+				await get_tree().process_frame
+			f2.transit = minf(float(f2.transit), 0.3)
+			var arr_b: bool = await wait_jump.call(1, 30000)
+			back_ok = went_b and arr_b and not main._v2() and main.whalf2 == null and v.eyes_two and v.player_of(1) != null and v.player_of(1).fit == f2 and int(f2.system_id) == origin \
+				and GameState.system_of(1) == origin and main.huds.size() == 2 and main.huds[1] == main.hud_e1 and main.view == v and is_instance_valid(p1) and v.player == p1 and GameState.acting == 0
+			if not back_ok:
+				print("SPLIT31 back: went ", went_b, " arrived ", arr_b, " their view ", main.view2, " two looks ", v.eyes_two, " their ship ", v.player_of(1), " systems ", [GameState.system_of(0), GameState.system_of(1)], " huds ", main.huds.size())
+			# ---- you jump alone: they stay and fly on, in a view of their own
+			var went_y: bool = GameState.begin_jump(f1, dest)
+			for f4a in 4:
+				await get_tree().process_frame
+			f1.transit = minf(float(f1.transit), 0.3)
+			var arr_y: bool = await wait_jump.call(0, 40000)
+			var w1 = main.view1
+			var w2 = main.view2
+			var moved2 := false
+			if w2 != null and is_instance_valid(w2) and w2.player != null and is_instance_valid(w2.player):
+				var c2: Vector2 = w2.player.position
+				Players.sim["1:move"] = Vector2(0.0, 1.0)
+				for f4b in 120:
+					await get_tree().process_frame
+				Players.sim.clear()
+				moved2 = is_instance_valid(w2.player) and w2.player.position.distance_to(c2) > 10.0
+			you_ok = went_y and arr_y and w1 != null and is_instance_valid(w1) and int(w1.system_id) == dest and GameState.current_system == dest and main.view == w1 \
+				and w1.player != null and is_instance_valid(w1.player) and w1.player.fit == f1 and w2 != null and is_instance_valid(w2) and int(w2.system_id) == origin \
+				and w2.player != null and is_instance_valid(w2.player) and w2.player.fit == f2 and moved2 and GameState.system_of(1) == origin and GameState.acting == 0
+			if not you_ok:
+				print("SPLIT31 you: went ", went_y, " arrived ", arr_y, " your view of ", (w1.system_id if w1 != null and is_instance_valid(w1) else -1), " theirs of ", (w2.system_id if w2 != null and is_instance_valid(w2) else -1),
+					" they flew ", moved2, " systems ", [GameState.system_of(0), GameState.system_of(1)])
+			# ---- … and your return brings you together again
+			f1.fuel = float(f1.stats()["fuel_max"])
+			var went_z: bool = GameState.begin_jump(f1, origin)
+			for f5a in 4:
+				await get_tree().process_frame
+			f1.transit = minf(float(f1.transit), 0.3)
+			var arr_z: bool = await wait_jump.call(0, 40000)
+			var tz31 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tz31 < 6000 and not (main.view1 != null and main.view1.eyes_two and main.view1.player_of(1) != null):
+				await get_tree().process_frame
+			var z1 = main.view1
+			meet_ok = went_z and arr_z and not main._v2() and z1 != null and is_instance_valid(z1) and int(z1.system_id) == origin and z1.eyes_two and z1.player != null and z1.player.fit == f1 \
+				and z1.player_of(1) != null and z1.player_of(1).fit == f2 and GameState.system_of(0) == origin and GameState.system_of(1) == origin and GameState.acting == 0
+			if not meet_ok:
+				print("SPLIT31 meet: went ", went_z, " arrived ", arr_z, " their view ", main.view2, " yours of ", (z1.system_id if z1 != null and is_instance_valid(z1) else -1), " two looks ", (z1.eyes_two if z1 != null and is_instance_valid(z1) else false))
+		else:
+			print("SPLIT31: no second ship in space  huds ", main.huds.size())
+	check(out_ok, "split31: the second player jumps alone: their ship is gone into the jump and their half shows it, while you are not in a jump and fly on")
+	check(own_ok, "split31: arrived, they have a space view of their own for their system, in their half, with their ship and their HUD; yours is your system's, and each player's \"current system\" is their own")
+	check(fly_ok, "split31: both fly at once, each in their system; the word where they are stands in their list, and outside their turn the game is the first player's")
+	check(back_ok, "split31: they jump back into your system: their own view is gone and the two of you share one world with two looks again")
+	check(you_ok, "split31: you jump alone: your view is the new system's, and they stay and fly on in a view of their own of the old one")
+	check(meet_ok, "split31: your return brings you together again: one world, two looks, both ships in it")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.stop_split()
+	Pad.seat_forget()
+	GameState.act_as(0)
+	for f9 in 6:
+		await get_tree().process_frame
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap31)
+	GameState.play_time = t_keep31
+	main.in_hyperspace = false
+	main.in_hyperspace2 = false
+	main._hyper2_hide()
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i931 in 30:
+		await get_tree().process_frame
+	for wl931 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	main.galaxy.close()
+
+
+## Split screen, stage 5B: in a system of their own the second player does what they do in yours. They dock at a
+## station there: its window opens over their half; the deck, a counter's service, the stairs back aboard; their ship's
+## menu and their galaxy map show their ship and their system; "Undock" takes them out. They go down to a planet
+## there: the planet's map and the way down in their half, on foot in a view of their own, and up again. You fly on
+## in your system all the while. SPLIT32_SHOTS=1 (in a window) saves pictures, SPLIT32_SIZE sets the window's size.
+func _test_split32(view0: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT32_SHOTS") != ""
+	if OS.get_environment("SPLIT32_SIZE") != "":
+		var wh32 := OS.get_environment("SPLIT32_SIZE").split("x")
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		for fw in 5:
+			await get_tree().process_frame
+		DisplayServer.window_set_size(Vector2i(int(wh32[0]), int(wh32[1])))
+		DisplayServer.window_set_position(Vector2i(40, 40))
+	var snap32: Dictionary = GameState.to_dict()
+	var t_keep32 := GameState.play_time
+	_story_quiet()
+	for wl32 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl32b in 20:
+		await get_tree().process_frame
+	main.station_panel.close()
+	var v = main.view if main.view != null and is_instance_valid(main.view) else view0
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t032 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t032 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var dock_ok := false
+	var deck_ok := false
+	var win_ok := false
+	var out_ok := false
+	var down_ok := false
+	var up_ok := false
+	var origin: int = GameState.current_system
+	# a neighbour with a station, and (if there is one) with a place to land
+	var dest := -1
+	var land_b := {}
+	var land_s := {}
+	for lk in Universe.systems[origin]["links"]:
+		var lq: Dictionary = Universe.get_layout(int(lk))
+		if (lq["stations"] as Array).is_empty():
+			continue
+		var b_here := {}
+		var s_here := {}
+		for bq in lq["planets"] + lq.get("moons", []):
+			if not Universe.landable(bq) or Universe.is_giant(bq) or not s_here.is_empty():
+				continue
+			for sq in Universe.landing_sites(int(lk), bq):
+				if s_here.is_empty() and not (String(sq.get("kind", "")) in ["outpost", "mine", "research"]):
+					b_here = bq
+					s_here = sq
+		if dest < 0 or (land_s.is_empty() and not s_here.is_empty()):
+			dest = int(lk)
+			land_b = b_here
+			land_s = s_here
+	if dest < 0 or v.player == null or not is_instance_valid(v.player) or v.player.is_docked():
+		print("SPLIT32 start: a neighbour with a station ", dest, " your ship ", v.player)
+	else:
+		v.set_level(0)
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts32 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts32 < 8000 and not (v.eyes_two and v.player_of(1) != null and main.huds.size() == 2):
+			await get_tree().process_frame
+		for f0 in 20:
+			await get_tree().process_frame
+		var f1 = GameState.active_of(0)
+		var f2 = GameState.active_of(1)
+		var p1: Ship = v.player
+		# they jump to the neighbour, alone
+		if f2 != null and v.player_of(1) != null:
+			f2.fuel = float(f2.stats()["fuel_max"])
+			main.as_pilot(1, GameState.begin_jump.bind(f2, dest))
+			for f0a in 4:
+				await get_tree().process_frame
+			f2.transit = minf(float(f2.transit), 0.3)
+		var tj32 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tj32 < 30000 and not (main._v2() and main.view2.player != null and is_instance_valid(main.view2.player) and not main.in_hyperspace2):
+			await get_tree().process_frame
+		for f0b in 30:
+			await get_tree().process_frame
+		var v2 = main.view2
+		if not main._v2() or v2.player == null:
+			print("SPLIT32: no view of their own  their system ", (f2.system_id if f2 != null else -1), " wanted ", dest)
+		else:
+			var q2: Ship = v2.player
+			# waits until a condition of the second player's ship holds
+			var wait2 := func(docked: bool, ms: int) -> bool:
+				var tw := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tw < ms:
+					await get_tree().process_frame
+					var sh = main.pship(1)
+					if sh == null:
+						continue
+					if docked and sh.is_docked():
+						return true
+					if not docked and not sh.is_docked() and not main.on_the_way(1) and not main.apart() and not (String(sh.order.get("type", "")) in ["ascending", "descending", "undocking"]):
+						return true
+				return false
+			# ---- they dock at a station of their system: its window over their half; you fly on in yours
+			var sid := ""
+			for sk in v2.stations.keys():
+				if sid == "" and is_instance_valid(v2.stations[sk]) and String(v2.stations[sk].kind) == "station":
+					sid = String(sk)
+			var stn = v2.stations.get(sid)
+			if stn != null:
+				q2.position = stn.position + Vector2(float(stn.radius) + 300.0, 0.0)
+			var e_d: String = String(main.as_pilot(1, func(): return Commands.execute({"type": "dock", "id": sid})))
+			var docked: bool = await wait2.call(true, 60000)
+			var th32 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - th32 < 6000 and not (main.station_panel2 != null and main.station_panel2.visible):
+				await get_tree().process_frame
+			for f1a in 30:
+				await get_tree().process_frame
+			var sp2 = main.station_panel2
+			var a1: Vector2 = p1.position
+			Players.sim["0:move"] = Vector2(1.0, 0.0)
+			for f1b in 90:
+				await get_tree().process_frame
+			Players.sim.clear()
+			dock_ok = e_d == "" and docked and sp2 != null and sp2.visible and int(sp2.seat) == 1 and not bool(sp2.on_foot) and String(sp2.station.get("id", "")) == sid \
+				and not Universe.find_station(dest, sid).is_empty() and Universe.find_station(origin, sid).is_empty() and main.halves[1].holds(sp2) and int(sp2.concourse_tiles) > 4 \
+				and sp2.view == v2 and String(f2.docked_at) == sid and int(f2.system_id) == dest and not main.station_panel.visible and not main.on_foot(1) \
+				and is_instance_valid(p1) and p1.position.distance_to(a1) > 10.0 and GameState.current_system == origin and main.view == v and GameState.acting == 0
+			if not dock_ok:
+				print("SPLIT32 dock: order '", e_d, "' docked ", docked, " window ", sp2, " of '", (sp2.station.get("id", "") if sp2 != null else "-"), "' wanted '", sid, "' their ship at ", [f2.system_id, f2.docked_at],
+					" you flew ", p1.position.distance_to(a1), " acting ", GameState.acting, " yours the view ", main.view == v)
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split32_station.png")
+			# ---- the deck there, a counter's service, the stairs back aboard
+			if sp2 != null:
+				sp2.walk_requested.emit()
+			var ta32 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - ta32 < 6000 and not main.apart():
+				await get_tree().process_frame
+			for f2a in 20:
+				await get_tree().process_frame
+			var n = main.ground2
+			var on_deck: bool = main.apart() and n != null and is_instance_valid(n) and String(n.station.get("id", "")) == sid and String(n.level) == "hangar" and main.on_foot(1) \
+				and main.ground == null and n.input_enabled
+			var w0: Vector2 = n.pilot.pos if on_deck else Vector2.ZERO
+			Players.sim["1:move"] = Vector2(1.0, 0.0)
+			for f2b in 90:
+				await get_tree().process_frame
+			Players.sim.clear()
+			var walked: bool = on_deck and is_instance_valid(n) and n.pilot.pos.distance_to(w0) > 3.0
+			var svc32 := ""
+			if on_deck and sp2 != null:
+				for sv32 in GameData.services:
+					if svc32 == "" and String(sv32["id"]) in ["market", "hangar", "outfitter", "bulletin"] and bool(n._avail.has(String(sv32["id"]))) and String(n._avail[String(sv32["id"])]) == "":
+						svc32 = String(sv32["id"])
+				if svc32 != "":
+					main._on_deck_use2({"kind": "service", "id": svc32})
+			for f2c in 12:
+				await get_tree().process_frame
+			var served: bool = svc32 != "" and sp2 != null and sp2.visible and bool(sp2.on_foot) and String(sp2.current_service) == svc32 and String(sp2.station.get("id", "")) == sid \
+				and main.halves[1].holds(sp2) and GameState.acting == 0
+			if sp2 != null and sp2.visible:
+				sp2.close()
+			for f2d in 8:
+				await get_tree().process_frame
+			if main.apart():
+				main._on_deck_use2({"kind": "exit"})
+			var tx32 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tx32 < 6000 and not (not main.apart() and sp2 != null and sp2.visible):
+				await get_tree().process_frame
+			for f2e in 10:
+				await get_tree().process_frame
+			var aboard: bool = not main.apart() and not main.on_foot(1) and sp2 != null and sp2.visible and not bool(sp2.on_foot) and String(sp2.station.get("id", "")) == sid
+			deck_ok = on_deck and walked and served and aboard and String(f2.docked_at) == sid and GameState.acting == 0 and main.view == v
+			if not deck_ok:
+				print("SPLIT32 deck: on it ", on_deck, " walked ", walked, " service '", svc32, "' served ", served, " aboard again ", aboard, " apart ", main.apart(), " level ", (n.level if n != null and is_instance_valid(n) else "-"))
+			# ---- their ship's menu and their galaxy map: their ship, their system
+			main.win_action(1, "ship_menu")
+			for f3a in 8:
+				await get_tree().process_frame
+			var sm2 = main.ship_menu2
+			var ship_win: bool = sm2 != null and sm2.visible and sm2.view == v2 and main.halves[1].holds(sm2) and not main.ship_menu.visible
+			main.win_action(1, "galaxy_map")
+			for f3b in 8:
+				await get_tree().process_frame
+			var gm2 = main.galaxy2
+			var here2: int = int(GameState.with_seat(1, func(): return GameState.current_system))
+			var map_win: bool = gm2 != null and gm2.visible and main.halves[1].holds(gm2) and not main.galaxy.visible and here2 == dest and (sm2 == null or not sm2.visible)
+			main.win_back(1)
+			for f3c in 8:
+				await get_tree().process_frame
+			win_ok = ship_win and map_win and gm2 != null and not gm2.visible and GameState.acting == 0 and GameState.current_system == origin and main.view == v
+			if not win_ok:
+				print("SPLIT32 windows: ship's menu ", ship_win, " (", sm2, " its view theirs ", (sm2.view == v2 if sm2 != null else false), ") map ", map_win, " their system ", here2, " (", dest, ") shut ", (gm2 != null and not gm2.visible))
+			# ---- "Undock": out, in their system
+			main.win_action(1, "station")
+			for f4a in 8:
+				await get_tree().process_frame
+			if sp2 != null and sp2.visible:
+				sp2.undock()
+			else:
+				main._undock2()
+			var free2: bool = await wait2.call(false, 40000)
+			for f4b in 10:
+				await get_tree().process_frame
+			var q3: Ship = main.pship(1)
+			var b2: Vector2 = q3.position if q3 != null else Vector2.ZERO
+			Players.sim["1:move"] = Vector2(0.0, 1.0)
+			for f4c in 120:
+				await get_tree().process_frame
+			Players.sim.clear()
+			out_ok = free2 and q3 != null and is_instance_valid(q3) and main._v2() and main.view2.player == q3 and String(f2.docked_at) == "" and int(f2.system_id) == dest \
+				and q3.position.distance_to(b2) > 10.0 and main.hud_v2 != null and main.hud_v2.visible and (sp2 == null or not sp2.visible) and GameState.acting == 0
+			if not out_ok:
+				print("SPLIT32 out: free ", free2, " their ship ", q3, " docked '", f2.docked_at, "' flew ", (q3.position.distance_to(b2) if q3 != null and is_instance_valid(q3) else -1.0), " hud ", (main.hud_v2.visible if main.hud_v2 != null else false))
+			# ---- down to a planet of their system: its map and the way down in their half, on foot in a view of their own
+			if land_s.is_empty() or q3 == null or not main._v2() or not main.view2.descents.has(String(land_b.get("id", ""))):
+				down_ok = true
+				up_ok = true
+				print("SPLIT32 planet: no place to land in the neighbour ", dest, ": not checked")
+			else:
+				var w2 = main.view2
+				var beacon = w2.descents[String(land_b["id"])]
+				q3.position = beacon.position + Vector2(160.0, 0.0)
+				main.as_pilot(1, func(): w2.start_descent(w2.player, beacon))
+				var tm32 := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tm32 < 20000 and main.planet_map2 == null:
+					await get_tree().process_frame
+				for f5a in 10:
+					await get_tree().process_frame
+				var pm2 = main.planet_map2
+				var their_map: bool = pm2 != null and is_instance_valid(pm2) and main.halves[1].holds(pm2) and main.planet_map == null and String(f2.docked_at).begins_with("land:") \
+					and int(f2.system_id) == dest and String(f1.docked_at) == "" and GameState.current_system == origin
+				if shots:
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split32_planetenkarte.png")
+				if pm2 != null and is_instance_valid(pm2):
+					pm2.land.emit(land_s)
+				var tg32 := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tg32 < 90000 and not (main.apart() and main.planet_map2 == null and main.flight2 == null and main.hatch2 == null):
+					await get_tree().process_frame
+				for f5b in 60:
+					await get_tree().process_frame
+				var ng = main.ground2
+				var is_city32: bool = String(land_s.get("kind", "")) == "city"
+				var there: bool = main.apart() and ng != null and is_instance_valid(ng) and main.on_foot(1) and ng.input_enabled and int(f2.system_id) == dest \
+					and String(f2.docked_at).begins_with("land:") and (ng.is_city() if is_city32 else String(ng._site.get("id", "")) == String(land_s.get("id", ""))) \
+					and main.ground == null and is_instance_valid(p1) and not p1.is_docked() and GameState.current_system == origin
+				var g0: Vector2 = ng.pilot.pos if there else Vector2.ZERO
+				Players.sim["1:move"] = Vector2(1.0, 0.0)
+				Players.sim["0:move"] = Vector2(0.0, 1.0)
+				var c1: Vector2 = p1.position
+				for f5c in 120:
+					await get_tree().process_frame
+				Players.sim.clear()
+				down_ok = their_map and there and is_instance_valid(ng) and ng.pilot.pos.distance_to(g0) > 3.0 and p1.position.distance_to(c1) > 10.0 and GameState.acting == 0 and main.view == v
+				if not down_ok:
+					print("SPLIT32 down: their map ", their_map, " there ", there, " (apart ", main.apart(), " level ", (ng.level if ng != null and is_instance_valid(ng) else "-"), " docked '", f2.docked_at, "' scenes ",
+						[main.planet_map2, main.flight2, main.hatch2], ") walked ", (ng.pilot.pos.distance_to(g0) if there and is_instance_valid(ng) else -1.0), " you flew ", p1.position.distance_to(c1))
+				if shots:
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split32_zu_fuss.png")
+				# ---- … and up again by their own ship, into their own system's space
+				if main.apart():
+					if is_city32:
+						main._on_deck_use2({"kind": "exit", "dest": "orbit"})
+					else:
+						main._on_deck_use2({"kind": "exit"})
+				var free3: bool = await wait2.call(false, 90000)
+				for f5d in 20:
+					await get_tree().process_frame
+				var q4: Ship = main.pship(1)
+				up_ok = free3 and q4 != null and is_instance_valid(q4) and main._v2() and main.view2.player == q4 and int(main.view2.system_id) == dest and String(f2.docked_at) == "" \
+					and not main.apart() and not main.on_foot(1) and int(f2.system_id) == dest and GameState.system_of(1) == dest and GameState.current_system == origin and GameState.acting == 0
+				if not up_ok:
+					print("SPLIT32 up: free ", free3, " their ship ", q4, " docked '", f2.docked_at, "' apart ", main.apart(), " on the way ", main.on_the_way(1), " their view ", main.view2)
+	check(dock_ok, "split32: in a system of their own the second player docks at a station there: its window, that station's, opens over their half, and you fly on in your system")
+	check(deck_ok, "split32: … the deck there in a view of their own, a counter's service in their window, and the stairs bring them aboard and the window back")
+	check(win_ok, "split32: their ship's menu shows their own view's ship and their galaxy map stands in their system; back shuts it, and outside their turn the game is the first player's")
+	check(out_ok, "split32: \"Undock\" takes them out into their system's space, and they fly")
+	check(down_ok, "split32: they go down to a planet of their system: its map over their half, then on foot there in a view of their own, while you fly on in your system")
+	check(up_ok, "split32: … and up again by their own ship, into the space of their own system")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.stop_split()
+	Pad.seat_forget()
+	GameState.act_as(0)
+	for f9 in 6:
+		await get_tree().process_frame
+	for sc in [main.planet_map, main.planet_map2, main.flight, main.flight2, main.hatch, main.hatch2]:
+		if sc != null and is_instance_valid(sc):
+			sc.queue_free()
+	main.planet_map2 = null
+	main.flight2 = null
+	main.hatch2 = null
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap32)
+	GameState.play_time = t_keep32
+	main.in_hyperspace = false
+	main.in_hyperspace2 = false
+	main._hyper2_hide()
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i932 in 30:
+		await get_tree().process_frame
+	for wl932 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	main.galaxy.close()
 
 
 ## A look only, before stage 4 of the split screen is built (not part of the full run: `--only=fly4look`, in a
@@ -37194,6 +38141,12 @@ func _test_winlook(_view: SystemView) -> void:
 	var not_shown: Array = []
 	var not_here: Array = []
 	if not st_look.is_empty():
+		# the station's own window as it opens from aboard: the concourse with its list of services
+		pages.append(["station_hub", sp, func():
+			sp.station = st_look
+			sp.on_foot = false
+			sp.open(st_look, main.view)
+			sp.show_concourse(false)])                     # (at once, not tile by tile)
 		for svc_l in GameData.services:
 			var sid_l := String(svc_l["id"])
 			pages.append(["station_%s" % sid_l, sp, func():

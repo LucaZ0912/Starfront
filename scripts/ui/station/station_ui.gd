@@ -94,7 +94,8 @@ func _ready() -> void:
 		nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	credits_label = UI.label("", 18, UI.GOLD)
 	head.add_child(credits_label)
-	_head_btns.append(UI.button("Ship [%s]" % Keybinds.key_text("ship_menu"), func(): ship_menu_requested.emit()))
+	var ship_key: String = Keybinds.key_text("ship_menu") if seat == 0 else Players.win_key(seat, "ship_menu")
+	_head_btns.append(UI.button("Ship [%s]" % ship_key if ship_key != "" else "Ship", func(): ship_menu_requested.emit()))
 	_head_btns.append(UI.button("Walk the deck", func(): walk_requested.emit()))      # package 49
 	_head_btns.append(UI.button("Undock", undock))
 	for hb in _head_btns:
@@ -196,6 +197,14 @@ func close() -> void:
 
 
 func undock() -> void:
+	if seat == 1:
+		var m2 = get_tree().current_scene                # (the second player's own way out: main._undock2())
+		if m2 != null and bool(station.get("city", false)) and m2.has_method("ask_city_takeoff"):
+			m2.ask_city_takeoff.call_deferred(1)             # (from a city: orbit or the planet map, as for you)
+		elif m2 != null and m2.has_method("_undock2"):
+			close()
+			m2._undock2.call_deferred()
+		return
 	if bool(station.get("city", false)):
 		var mn = get_tree().current_scene
 		if mn != null and mn.has_method("ask_city_takeoff"):
@@ -322,6 +331,9 @@ func show_concourse(animate: bool = false) -> void:
 	_kill_tile_tweens()
 	UI.clear(body)
 	concourse_tiles = 0
+	if UI.narrow(win):
+		_concourse_narrow(animate)
+		return
 	var cols := UI.hbox(14)
 	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(cols)
@@ -352,6 +364,49 @@ func show_concourse(animate: bool = false) -> void:
 			var tw := create_tween()
 			_tile_tweens.append(tw)
 			tw.tween_interval(0.1 + k * 0.05)
+			tw.tween_method(_set_tile_alpha.bind(tile), 0.0, 1.0, 0.25)
+			k += 1
+
+
+## The concourse in a narrow picture (half of a split screen): the same four parts. The ship with its services and
+## the station with its services stand side by side, as in the wide picture; the commander and the news, the wide
+## picture's left column, stand below them. The whole of it scrolls when the picture is too low.
+func _concourse_narrow(animate: bool) -> void:
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(sc)
+	var stack := UI.vbox(12)
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(stack)
+	var top := UI.hbox(12)
+	stack.add_child(top)
+	var low := UI.hbox(12)
+	stack.add_child(low)
+	var tiles: Array = []
+	tour_targets.clear()
+	var sv := _column(top, UI.NEON_CYAN, 1.0, false)
+	_ship_column(sv, tiles)
+	var stv := _column(top, Color(0.7, 0.55, 1.0), 1.0, false)
+	_station_column(stv, tiles, true)
+	var cv := _column(low, UI.NEON_PINK, 1.0, false)
+	_cmdr_column(cv, tiles)
+	var nv := _column(low, Color(1.0, 0.8, 0.4), 1.0, false)
+	_news_column(nv, tiles)
+	tour_targets["cmdr"] = _box_of(cv)
+	tour_targets["news"] = _box_of(nv)
+	tour_targets["ship"] = _box_of(sv)
+	tour_targets["station"] = _box_of(stv)
+	concourse_tiles = tiles.size()
+	_settle()
+	if animate:
+		var k := 0
+		for tile in tiles:
+			tile.modulate.a = 0.0
+			var tw := create_tween()
+			_tile_tweens.append(tw)
+			tw.tween_interval(0.1 + k * 0.03)
 			tw.tween_method(_set_tile_alpha.bind(tile), 0.0, 1.0, 0.25)
 			k += 1
 
@@ -640,7 +695,7 @@ func _quick(kind: String, uid: int) -> void:
 
 # ---- right: the station – faction, economy, the pilot's balance – and its services
 
-func _station_column(v: VBoxContainer, tiles: Array) -> void:
+func _station_column(v: VBoxContainer, tiles: Array, narrow: bool = false) -> void:
 	var col: Color = v.get_meta("col")
 	_head(v, "STATION", col)
 	var sf := String(station.get("faction", ""))
@@ -687,19 +742,23 @@ func _station_column(v: VBoxContainer, tiles: Array) -> void:
 	bh.add_child(UI.label(GameData.fmt_credits(GameState.credits), 20, UI.GOLD))
 	_head(v, "STATION SERVICES", col)
 	# 0.5.31.2: square tiles, two in a row; 0.5.31.3: they grow with the window, and only this part scrolls
-	var ssc := ScrollContainer.new()
-	ssc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	ssc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ssc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.add_child(ssc)
-	tour_targets["station_services"] = ssc
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ssc.add_child(grid)
+	if narrow:
+		v.add_child(grid)                                # (a narrow picture: the whole concourse scrolls, not this part)
+		tour_targets["station_services"] = grid
+	else:
+		var ssc := ScrollContainer.new()
+		ssc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		ssc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		ssc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_child(ssc)
+		tour_targets["station_services"] = ssc
+		ssc.add_child(grid)
 	for svc in GameData.services:
 		if String(svc["id"]) in SHIP_SERVICES or svc["id"] == "news":
 			continue

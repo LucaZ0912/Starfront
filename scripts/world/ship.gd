@@ -125,6 +125,7 @@ var manual := false
 var is_drone := false            # package 23: a drone of the pilot (scripts/world/drone.gd)
 # Package 33: a wingman flying with the pilot
 var wingman_id := -1
+var wing_seat := 0               # split screen: whose wingman (or platform ship) this is
 var wing_traits: Array = []
 var wing_focus = null            # "attack my target": the node it goes for
 var wing_lead = null             # the ship it flies with (the pilot, or whom the pilot follows)
@@ -368,7 +369,7 @@ func hostile_to_player() -> bool:
 func hostile_to(p) -> bool:
 	if view != null and "eyes_two" in view and view.eyes_two:
 		var s: int = view.pilot_seat(p)
-		if s >= 0 and s != int(view.eye):
+		if s >= 0 and s != int(view.look_seat()):
 			return bool(view.in_eye(s, hostile_to_player))
 	return hostile_to_player()
 
@@ -2692,7 +2693,7 @@ func _mlog(text: String, col: Color = GameState.COL_INFO) -> void:
 	if manual and faction == "player":
 		# (two looks in space: a ship's word is said to the player who flies it, and goes into their list)
 		var whose: int = view.seat_of(self) if view != null and view.has_method("seat_of") else -1
-		if whose >= 0 and whose != int(view.eye):
+		if whose >= 0 and whose != int(view.look_seat()):
 			view.in_eye(whose, GameState.log_msg.bind(text, col))
 		else:
 			GameState.log_msg(text, col)

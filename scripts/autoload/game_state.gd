@@ -75,6 +75,11 @@ var race_bets: Array = []               # … your tickets: {n, kind, a, b, stak
 var fleet: Array = []            # all owned ships (ShipFitting)
 var active_uid := -1             # the ship the pilot is flying
 var current_system := 0          # displayed system (= system of the active ship)
+## Split screen, stage 5 (Luz: each jumps for themselves): the system the other player is in. `current_system` is
+## the system of who acts (it is swapped with the acting player, as their ship and purse are): what runs in the second
+## player's name sees their system as the current one.
+var current_system2 := 0
+var seat_hook: Callable = Callable()     # main hears whose turn it is (their own space view, their HUD)
 var storage := {}                # station_id -> {module_id: count}
 var missions: Array = []         # accepted contracts
 var bonds: Array = []            # bounty bonds {system, target, amount, time} (phase 0.5 package 9)
@@ -204,6 +209,8 @@ var law2 = LawScript.new()
 var collection2 := {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}
 var stats2 := {}
 var p2_placed := false              # the second player's ship has been put beside the first player's once (a split screen began): from then on it is where they flew it, also after loading
+var wingmen2: Array = []            # … their own wingmen under contract, as `wingmen` are yours (stage 4)
+var rescued2: Array = []            # … and the crew they took out of escape pods, riding along to the next station
 var last_station2 := {}             # … the station they docked at last (where they come back to), as `last_station` is yours
 var loss_offer2 := {}               # … and their own open offer to buy back a ship shot down, as `loss_offer` is yours (stage 4C)
 var fall_offer2 := {}               # … and their own open buy-back offer after a fall on foot, as `fall_offer` is yours
@@ -870,14 +877,37 @@ func act_as(seat: int, quiet: bool = false) -> void:
 	var my_last: Dictionary = last_station               # (the station to come back to is the one each docked at last)
 	last_station = last_station2
 	last_station2 = my_last
+	var my_wing: Array = wingmen                         # (their own wingmen, and who rides along out of a pod)
+	wingmen = wingmen2
+	wingmen2 = my_wing
+	var my_resc: Array = rescued
+	rescued = rescued2
+	rescued2 = my_resc
+	var my_sys := current_system                         # (stage 5: the system they are in)
+	current_system = current_system2
+	current_system2 = my_sys
 	pilot_name = String(pilot.get("name", pilot_name))
 	for pv in _page_vars:                               # … and the pages their windows remember (a shop's filter, its pick)
 		var cur = (pv[0] as Script).get(String(pv[1]))
 		(pv[0] as Script).set(String(pv[1]), _pages2.get(pv[2], _page_def[pv[2]]))
 		_pages2[pv[2]] = cur
 	acting = seat
+	if seat_hook.is_valid():
+		seat_hook.call(seat)
 	if not quiet:                                       # (quiet: for a moment inside one frame, as the fight on foot does for each pilot's own step)
 		credits_changed.emit(credits)
+
+
+## The system a player is in, whoever's turn it is.
+func system_of(seat: int) -> int:
+	return current_system if (seat == acting or not has_pilot2()) else current_system2
+
+
+func set_system_of(seat: int, sys: int) -> void:
+	if seat == acting or not has_pilot2():
+		current_system = sys
+	else:
+		current_system2 = sys
 
 
 ## The ship a player flies (their active one), whoever's turn it is.
@@ -903,6 +933,7 @@ func ship_join() -> void:
 	if mine == null or theirs == null:
 		return
 	theirs.system_id = mine.system_id
+	set_system_of(1, system_of(0))
 	theirs.docked_at = mine.docked_at
 	theirs.position = mine.position + (Vector2.ZERO if mine.docked_at != "" else Vector2(260.0, 120.0))
 	theirs.set_meta("joined", true)
@@ -911,12 +942,7 @@ func ship_join() -> void:
 ## … and the least of it, asked for here and there since the stages before: their ship is never left in another
 ## system than yours (until each jumps for themselves, stage 4E).
 func ship_along() -> void:
-	if not has_pilot2():
-		return
-	var mine := active_of(0)
-	var theirs := active_of(1)
-	if mine != null and theirs != null and theirs.system_id != mine.system_id:
-		ship_join()
+	pass                                                 # (stage 5: each is in the system they flew to; the calls are left where they were)
 
 
 ## Runs f with one of the two as the pilot (their gear, purse, ships), then it is who it was again. For a piece of
@@ -973,6 +999,8 @@ func storage_seat(seat: int) -> Dictionary:
 ## gear, and the first pilot's start system as the place to come into the game.
 ## The second player's own contracts, standing, collection and numbers: as a pilot who has just begun has them.
 func _own2_reset() -> void:
+	wingmen2 = []
+	rescued2 = []
 	missions2 = []
 	bonds2 = []
 	rep2 = ReputationScript.new()
@@ -995,6 +1023,7 @@ func _own2_reset() -> void:
 
 func new_pilot2(data: Dictionary) -> void:
 	_own2_reset()
+	set_system_of(1, system_of(0))
 	pilot2 = make_pilot("Wingmate", data)
 	pilot2["start_system"] = Universe.home_system
 	pilot2["credits"] = START_CREDITS                  # (Luz, 25 Nov 2026) their own money: they act for themselves
@@ -1045,7 +1074,7 @@ func to_dict() -> Dictionary:
 		ships.append(f.to_dict())
 	return {
 		"pilot_name": pilot_name, "pilot_data": pilot.duplicate(true), "credits": credits, "coins": coins, "casino_vip": casino_vip, "casino_jackpot": casino_jackpot, "casino_spins": casino_spins, "casino_stats": casino_stats.duplicate(), "race_shift": race_shift, "col_registered": col_registered, "col": col.duplicate(true), "race_bets": race_bets.duplicate(true), "fleet": ships, "active_uid": active_uid,
-		"current_system": current_system, "storage": storage.duplicate(true),
+		"current_system": current_system, "current_system2": current_system2, "storage": storage.duplicate(true),
 		"missions": missions.duplicate(true), "offers": offers.duplicate(true),
 		"stats": stats.duplicate(true), "play_time": play_time, "next_uid": _next_uid, "bonds": bonds.duplicate(true),
 		"jobs": jobs.duplicate(true), "exotic_matter": exotic_matter, "fortress_broken": fortress_broken.duplicate(), "mission_counter": Missions._counter, "reputation": rep.to_dict(), "wanted": law.to_dict(), "notorious": notorious.to_dict(), "stations_down": stations.to_dict(), "news": news.to_dict(), "codex": codex.to_dict(),
@@ -1058,6 +1087,7 @@ func to_dict() -> Dictionary:
 		"on_foot": on_foot.duplicate(), "on_foot2": on_foot2.duplicate(),
 		"pilot2": pilot2.duplicate(true), "gear2": (col_own_gear2 if col_own_gear2 != null else gear2).to_dict() if not pilot2.is_empty() else {},
 		"fleet2": fleet2.map(func(f2): return f2.to_dict()), "active_uid2": active_uid2, "storage2": storage2.duplicate(true),
+		"wingmen2": wingmen2.duplicate(true), "rescued2": rescued2.duplicate(true),
 		"missions2": missions2.duplicate(true), "bonds2": bonds2.duplicate(true), "reputation2": rep2.to_dict(), "wanted2": law2.to_dict(),
 		"collection2": collection2.duplicate(true), "stats2": stats2.duplicate(true), "lodging2": lodging2.duplicate(true), "fall_offer2": fall_offer2.duplicate(true), "loss_offer2": loss_offer2.duplicate(true), "last_station2": last_station2.duplicate(), "p2_placed": p2_placed, "col2": _col2_saved(), "col_registered2": col_registered2,
 		"shares": shares.map(func(sh): return {"id": String(sh["m"]["id"]), "to": int(sh["to"])}),
@@ -1111,6 +1141,7 @@ func from_dict(d: Dictionary) -> void:
 		fleet.append(ShipFitting.from_dict(sd))
 	active_uid = int(d["active_uid"])
 	current_system = int(d["current_system"])
+	current_system2 = int(d.get("current_system2", current_system))
 	storage = d["storage"].duplicate(true)
 	missions = d["missions"].duplicate(true)
 	bonds = d.get("bonds", []).duplicate(true)
@@ -1198,6 +1229,8 @@ func from_dict(d: Dictionary) -> void:
 		fall_offer2 = (d.get("fall_offer2", {}) as Dictionary).duplicate(true)
 		loss_offer2 = (d.get("loss_offer2", {}) as Dictionary).duplicate(true)
 		last_station2 = (d.get("last_station2", {}) as Dictionary).duplicate()
+		wingmen2 = (d.get("wingmen2", []) as Array).duplicate(true)
+		rescued2 = (d.get("rescued2", []) as Array).duplicate(true)
 		p2_placed = bool(d.get("p2_placed", false))
 		col2 = (d.get("col2", {}) as Dictionary).duplicate(true)
 		col_registered2 = bool(d.get("col_registered2", false))
@@ -1518,7 +1551,7 @@ func _lose_active(f: ShipFitting) -> void:
 	if not members.is_empty():
 		codex.event("pod")
 	if not alive.is_empty():
-		var pod := {"id": "pod%d" % _pod_seq, "system": f.system_id, "pos": f.position, "crew": alive}
+		var pod := {"id": "pod%d" % _pod_seq, "system": f.system_id, "pos": f.position, "crew": alive, "seat": acting}      # (seat: whose crew it is)
 		_pod_seq += 1
 		pods.append(pod)
 		log_msg("%d crew member%s reached an escape pod: pick them up before the signal fades (%s)." % [alive.size(), "" if alive.size() == 1 else "s", ", ".join(PackedStringArray(alive.map(func(e): return String(e["m"]["name"]))))], COL_WARN)
@@ -1650,7 +1683,7 @@ func pods_tick() -> void:
 		for e in (pod["crew"] as Array).duplicate():
 			if play_time >= float(e["until"]):
 				pod["crew"].erase(e)
-				log_msg("The signal of %s's escape pod has faded: lost." % e["m"]["name"], COL_BAD)
+				with_seat(int(pod.get("seat", 0)), log_msg.bind("The signal of %s's escape pod has faded: lost." % e["m"]["name"], COL_BAD))
 				changed = true
 		if (pod["crew"] as Array).is_empty():
 			pods.erase(pod)
@@ -2343,6 +2376,52 @@ func _held() -> Array:
 	return out
 
 
+## Stage 4 (each flies their own ship): who holds this contract, by seat. What a contract asks of "your ship" (to be
+## with the convoy, to fly the patrol's rounds, to stay in the system, to carry the urns) it asks of the ship of
+## who holds it; held by both, either of you is enough.
+func holders(m: Dictionary) -> Array:
+	var out: Array = []
+	if _same_in(missions, m):
+		out.append(acting)
+	if has_pilot2() and _same_in(missions2, m):
+		out.append(1 - acting)
+	return out
+
+
+## A line for everybody who holds this contract, in their own list.
+func tell_holders(m: Dictionary, text: String, col: Color) -> void:
+	var to: Array = holders(m)
+	if to.is_empty():
+		log_msg(text, col)
+		return
+	for s in to:
+		with_seat(s, log_msg.bind(text, col))
+
+
+## The active ship of a holder of this contract for which `ok` holds (null: none of them).
+func holder_fit(m: Dictionary, ok: Callable) -> ShipFitting:
+	for s in holders(m):
+		var f := active_of(s)
+		if f != null and bool(ok.call(f)):
+			return f
+	return null
+
+
+## The polls closed: the urns of this contract leave the hold of who carries them (other couriers' sealed crates
+## stay aboard, review 6 K4). Run as each holder.
+func _ballot_drop(m: Dictionary) -> void:
+	var cf := active()
+	if cf == null:
+		return
+	var others := 0.0
+	for m2 in missions:
+		if m2 != m and String(m2.get("item", "")) == "sealed_cargo" and int(m2.get("progress", 0)) < 1:
+			others += float(m2.get("amount", 0.0))
+	var extra := float(cf.cargo.get("sealed_cargo", 0.0)) - others
+	if extra > 0.0:
+		cf.remove_cargo("sealed_cargo", minf(extra, float(m["amount"])))
+
+
 ## Does the other player hold this contract too?
 func shared_with_other(m: Dictionary) -> bool:
 	return has_pilot2() and _same_in(missions2, m)
@@ -2535,33 +2614,25 @@ func _update_faction_jobs(delta: float) -> void:
 				if c.is_empty() or c.get("gathering", false):
 					continue             # waiting outside the station for the pilot does not count
 				m["total_t"] = float(m["total_t"]) + delta
-				var f := active()
-				if f != null and not f.in_transit() and f.system_id == int(c["cur"]) and f.docked_at == "":
+				var cur := int(c["cur"])                    # (the ship of who holds it: with the convoy's system, out in space)
+				if holder_fit(m, func(f): return not f.in_transit() and f.system_id == cur and f.docked_at == "") != null:
 					m["with_t"] = float(m["with_t"]) + delta
 			"smuggler":
 				if int(m["progress"]) < 1 and float(m["expires"]) > 0.0 and play_time >= float(m["expires"]):
 					fail_mission(m, "the smuggler got through")
 			"probe":
 				# package 39c: the probe measures while the pilot stays in the target system, out in space
-				var pf := active()
-				if int(m["progress"]) < 1 and pf != null and not pf.in_transit() and pf.system_id == int(m["target_system"]) and pf.docked_at == "":
+				var tsys := int(m["target_system"])
+				if int(m["progress"]) < 1 and holder_fit(m, func(pf): return not pf.in_transit() and pf.system_id == tsys and pf.docked_at == "") != null:
 					m["progress_t"] = float(m.get("progress_t", 0.0)) + delta
 					if float(m["progress_t"]) >= PROBE_TIME:
 						m["progress"] = 1
-						log_msg("Measurements complete: return to the issuing station.", COL_GOOD)
+						tell_holders(m, "Measurements complete: return to the issuing station.", COL_GOOD)
 						missions_changed.emit()
 			"courier":
 				if m.get("ballot", false) and play_time >= float(m.get("expires", INF)):     # package 39a
-					var cf := active()
-					if cf != null:
-						# review 6 K4: only the urns of this contract – other couriers' sealed crates stay aboard
-						var others := 0.0
-						for m2 in missions:
-							if m2 != m and String(m2.get("item", "")) == "sealed_cargo" and int(m2.get("progress", 0)) < 1:
-								others += float(m2.get("amount", 0.0))
-						var extra := float(cf.cargo.get("sealed_cargo", 0.0)) - others
-						if extra > 0.0:
-							cf.remove_cargo("sealed_cargo", minf(extra, float(m["amount"])))
+					for hs in holders(m):
+						with_seat(hs, _ballot_drop.bind(m))
 					fail_mission(m, "the polls closed before the ballots arrived")
 			"hunt":
 				if int(m["progress"]) < 1:
@@ -3116,7 +3187,8 @@ func _arrive(f: ShipFitting) -> void:
 	current_system = f.system_id
 	if f.uid == active_uid:
 		poi_visits[str(f.system_id)] = int(poi_visits.get(str(f.system_id), 0)) + 1     # package 53a: other sites this time
-		story.event("jump", {"system": f.system_id})          # package 55
+		if acting == 0:
+			story.event("jump", {"system": f.system_id})      # package 55 (the story is the first player's)
 		for pid in poi_state.keys():                     # review 7 W1: a new visit – the sites here are fresh
 			if int((poi_state[pid] as Dictionary).get("sys", -1)) == f.system_id:
 				poi_state.erase(pid)
@@ -3277,9 +3349,11 @@ func _process(delta: float) -> void:
 		_collect_t = 2.0
 		collect_perks()                          # package 34
 	_wing_tick_t -= delta
-	if _wing_tick_t <= 0.0 and not wingmen.is_empty():
+	if _wing_tick_t <= 0.0 and not (wingmen.is_empty() and wingmen2.is_empty()):
 		_wing_tick_t = 1.0
 		wing_tick()                              # package 33
+		if has_pilot2() and not wingmen2.is_empty():
+			with_seat(1 - acting, wing_tick)         # (the other player's own contracts run out for them)
 	notorious.update(current_system)
 	news.update()
 	senate.update()                              # package 39a
@@ -3295,6 +3369,13 @@ func _process(delta: float) -> void:
 	_update_faction_jobs(delta)
 	_update_passengers()
 	_update_tours(delta)                         # package 43b
+	_fly_step(delta)
+	if has_pilot2():
+		with_seat(1 - acting, _fly_step.bind(delta))     # (stage 5: the other player's own jump, their own scanners)
+
+
+## The acting player's ship: its jump runs down and ends, its scanners sweep the system.
+func _fly_step(delta: float) -> void:
 	var f := active()
 	if f == null:
 		return
