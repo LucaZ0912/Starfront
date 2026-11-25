@@ -5670,6 +5670,9 @@ func wheel_centre() -> Vector2:
 	return pilot.get_global_transform_with_canvas().origin + Vector2(0, -40)
 
 
+const STORY_FIRST := "The story's people talk to the first player: what is said there counts for both of you."
+
+
 ## Uses what the pilot stands at (also for the smoke test; instant: the lift without its ride).
 func use(instant: bool = false) -> bool:
 	if not _ride.is_empty() or talk != null or _arrive > 0.0 or _lift_menu != null or _touch >= 0.0 or not _sink.is_empty() or not _clift.is_empty() or not _col_walk.is_empty() or not _col_scene.is_empty() or _col_wait or not _col_intro.is_empty():
@@ -5682,7 +5685,7 @@ func use(instant: bool = false) -> bool:
 	if String(zone["kind"]) in TWO_WAYS:
 		_own_way_t = 30.0                                 # (apart places: a way you take yourself: the other player stays where they are)
 	if owner_seat == 1 and String(zone["kind"]) == "story":
-		_say_toast("The story's scenes play where the first player is: talk to them when you stand in the same place.", 4.0)
+		_say_toast(STORY_FIRST, 4.0)
 		return false
 	match String(zone["kind"]):
 		"seat":
@@ -6378,8 +6381,8 @@ func _col_register() -> void:
 	# talk has closed, the game goes on: the way to play, through the gate, the fighters' room
 	GameState.story.flags.erase("col_go")
 	_col_wait = true
-	# (the second player's own view: the talk is theirs, it stands over their half and listens to their device)
-	GameState.story.show.emit("dialogue", {"id": "col_marshal_back" if GameState.col_registered else "col_marshal", "mission": ""})
+	# (a counter's own talk, not the story's: it stands over the half of who signs up and listens to their device)
+	GameState.story.show.emit("dialogue", {"id": "col_marshal_back" if GameState.col_registered else "col_marshal", "mission": "", "own": true})
 
 
 func _col_after_talk() -> void:
@@ -7074,13 +7077,9 @@ func two_use() -> bool:
 		two.moving = false
 		return true
 	if kind == "story":
-		# (rule 7: who begins a talk of the story has it over their half; what it moves on counts for both. Beside you
-		# the second player may begin one: the story's scene is the place you both stand in)
-		var mn_t = get_tree().current_scene
-		if mn_t != null and "story_ui" in mn_t and mn_t.story_ui != null:
-			mn_t.story_ui.next_talk_seat(1)
-		story_talk.emit(String(z["id"]))
-		return true
+		# (Luz, 25 Nov 2026: the story's things happen with the first player only)
+		two_say(STORY_FIRST)
+		return false
 	if (kind in TWO_WAYS or kind == "col_register") and can_part():      # (apart places: a way out they take alone, in a view of their own; and the Colosseum's counter: everybody signs up for themselves)
 		get_tree().current_scene.part_two(two_spot(), true)
 		return true

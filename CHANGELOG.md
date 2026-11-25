@@ -3,6 +3,127 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.35 – 2026-11-25
+
+**Package 75, split screen, stage 4B: a HUD for each player in space, and the second player's controller (Luz saw
+the mockup and said: "the overview and contacts window only when you open it, on the controller's touchpad or a
+fixed key: it saves a lot of room").**
+- **A HUD per player.** In space with two halves each player has the whole flight HUD in their own half: the same
+  HUD, made twice, each showing its player's ship, purse, targets, locks, modules, drones and banners. The first
+  player's is the one there always was; it moves into their half and back when the picture is whole again.
+- **The overview and contacts list only when you open it (Luz), in every split screen in space:** the controller's
+  touchpad (the list was on it already) or the new key "overview" (Z, to be changed in the settings) shows it and
+  puts it away. Each player's own. The selected item's panel is shown only while something is selected. Alone,
+  both are there as always.
+- **A narrow half** (below 1300 wide, so half of 1920 x 1080): the module bar alone in the last row, above it the
+  ship on the left and the list of what happens on the right; the system's line cut short; notices and the zone's
+  banner wrapped left of the right-hand panels; the controller's button hints in two rows above the foot. A wide
+  half (half of 3438 x 1438) and the single picture keep the layout they had.
+- **The second player's controller does what yours does**, by the very same code, run once more for them: flying
+  and the camera, the next target and the next hostile, lock and deselect, the fire groups on the D-pad
+  combinations, the action wheel and the drone wheel (in their half), the list, the map views, the thrust burst,
+  the button hints in their own glyphs. At the keyboard the second player has the ship's keys as you have them.
+- **The mouse** is the keyboard player's, in their half: their HUD's buttons, and what the HUD does not take goes on
+  into space (a click, the wheel, a drag).
+- **A ship's words go to the player who flies it:** each HUD's list holds what is said to its player.
+- **Not built yet, said outright:**
+  - **Windows of your own in space (pilot's window, ship's menu, map, station, help):** the second player reads
+    "Windows of your own are not there in space yet."; yours still lie over the whole picture and hold both.
+  - **The second player's ship still cannot be targeted or harmed (4C), and they can fire now.** That is lopsided
+    until the world's rules count for two: said here so nobody takes it for the rule.
+  - **Some lines about the second player's ship still land in your list** (opening fire in a no-fire zone, for one):
+    the world's own lines know one player (4C). Their ship is not marked as theirs.
+  - Docking, undocking, landing and jumping for themselves (4D, 4E).
+- **Not tried:** two real controllers; a real mouse (the test presses a row of the list, a spot in space and a
+  spot in the other half, in a window of 1920 x 1080, and all three do what they should); the second player at the
+  keyboard; the Steam Deck.
+- The mockup's test group `hud4look` is gone (its pictures stay); `split23` asks the second player's controller for
+  the view's level now.
+- Smoke test group `split24` (6 checks, with pictures `split24_hud.png` and `split24_rad.png` at 1920 x 1080; the
+  mouse's check runs in a window only). With it run, in parts, none failed: `split23`, `pad80`, `controls`,
+  `firegroups79`, `cam58`, `multifocus`, `wingmen`, `platform`, `review6`, `intro56`, `hackpad`, `mining41`,
+  `landing`, `gates40`, `warp36`, `boost`, `rocks`, `scale`, `hazards40d`, `moons`, `stars`, `split1`, `split8`,
+  `split9`, `split13`, `split16`, `split22`. No full run.
+
+## alpha 0.8.75.34 – 2026-11-25
+
+**Package 75, split screen, stage 4A: the second player flies (the groundwork; Luz confirmed the eleven rules for
+space and said "4A bauen").**
+- **Two halves in space.** While you fly in a split screen, the picture is in two halves on the one world: yours on
+  the left, the second player's on the right. Their ship is out beside yours.
+- **Each flies their own ship with their own device:** the keyboard's flight keys, or their controller's left
+  stick. The right stick (or the camera keys) moves their camera, up and down on the controller's pad (or the zoom
+  keys and the mouse wheel at the keyboard) change their view, and the thrust burst is theirs.
+- **Each half is its player's own look,** made by the same code as the one picture always was: its camera on its
+  ship, its zoom and view (Combat, Recon, Orbit, System), the sky behind (stars, nebula, the planets as a
+  backdrop), the planets on the map, the radar and everything else of the overlay, the names of stations and gates
+  sized for its zoom, the rocks' scenery, the grid of the change of view.
+- **The world is one:** ships, stations, rocks and effects are there once and show in both halves.
+- **The mouse** is the keyboard player's and works in their half.
+- **The HUD** is still the one there is, yours: it lies over your half, not over the whole picture.
+- **One picture again** when you dock or walk a deck, during a jump and on the way down to a planet, and when the
+  split screen ends.
+- **Not built yet, said outright (the next stages):**
+  - **The second player has no HUD (4B):** no targets, no modules or weapons, no drones, no windows of their own in
+    space. On a controller they fly, look round, change the view and use the thrust burst, nothing else.
+  - **Nothing can target or harm their ship** until they can fight back and the world's rules count for two (4B,
+    4C). This is a guard for this stage, not a rule of the game: it goes with those stages.
+  - **Their ship comes out with yours and goes in with yours (4D, 4E):** when you dock, it docks; after a jump it is
+    beside yours again. They cannot dock, undock, land or jump for themselves yet.
+  - **A window of yours in space** (pilot's window, ship's menu, map, station) lies over the whole picture and holds
+    both, as before (4B).
+  - **The world knows your ship only (4C):** the engine's sound, alarms and what is heard are yours; messages about
+    the second player's ship land in your list; their ship is not marked as theirs.
+  - What a world's object draws at a size for the zoom (a hazard's rim, the warp's glow, a mine's mark) follows the
+    closer of the two looks.
+- **Not tried:** two real controllers; a real mouse in a half; the second player at the keyboard (the test presses
+  for both); the HUD in a half of 1920 x 1080 (it fits a half of 3438 x 1438 as it is; its narrow layout is 4B);
+  how the Steam Deck carries two halves in space (here: 51 to 60 pictures a second with two).
+- Smoke test group `split23` (5 checks, with pictures `split23_nah.png` and `split23_zoom.png`). With it run, in
+  parts, none failed: `controls`, `pad80`, `boost`, `scale`, `rocks`, `moons`, `stars`, `hazards40d`,
+  `firegroups79`, `wingmen`, `landing`, `gates40`, `multifocus`, `jump_warning`, `intro56`, `mining41`, `review6`,
+  `platform`, `split1`, `split8`, `split9`, `split13`, `split16`, `split22`. No full run.
+- **Before stage 4B, a mockup only:** the test group `hud4look` (not part of the full run, alone, in a window)
+  renders the HUD in a half of 1920 x 1080 as it is (`hud4look_ist_1920x1080.png`: ship, module bar, banner and list
+  lie over each other, the overview covers the middle) and a mockup of a HUD per player in a narrow layout
+  (`hud4look_mock_1920x1080.png`: a second HUD of the same class run for the second player's look; module bar alone
+  at the foot, the ship and the list above it, the selected item only while something is selected, the overview
+  unfolded in one half and folded to its head in the other). The layout is moved by hand in the test; nothing of the
+  game is changed. Waiting for Luz.
+- **Found on the way, not from this change and not changed:**
+  - `cam58` and `warp36` fail when they run after `controls` and `pad80` in one go and pass alone; the last commit
+    does the same (checked in a second checkout of it).
+  - `drones` has one failing check ("launch all" has no key by default); the last commit has it too.
+  - `traffic` passes alone and fails one check (patrols in the system owner's colours) when it runs after `landing`
+    and `gates40`; not checked against the last commit.
+  - `takeoff`, `station`, `world` and `follow` cannot be run alone (they need more than the view) and were not run.
+
+## alpha 0.8.75.33 – 2026-11-25
+
+**Package 75, split screen: the story is the first player's, and its talks hold both (Luz: "the story's things
+happen with player 1 only, and both stand still during the talks").** This takes back a part of 0.8.75.32.
+- **A talk of the story is the first player's.** It stands over the whole picture again, their device answers, and
+  the game stands still for both players while it is up, in the same place and in different ones. (With 0.8.75.32
+  it stood over one half and the other player played on.)
+- **The second player cannot begin one,** beside you or elsewhere (0.8.75.32 let them begin one beside you). At one
+  of the story's people they read: "The story's people talk to the first player: what is said there counts for both
+  of you."
+- What a talk moves on counts for both, as before.
+- **Kept, my reading:** the Marshal's talk at the Colosseum's counter is not the story's but the counter's, and
+  everybody signs up for themselves (rule 9): it stays over the half of who signs up, and while you are in
+  different places the other player plays on.
+- With this the gap named in 0.8.75.32 (the second player alone elsewhere cannot begin a talk of the story) is no
+  gap any more: it is the rule.
+- **Before stage 4 (the second player flies), a look only:** the test group `fly4look` (not part of the full run,
+  in a window) puts two halves on the one space, each with a camera of its own on a ship of its own, and saves
+  `Claude outputs/fly4look_nah.png` and `fly4look_zoom.png`. Nothing of the game is changed for it. It shows what
+  carries as it is (station, ships, rocks, effects in both halves, a zoom per half) and what does not (the sky,
+  labels and symbols sized for one zoom, radar and overlay, the HUD, a world that knows one player's ship). The
+  rules and the stages 4A to 4E are in the Steckbrief, waiting for Luz.
+- Smoke test groups `split22` and `split9` changed. With them run: `split17`, `split18`, `split21`. No full run;
+  nothing tried with two real controllers; none of the story's own talks with its scene tried in a split screen
+  (the test asks for a talk as the story's worker does).
+
 ## alpha 0.8.75.32 – 2026-11-25
 
 **Package 75, split screen: apart places, stage E (rules 6 to 8: lift-off, the story's talks, the save).**

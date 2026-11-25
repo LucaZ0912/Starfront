@@ -45,6 +45,7 @@ var align_scale := 1.0           # package 56: × the warp alignment time (Old B
 var anchored := false            # never moves (it still aims and fires)
 var art_draw: Callable = Callable()   # draws the ship instead of its hull art (called with the ship)
 var untargetable := false        # cannot be locked or hit (the Roost's core under its plating)
+var no_harm := false             # nothing damages it (split screen, stage 4A: the second player's ship, until they have weapons and a HUD of their own)
 var damage_hook: Callable = Callable()   # called with (ship, hit points lost) after every hit
 var warp_hold := false           # the story holds the warp open (the talk on the way in): it slows near the end
 var ignore_drones := false       # never picks a drone as its target (the Roost's guns go for the ships)
@@ -2071,7 +2072,7 @@ func _deep_drill(delta: float, t: Dictionary, node) -> bool:
 func take_damage(amount: float, dtype: String, attacker) -> void:
 	if attacker != null and not is_instance_valid(attacker):
 		attacker = null                  # 0.6.75.3: the shooter may already be gone (freed) – then nobody did it
-	if dying or is_docked() or in_station():
+	if dying or is_docked() or in_station() or no_harm:
 		return
 	if module_on.get("builtin_cloak", false):
 		# review K2: a hit (mine, blast) shakes the cloak off
@@ -2611,7 +2612,12 @@ func module_target_error(e: Dictionary, node) -> String:
 ## Combat/tool log for the player's ship only.
 func _mlog(text: String, col: Color = GameState.COL_INFO) -> void:
 	if manual and faction == "player":
-		GameState.log_msg(text, col)
+		# (two looks in space: a ship's word is said to the player who flies it, and goes into their list)
+		var whose: int = view.seat_of(self) if view != null and view.has_method("seat_of") else -1
+		if whose >= 0 and whose != int(view.eye):
+			view.in_eye(whose, GameState.log_msg.bind(text, col))
+		else:
+			GameState.log_msg(text, col)
 
 
 static func node_name(n) -> String:

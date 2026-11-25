@@ -168,6 +168,7 @@ var last_load_ms := 0.0                 # package 35: how long building the last
 func load_system(sys: int) -> void:
 	var t0 := Time.get_ticks_usec()
 	if view != null and is_instance_valid(view):
+		view.eyes_off()                                    # (two looks in space: the HUDs come home before the view goes)
 		view.sync_to_fits()
 		remove_child(view)
 		view.queue_free()
@@ -182,6 +183,8 @@ func load_system(sys: int) -> void:
 	view.descent_ending.connect(_on_descent_ending)
 	view.ascended.connect(_update_input)
 	Commands.world = view
+	view.eyes_hook = _on_eyes
+	view.eye_scope = _eye_scope
 	hud.set_view(view)
 	_update_input()
 
@@ -1885,7 +1888,8 @@ func _resume2_step(delta: float) -> void:
 	say_to(1, "You are back where you stood when the game was saved.", Color(0.6, 0.9, 1.0))
 
 
-## A talk of the story while the picture is in two halves (rule 7): its window stands over the half of who began it
+## A counter's own talk while the picture is in two halves (the Marshal's; the story's talks are the first player's, over
+## the whole picture, and hold both: StoryUI): its window stands over the half of who began it
 ## and their own device answers. The game is paused for the talk, as always; while you are in different places the
 ## other player's view, their half and their windows go on.
 var _talk: Dictionary = {}            # {"seat", "keep": [[node, the process mode it had]]}
@@ -1986,6 +1990,11 @@ func handle_input(event: InputEvent) -> void:
 		if event.is_action_pressed("menu_back", false, true):
 			win_back(1)
 			return
+	if seat == 1 and view != null and is_instance_valid(view) and view.eyes_two:
+		# (two looks in space: the keyboard is the second player's; what it does for their ship so far)
+		if bool(view.eye_get(1, "input_enabled")):
+			view.in_eye(1, seat_event.bind(event))
+		return
 	if event.is_action_pressed("galaxy_map", false, true):
 		toggle_galaxy()
 	elif event.is_action_pressed("ship_menu", false, true):
@@ -2027,6 +2036,140 @@ func handle_input(event: InputEvent) -> void:
 			debug_menu.toggle()
 	elif ship_keys_locked():
 		return                                            # 0.7.53.15 (Luz): on the ground the ship's keys do nothing
+	else:
+		_ship_keys(event)
+
+
+# ---------------------------------------------------------------- Loading screen (package 35)
+
+## A short loading screen when the game starts: the system's pictures are made behind it (at most a few seconds).
+func _show_loading() -> void:
+	loading = CanvasLayer.new()
+	loading.layer = 120
+	add_child(loading)
+	var bg := ColorRect.new()
+	bg.color = Color(0.015, 0.01, 0.03)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	loading.add_child(bg)
+	var c := CenterContainer.new()
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.add_child(c)
+	var v := UI.vbox(14)
+	c.add_child(v)
+	var t := UI.label("SPACEFARER", 40, UI.NEON_CYAN)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var s2 := UI.label("Entering %s …" % Universe.systems[GameState.current_system]["name"], 16, UI.TEXT_DIM)
+	s2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(s2)
+	_loading_bar = UI.bar(UI.NEON_CYAN, 420)
+	_loading_bar.custom_minimum_size = Vector2(420, 6)
+	v.add_child(_loading_bar)
+	_loading_total = maxi(warmup.pending(), 1)
+	warmup.budget_ms = 24.0                        # behind the loading screen: as fast as it goes
+	_loading_t = 0.0
+
+
+func _process(delta: float) -> void:
+	_check_deck()                                        # package 49: undocked, lost or moved – back from the deck
+	_apart_step()                                        # split screen: the two of you in different places
+	_halves_step()                                       # split screen: each player's windows over their half
+	_space_step()                                        # split screen: two looks at the one space
+	if loading == null:
+		return
+	_loading_t += delta
+	_loading_bar.max_value = float(_loading_total)
+	_loading_bar.value = float(_loading_total - warmup.pending())
+	if (warmup.done() and _loading_t > 0.4) or _loading_t > 8.0:
+		warmup.budget_ms = 4.0
+		var lay := loading
+		loading = null
+		var tw := create_tween()
+		tw.tween_property(lay.get_child(0), "modulate:a", 0.0, 0.35)
+		tw.tween_callback(lay.queue_free)
+
+
+## Split screen in space, stage 4 (Luz: each player flies their own ship, each half shows its player's ship with the
+## whole HUD): while nothing is up that is one scene for both (the ground, a jump, the way down to a planet), the
+## space view shows the one world in two halves, each with its player's camera, zoom, sky, labels and overlay
+## (SystemView, EYE_VARS), and each with a HUD of its player's own (stage 4B): the one there always was moves into the
+## first player's half, a second one of the same class stands in the second player's.
+##
+## `hud` is the HUD of the player whose turn it is: the first player's, except inside SystemView.in_eye(1, …), where
+## it is the second player's (_eye_scope). So the code that says `hud` (the keys below, the controller code) serves
+## either player unchanged.
+var huds: Array = []                  # two looks: [the first player's HUD, the second player's]; one look: empty
+
+
+func _space_step() -> void:
+	if view == null or not is_instance_valid(view):
+		return
+	view.two_wanted = Players.split and GameState.has_pilot2() and (ground == null or not is_instance_valid(ground)) and not in_hyperspace \
+		and not (planet_map != null and is_instance_valid(planet_map)) and not (flight != null and is_instance_valid(flight)) \
+		and not (hatch != null and is_instance_valid(hatch))
+	# the second player's controller: the controller code once more, for them (Pad.as_seat)
+	if view.eyes_two and huds.size() == 2 and not Players.on_keys(1) and not get_tree().paused and bool(view.eye_get(1, "input_enabled")):
+		view.in_eye(1, Pad.seat_step.bind(get_process_delta_time()))
+
+
+## Two looks are there (on) or about to go: each player's HUD into their half, and home again.
+func _on_eyes(on: bool) -> void:
+	if not is_inside_tree() or view == null or not is_instance_valid(view):
+		return
+	if on:
+		if huds.size() == 2:
+			return
+		var theirs := HUD.new()
+		theirs.seat = 1
+		huds = [hud, theirs]
+		view.eye_half(0).take(hud)
+		view.eye_half(1).take(theirs)
+		view.in_eye(1, theirs.set_view.bind(view))
+		return
+	if huds.size() == 2:
+		hud = huds[0]
+		if is_instance_valid(huds[1]):
+			huds[1].queue_free()
+	huds = []
+	if hud.get_parent() != self:
+		if hud.get_parent() != null:
+			hud.get_parent().remove_child(hud)
+		add_child(hud)
+	hud.set_overview(false)
+	Pad.as_seat(0)
+	Pad.seat_forget()
+
+
+## The look changed (SystemView.eye_as): `hud` and the controller code are that player's from here on.
+func _eye_scope(seat: int) -> void:
+	if huds.size() == 2 and is_instance_valid(huds[seat]):
+		hud = huds[seat]
+	Pad.as_seat(seat)
+
+
+## An action of the game from the second player's controller in space (Pad, while it is their turn): what a key
+## press of theirs does.
+func seat_event(ev: InputEvent) -> void:
+	if not ev.is_pressed():
+		return
+	if ev.is_action_pressed("menu_back", false, true):
+		if not in_hyperspace:
+			pause_menu.open()                             # (pause holds both)
+		return
+	for wa in ["galaxy_map", "ship_menu", "pilot_window", "journal", "station", "help"]:
+		if ev.is_action_pressed(wa, false, true):
+			GameState.log_msg("Windows of your own are not there in space yet.", GameState.COL_WARN)
+			return
+	_ship_keys(ev)
+
+
+## The ship's keys: thrust burst, camera, the view's level, fire groups, drones, wingmen, the ship's commands, and in
+## a split screen the overview. For the player whose turn it is (their look as the view's, their HUD as `hud`).
+func _ship_keys(event: InputEvent) -> void:
+	if event.is_action_pressed("overview", false, true):
+		if view != null and is_instance_valid(view) and view.eyes_two:
+			hud.toggle_overview()                         # (Luz: in a split screen the list only when you open it)
 	elif event.is_action_pressed("boost", false, false) and view != null and view.player != null and is_instance_valid(view.player):
 		var be: String = view.player.boost_error()            # 0.6.75.2: the thrust burst (Shift – modifiers ignored)
 		if be == "":
@@ -2071,55 +2214,6 @@ func handle_input(event: InputEvent) -> void:
 				if view != null and not in_hyperspace:
 					hud.hotkey_command(a)
 				return
-
-
-# ---------------------------------------------------------------- Loading screen (package 35)
-
-## A short loading screen when the game starts: the system's pictures are made behind it (at most a few seconds).
-func _show_loading() -> void:
-	loading = CanvasLayer.new()
-	loading.layer = 120
-	add_child(loading)
-	var bg := ColorRect.new()
-	bg.color = Color(0.015, 0.01, 0.03)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	loading.add_child(bg)
-	var c := CenterContainer.new()
-	c.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.add_child(c)
-	var v := UI.vbox(14)
-	c.add_child(v)
-	var t := UI.label("SPACEFARER", 40, UI.NEON_CYAN)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(t)
-	var s2 := UI.label("Entering %s …" % Universe.systems[GameState.current_system]["name"], 16, UI.TEXT_DIM)
-	s2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(s2)
-	_loading_bar = UI.bar(UI.NEON_CYAN, 420)
-	_loading_bar.custom_minimum_size = Vector2(420, 6)
-	v.add_child(_loading_bar)
-	_loading_total = maxi(warmup.pending(), 1)
-	warmup.budget_ms = 24.0                        # behind the loading screen: as fast as it goes
-	_loading_t = 0.0
-
-
-func _process(delta: float) -> void:
-	_check_deck()                                        # package 49: undocked, lost or moved – back from the deck
-	_apart_step()                                        # split screen: the two of you in different places
-	_halves_step()                                       # split screen: each player's windows over their half
-	if loading == null:
-		return
-	_loading_t += delta
-	_loading_bar.max_value = float(_loading_total)
-	_loading_bar.value = float(_loading_total - warmup.pending())
-	if (warmup.done() and _loading_t > 0.4) or _loading_t > 8.0:
-		warmup.budget_ms = 4.0
-		var lay := loading
-		loading = null
-		var tw := create_tween()
-		tw.tween_property(lay.get_child(0), "modulate:a", 0.0, 0.35)
-		tw.tween_callback(lay.queue_free)
 
 
 ## Package 55: the journal – the pilot window on its Journal tab (again: closed).

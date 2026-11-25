@@ -777,6 +777,8 @@ func _process(delta: float) -> void:
 				await _test_split20(main.view)          # split screen: a shop's window for each player in their own half, at the same time
 				await _test_split21(main.view)          # split screen, stage D: the Colosseum for each player in their own half
 				await _test_split22(main.view)          # split screen, stage E: a talk of the story in its player's half, the save with both places, lift-off
+				await _test_split23(main.view)          # split screen, stage 4A: two looks at the one space, the second player flies their own ship
+				await _test_split24(main.view)          # split screen, stage 4B: a HUD per player in space, the overview on demand, the second player's controller
 				_shooting = false
 				timer = 0.0
 				return
@@ -32025,16 +32027,15 @@ func _test_split9(_view: SystemView) -> void:
 			else:
 				print("SPLIT9 own: no counter of their own in ", g.level, ": kinds ", kinds.keys())
 			# ---- a lift is theirs alone (apart places, 0.8.75.24): its menu comes up in a view of their own, not in yours;
-			# shut again they are back beside you; a talk of the story is theirs to begin beside you (0.8.75.32, rule 7:
-			# the story hears it as it hears yours, and the talk that follows is the second player's)
+			# shut again they are back beside you; a talk of the story is not theirs (Luz, 0.8.75.33: the story's things
+			# happen with the first player only): the story does not hear it, and they read why
 			var said: bool = false
 			var heard9: Array = []
 			var hear9 := func(who9: String): heard9.append(who9)
 			g.story_talk.connect(hear9)
 			g.two_zone = {"kind": "story", "id": "nobody", "title": "Somebody", "rect": Rect2()}
-			said = g.two_use() and heard9 == ["nobody"] and float(main.story_ui._next_seat_t) > 0.0 and GameState.acting == 0 and not g.two_acting
+			said = not g.two_use() and heard9.is_empty() and GameState.acting == 0 and not g.two_acting
 			g.story_talk.disconnect(hear9)
-			main.story_ui._next_seat_t = 0.0
 			var lift_ok := true
 			if kinds.has("lift"):
 				var zl: Dictionary = kinds["lift"]
@@ -32080,7 +32081,7 @@ func _test_split9(_view: SystemView) -> void:
 	check(swap_ok, "split9: the second player can stand in the pilot's place: name, gear, credits and Coins are theirs then and yours wait untouched; what they spend is theirs; the save is written the right way round; and back")
 	check(seat_ok, "split9: at a seat the second player's half says what their key does (their key, not yours); it sits them down, not you, and a step stands them up")
 	check(own_ok, "split9: a counter of their own is the second player's: a shop's window stands over their half with their own credits and ship while you play on (a counter of the place itself: they are the pilot while its window is up), and all is yours again once it shuts")
-	check(both_ok, "split9: a lift is theirs alone: its menu comes up in a view of their own and, shut again, they are back beside you; and beside you a talk of the story is theirs to begin")
+	check(both_ok, "split9: a lift is theirs alone: its menu comes up in a view of their own and, shut again, they are back beside you; and a talk of the story is not theirs")
 	# tidy up: the game as it was
 	GameState.act_as(0)
 	Players.stop_split()
@@ -34313,10 +34314,11 @@ func _test_split18(_view: SystemView) -> void:
 		await get_tree().process_frame
 
 
-## Split screen, apart places, stage E (Luz, rules 6 to 8). A talk of the story stands over the half of who began it:
-## in different places the other player's view goes on while the game is paused for who talks; beside you the second
-## player may begin one, and it is their own device that answers. The save keeps both places: loaded, the second
-## player goes back to where they stood. When you leave by ship while they are somewhere else, they are fetched
+## Split screen, apart places, stage E (Luz, rules 6 to 8; rule 7 as Luz set it with 0.8.75.33: the story's things
+## happen with the first player only, and both stand still during the talks). A talk of the story is the first
+## player's, over the whole picture, and the game stands for both, in the same place and in different ones; the
+## second player cannot begin one. A counter's own talk (the Marshal's) stands over the half of who began it and the
+## other player goes on. The save keeps both places: loaded, the second player goes back to where they stood. When you leave by ship while they are somewhere else, they are fetched
 ## aboard and the game says so. SPLIT22_SHOTS=1 (in a window) saves a picture.
 func _test_split22(_view: SystemView) -> void:
 	var PilotData = load("res://data/pilot.gd")
@@ -34371,27 +34373,34 @@ func _test_split22(_view: SystemView) -> void:
 			await get_tree().process_frame
 		for f0 in 6:
 			await get_tree().process_frame
-		# ---- beside you the second player begins a talk of the story: it is theirs, over their half, the game stands
+		# ---- beside you: the second player cannot begin a talk of the story; yours is over the whole picture and
+		# the game stands for both
 		var ph0: Vector2 = g.pilot.pos
+		var p2_b: Vector2 = g.p2_walker().pos
+		var su = main.story_ui
 		g.two_zone = {"kind": "story", "id": "nobody_22", "title": "Somebody", "rect": Rect2()}
 		var began: bool = g.two_use()
-		GameState.story.show.emit("dialogue", {"id": "col_marshal_back", "mission": ""})      # (what the story's worker does when it hears the talk)
+		g.two_zone = {}
+		for f1a in 4:
+			await get_tree().process_frame
+		var refused: bool = not began and su.dialogue == null and not get_tree().paused
+		GameState.story.show.emit("dialogue", {"id": "col_marshal_back", "mission": ""})      # (what the story's worker does when you talk to one of its people)
 		for f1 in 6:
 			await get_tree().process_frame
-		var su = main.story_ui
 		Players.sim["0:move"] = Vector2(1.0, 0.0)
-		for f1b in 10:
+		Players.sim["1:move"] = Vector2(-1.0, 0.0)
+		for f1b in 14:
 			await get_tree().process_frame
-		Players.sim.erase("0:move")
-		beside_ok = began and su.dialogue != null and int(su._dlg_seat) == 1 and bool(su._dlg_half) and main.halves[1].holds(su._dlg_layer) and (main.halves[1] as Control).visible \
-			and get_tree().paused and main.talk_seat() == 1 and not main.apart() and g.pilot.pos.distance_to(ph0) < 0.5 and Players.act_seat == 0
+		Players.sim.clear()
+		beside_ok = refused and su.dialogue != null and int(su._dlg_seat) == 0 and not bool(su._dlg_half) and su._dlg_layer.get_parent() == su \
+			and get_tree().paused and main.talk_seat() == -1 and not main.apart() and g.pilot.pos.distance_to(ph0) < 0.5 and g.p2_walker().pos.distance_to(p2_b) < 0.5 and Players.act_seat == 0
 		if not beside_ok:
-			print("SPLIT22 beside: began ", began, " talk ", su.dialogue, " seat ", su._dlg_seat, " in a half ", su._dlg_half, " paused ", get_tree().paused, " talk seat ", main.talk_seat(),
-				" you moved ", g.pilot.pos.distance_to(ph0))
+			print("SPLIT22 beside: refused ", refused, " talk ", su.dialogue, " seat ", su._dlg_seat, " in a half ", su._dlg_half, " paused ", get_tree().paused,
+				" you moved ", g.pilot.pos.distance_to(ph0), " they moved ", g.p2_walker().pos.distance_to(p2_b))
 		await shut22.call()
-		var after_b: bool = main.talk_seat() == -1 and not get_tree().paused and main.seat_menu.process_mode != Node.PROCESS_MODE_ALWAYS
+		var after_b: bool = not get_tree().paused and su.dialogue == null
 		beside_ok = beside_ok and after_b
-		# ---- in different places: your talk stands over your half and the game stands for you; they walk on
+		# ---- in different places: your talk of the story stands over the whole picture and the game stands for both
 		g._own_way_t = 30.0
 		g.go_level("street", "lift")
 		var ta := Time.get_ticks_msec()
@@ -34416,8 +34425,8 @@ func _test_split22(_view: SystemView) -> void:
 			for f3b in 24:
 				await get_tree().process_frame
 			Players.sim.clear()
-			var yours: bool = su.dialogue != null and int(su._dlg_seat) == 0 and main.halves[0].holds(su._dlg_layer) and get_tree().paused and main.talk_seat() == 0
-			mine_ok = yours and g.pilot.pos.distance_to(g_at) < 0.5 and n.pilot.pos.distance_to(n_at) > 2.0 and main.apart() and GameState.acting == 0
+			var yours: bool = su.dialogue != null and int(su._dlg_seat) == 0 and su._dlg_layer.get_parent() == su and get_tree().paused and main.talk_seat() == -1
+			mine_ok = yours and g.pilot.pos.distance_to(g_at) < 0.5 and n.pilot.pos.distance_to(n_at) < 0.5 and main.apart() and GameState.acting == 0
 			if shots:
 				for f3c in 20:
 					await get_tree().process_frame
@@ -34426,13 +34435,22 @@ func _test_split22(_view: SystemView) -> void:
 				print("SPLIT22 mine: yours ", yours, " seat ", su._dlg_seat, " paused ", get_tree().paused, " you moved ", g.pilot.pos.distance_to(g_at), " they moved ", n.pilot.pos.distance_to(n_at))
 				print("SPLIT22 mine more: input ", n.input_enabled, " modes ", [n.process_mode, main.ghalves[1].process_mode, main.ghalves[0].process_mode], " can ", n.can_process(), " half 1 up ", (main.halves[1] as Control).visible,
 					" hold ", main._hold2, " level ", n.level, " idle ", n.idle(), " dir ", free_dir.call(n), " keep ", (main._talk.get("keep", []) as Array).size())
-			# they come to where you are: nobody is put into your view while you talk
 			await shut22.call()
-			var after_m: bool = main.talk_seat() == -1 and not get_tree().paused and main.apart() and main.ghalves[1].process_mode != Node.PROCESS_MODE_ALWAYS
+			# (over, both walk again)
+			g_at = g.pilot.pos
+			n_at = n.pilot.pos
+			Players.sim["0:move"] = free_dir.call(g)
+			Players.sim["1:move"] = free_dir.call(n)
+			for f3d in 24:
+				await get_tree().process_frame
+			Players.sim.clear()
+			var after_m: bool = not get_tree().paused and main.apart() and g.pilot.pos.distance_to(g_at) > 2.0 and n.pilot.pos.distance_to(n_at) > 2.0
+			if not after_m:
+				print("SPLIT22 mine, after: paused ", get_tree().paused, " you moved ", g.pilot.pos.distance_to(g_at), " they moved ", n.pilot.pos.distance_to(n_at))
 			mine_ok = mine_ok and after_m
-			# ---- their talk (asked for in their own view): over their half, you walk on
+			# ---- a counter's own talk (the Marshal's, asked for in their own view): over their half, you walk on
 			main.scope_in(1)
-			GameState.story.show.emit("dialogue", {"id": "col_marshal_back", "mission": ""})
+			GameState.story.show.emit("dialogue", {"id": "col_marshal_back", "mission": "", "own": true})
 			main.scope_out()
 			for f4 in 6:
 				await get_tree().process_frame
@@ -34476,9 +34494,9 @@ func _test_split22(_view: SystemView) -> void:
 				print("SPLIT22 save: kept ", kept, " ", GameState.on_foot2, " apart ", main.apart(), " levels ", [(g2.level if g2 != null and is_instance_valid(g2) else "?"), (main.ground2.level if main.apart() else "-")],
 					" wanted ", [lv1, lv2])
 	GameState.message.disconnect(hear)
-	check(beside_ok, "split22: beside you the second player begins a talk of the story: it is theirs, over their half, the game stands for both, and it is given back when the talk is over")
-	check(mine_ok, "split22: in different places your talk of the story stands over your half and the game stands for you, while the second player walks on in theirs")
-	check(theirs_ok, "split22: … and a talk of theirs stands over their half and holds them, while you walk on")
+	check(beside_ok, "split22: the story's talks are the first player's: the second player cannot begin one, and yours stands over the whole picture and holds both of you")
+	check(mine_ok, "split22: in different places a talk of the story holds both players too, and both walk on when it is over")
+	check(theirs_ok, "split22: a counter's own talk (the Marshal's) stands over the half of who began it and holds them, while the other player walks on")
 	check(fetch_ok, "split22: you leave while the second player is somewhere else: they are fetched aboard, and the game says so")
 	check(save_ok, "split22: the save keeps both places: loaded, you stand at yours and the second player goes back to theirs")
 	# tidy up: the game as it was
@@ -35383,6 +35401,521 @@ func _test_split19(_view: SystemView) -> void:
 	for wl9 in 900:
 		if main.loading == null or not is_instance_valid(main.loading):
 			break
+		await get_tree().process_frame
+
+
+## Split screen, stage 4A (Luz: each player flies their own ship, each half shows its player's ship with a zoom of
+## its own, the world is one). While both fly, the space view shows the one world in two halves: the second player's
+## ship is out beside yours and flies by their own device, each look has its camera, its zoom and view level, its sky,
+## its labels and its overlay, and the HUD (still the one, yours) lies over your half. One look again when the split
+## screen ends; a system built anew gets its two looks again. SPLIT23_SHOTS=1 (in a window) saves pictures.
+func _test_split23(view0: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT23_SHOTS") != ""
+	var snap23: Dictionary = GameState.to_dict()
+	var t_keep23 := GameState.play_time
+	_story_quiet()
+	for wl23 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl23b in 20:
+		await get_tree().process_frame
+	main.station_panel.close()
+	var v = main.view if main.view != null and is_instance_valid(main.view) else view0
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t023 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t023 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var two_ok := false
+	var fly_ok := false
+	var look_ok := false
+	var again_ok := false
+	var one_ok := false
+	var mask0: int = get_viewport().canvas_cull_mask
+	if v.player != null and is_instance_valid(v.player) and not v.player.is_docked():
+		v.set_level(0)
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts23 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts23 < 8000 and not (v.eyes_two and v.player_of(1) != null):
+			await get_tree().process_frame
+		for f0 in 30:
+			await get_tree().process_frame
+		# ---- two looks: two halves, two ships, each look its own parts; the HUD over your half
+		var p1: Ship = v.player
+		var p2: Ship = v.player_of(1)
+		var st_lab = null
+		for c23 in v.celestials:
+			if is_instance_valid(c23) and String(c23.kind) == "station" and st_lab == null:
+				st_lab = c23
+		if p2 != null:
+			var vs23 := get_viewport().get_visible_rect().size
+			var cam1 = v.eye_get(1, "camera")
+			var parts: bool = v.eye_get(1, "overlay") != v.overlay and v.eye_get(1, "sky") != v.sky and v.eye_get(1, "background") != v.background \
+				and (v.eye_get(1, "bodies") as Array).size() == v.bodies.size() and v.bodies.size() > 0 and cam1 != v.camera
+			var cams: bool = v.camera.position.distance_to(p1.position) < 5.0 and (cam1 as Camera2D).position.distance_to(p2.position) < 5.0
+			var hud_half: bool = absf(main.hud._root.size.x - v.eye_frame(0).size.x) < 1.0 and main.hud._root.size.x < vs23.x * 0.51
+			var labs: bool = st_lab != null and (st_lab._eye_lab as Array).size() == 2 and Celestial.eye_labels
+			two_ok = v.eyes_two and p2 != p1 and p2.fit != p1.fit and String(p2.fit.ship_name).contains("Wingmate") and p2.position.distance_to(p1.position) < 600.0 \
+				and parts and cams and hud_half and labs and GameState.acting == 0 and int(v.eye) == 0 and (get_viewport().canvas_cull_mask & SystemView.WORLD_BIT) == 0 \
+				and v.eye_frame(1).position.x > vs23.x * 0.49 and bool(p2.no_harm) and String(GameState.pilot.get("name", "")) != "Mira Voss"
+			if not two_ok:
+				print("SPLIT23 two: eyes ", v.eyes_two, " parts ", parts, " cams ", cams, " hud ", main.hud._root.size, " half ", v.eye_frame(0), " labels ", labs, " dist ", p2.position.distance_to(p1.position),
+					" acting ", GameState.acting, " eye ", v.eye)
+			if shots:
+				for fs in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split23_nah.png")
+			# ---- each flies their own ship with their own device
+			var a1: Vector2 = p1.position
+			var a2: Vector2 = p2.position
+			Players.sim["1:move"] = Vector2(1.0, 0.0)
+			for f1 in 90:
+				await get_tree().process_frame
+			var theirs_moved: float = p2.position.distance_to(a2)
+			var yours_still: float = p1.position.distance_to(a1)
+			Players.sim.erase("1:move")
+			for f1b in 20:
+				await get_tree().process_frame
+			a1 = p1.position
+			a2 = p2.position
+			Players.sim["0:move"] = Vector2(0.0, 1.0)
+			for f2 in 90:
+				await get_tree().process_frame
+			var yours_moved: float = p1.position.distance_to(a1)
+			Players.sim.erase("0:move")
+			for f2b in 20:
+				await get_tree().process_frame
+			fly_ok = theirs_moved > 60.0 and yours_still < theirs_moved * 0.2 and yours_moved > 60.0 and p2.position.x > a2.x - 400.0 \
+				and (v.eye_get(1, "camera") as Camera2D).position.distance_to(p2.position) < 5.0 and v.camera.position.distance_to(p1.position) < 5.0 and GameState.acting == 0
+			if not fly_ok:
+				print("SPLIT23 fly: theirs ", theirs_moved, " yours meanwhile ", yours_still, " yours ", yours_moved)
+			# ---- a zoom and a view level per look; the labels sized for each
+			Pad.other_put("sim_on", true)
+			Pad.other_put("sim_btn", {"down": true})
+			for f3 in 6:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f3b in 120:
+				await get_tree().process_frame
+			var z0: float = v.camera.zoom.x
+			var z1: float = (v.eye_get(1, "camera") as Camera2D).zoom.x
+			look_ok = int(v.level) == 0 and int(v.eye_get(1, "level")) == 1 and z1 < z0 * 0.5 and absf(float(Celestial.eye_scale[0]) - 1.0 / z0) < 0.01 \
+				and absf(float(Celestial.eye_scale[1]) - 1.0 / z1) < 0.01 / z1 and SystemView.screen_rect2.size.x > SystemView.screen_rect.size.x * 1.5 and int(v.eye) == 0
+			if not look_ok:
+				print("SPLIT23 look: levels ", v.level, " ", v.eye_get(1, "level"), " zooms ", z0, " ", z1, " label sizes ", Celestial.eye_scale, " rects ", SystemView.screen_rect.size, " ", SystemView.screen_rect2.size)
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split23_zoom.png")
+			# ---- the system built anew (a jump, a loaded game): two looks again, the second ship out beside yours
+			main.load_system(GameState.current_system)
+			var mask_between: int = get_viewport().canvas_cull_mask
+			var v2 = main.view
+			var tn23 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tn23 < 8000 and not (v2.eyes_two and v2.player_of(1) != null):
+				await get_tree().process_frame
+			for f4 in 10:
+				await get_tree().process_frame
+			again_ok = v2 != v and mask_between == mask0 and v2.eyes_two and v2.player_of(1) != null and v2.player != null and v2.player_of(1) != v2.player \
+				and absf(main.hud._root.size.x - v2.eye_frame(0).size.x) < 1.0
+			if not again_ok:
+				print("SPLIT23 again: new view ", v2 != v, " mask ", mask_between, " ", mask0, " eyes ", v2.eyes_two, " their ship ", v2.player_of(1))
+			# ---- the split screen ends: one look, the whole picture, the second ship in
+			Players.stop_split()
+			for f5 in 10:
+				await get_tree().process_frame
+			var vs5 := get_viewport().get_visible_rect().size
+			one_ok = not v2.eyes_two and v2.player_of(1) == null and get_viewport().canvas_cull_mask == mask0 and int(v2.visibility_layer) == 1 and v2.background.get_parent() == v2 \
+				and v2.sky.get_parent() == v2 and not Celestial.eye_labels and absf(main.hud._root.size.x - vs5.x) < 1.0 and SystemView.screen_rect2.size.x == 0.0 \
+				and v2.vsize() == v2.get_viewport_rect().size and v2.get_tree().get_nodes_in_group("ships").filter(func(sh): return is_instance_valid(sh) and not sh.is_queued_for_deletion() and String(sh.fit.ship_name).contains("Wingmate")).is_empty()
+			if not one_ok:
+				print("SPLIT23 one: eyes ", v2.eyes_two, " mask ", get_viewport().canvas_cull_mask, " layer ", v2.visibility_layer, " hud ", main.hud._root.size, " labels ", Celestial.eye_labels)
+	check(two_ok, "split23: in space the picture is in two halves on the one world: the second player's ship is out beside yours, each look has its own camera, sky, map pictures, overlay and labels, and the HUD lies over your half")
+	check(fly_ok, "split23: each flies their own ship with their own device, and each camera stays on its own ship")
+	check(look_ok, "split23: a view level and a zoom per look: the second player zooms out, yours stays, and the labels are sized for each")
+	check(again_ok, "split23: a system built anew has its two looks again, and the whole picture's own drawing of the world is back in between")
+	check(one_ok, "split23: the split screen ends: one look over the whole picture again, the second player's ship is in, the HUD is whole")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.stop_split()
+	GameState.act_as(0)
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap23)
+	GameState.play_time = t_keep23
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i923 in 30:
+		await get_tree().process_frame
+	for wl923 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen, stage 4B (Luz: the second player gets exactly what the first one has; "the overview and contacts
+## window only when you open it"). In space with two looks each player has a HUD of the same class in their half,
+## showing their own ship; the overview is shown only while it is asked for (the controller's touchpad, the key
+## "overview") and the selected item only while something is selected; the second player's controller does what the
+## first player's does, by the same code (targets, locks, fire groups, the list, the wheels), for their own ship and
+## look; a line said to one player is in their list only. One look again: the one HUD over the whole picture.
+## SPLIT24_SHOTS=1 (in a window) saves pictures, SPLIT24_SIZE=1920x1080 sets the window's size for them.
+func _test_split24(view0: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT24_SHOTS") != ""
+	if OS.get_environment("SPLIT24_SIZE") != "":
+		var wh24 := OS.get_environment("SPLIT24_SIZE").split("x")
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		for fw in 5:
+			await get_tree().process_frame
+		DisplayServer.window_set_size(Vector2i(int(wh24[0]), int(wh24[1])))
+		DisplayServer.window_set_position(Vector2i(40, 40))
+	var snap24: Dictionary = GameState.to_dict()
+	var t_keep24 := GameState.play_time
+	_story_quiet()
+	for wl24 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl24b in 20:
+		await get_tree().process_frame
+	main.station_panel.close()
+	var v = main.view if main.view != null and is_instance_valid(main.view) else view0
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t024 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t024 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var hud_ok := false
+	var list_ok := false
+	var pad_ok := false
+	var msg_ok := false
+	var end_ok := false
+	var mouse_ok := false
+	var mouse_note := "not checked: no picture of real size without a window"
+	var hud_one = main.hud
+	if v.player != null and is_instance_valid(v.player) and not v.player.is_docked():
+		v.set_level(0)
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		GameState.pilot2["credits"] = 12345
+		Players.start_split("kbm", "pad:97")
+		var ts24 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts24 < 8000 and not (v.eyes_two and v.player_of(1) != null and main.huds.size() == 2):
+			await get_tree().process_frame
+		for f0 in 30:
+			await get_tree().process_frame
+		var texts := func(root: Node) -> String:
+			var out := ""
+			var todo: Array = [root]
+			while not todo.is_empty():
+				var n: Node = todo.pop_back()
+				if n is Label:
+					out += (n as Label).text + " | "
+				todo.append_array(n.get_children())
+			return out
+		if main.huds.size() == 2 and v.player_of(1) != null:
+			var h1 = main.huds[0]
+			var h2 = main.huds[1]
+			var p1: Ship = v.player
+			var p2: Ship = v.player_of(1)
+			# ---- a HUD per player, the same class, each in its half, each showing its own player's ship and purse
+			var ship1: String = texts.call(h1.ship_box)
+			var ship2: String = texts.call(h2.ship_box)
+			var foot_ok: bool = is_equal_approx(h1._ship_panel.offset_bottom, -92.0 if h1.narrow() else -10.0) and is_equal_approx(h2._ship_panel.offset_bottom, -92.0 if h2.narrow() else -10.0) \
+				and h1.narrow() == (h1._root.size.x < HUD.NARROW_W) and absf(h2._root.size.x - v.eye_frame(1).size.x) < 1.0
+			hud_ok = h1 == hud_one and main.hud == h1 and h2 != h1 and h2 is HUD and int(h2.seat) == 1 and v.eye_half(0).holds(h1) and v.eye_half(1).holds(h2) \
+				and ship1.contains(p1.fit.ship_name) and not ship1.contains("Wingmate") and ship2.contains("Wingmate") and not ship2.contains(p1.fit.ship_name) \
+				and String(h2.credits_label.text).contains("12,345") and not String(h1.credits_label.text).contains("12,345") and foot_ok \
+				and GameState.acting == 0 and int(v.eye) == 0 and int(Pad.seat) == 0
+			if not hud_ok:
+				print("SPLIT24 hud: huds ", main.huds, " hud ", main.hud, " yours '", ship1.left(60), "' theirs '", ship2.left(60), "' purses ", h1.credits_label.text, " / ", h2.credits_label.text,
+					" foot ", foot_ok, " narrow ", h1.narrow(), h2.narrow(), " sizes ", h1._root.size, h2._root.size)
+			# ---- the overview only when asked for; the selected item only while something is selected
+			var shut: bool = not h1._ov_panel.visible and not h2._ov_panel.visible and not h1.sel_panel.visible and not h2.sel_panel.visible
+			Pad.other_put("sim_on", true)
+			Pad.other_put("sim_btn", {"touchpad": true})
+			for f1 in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f1b in 4:
+				await get_tree().process_frame
+			var theirs_open: bool = h2._ov_panel.visible and bool(Pad.other_get("list_mode")) and not h1._ov_panel.visible and not Pad.list_mode
+			Pad.other_put("sim_btn", {"cross": true})                  # (the row the list stands on)
+			for f1c in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f1d in 4:
+				await get_tree().process_frame
+			var picked: bool = String(v.eye_get(1, "selected_id")) != "" and String(v.selected_id) == "" and h2.sel_panel.visible and not h1.sel_panel.visible \
+				and String(h2.selected_id) == String(v.eye_get(1, "selected_id"))
+			Pad.other_put("sim_btn", {"touchpad": true})
+			for f1e in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f1f in 4:
+				await get_tree().process_frame
+			var theirs_shut: bool = not h2._ov_panel.visible and not bool(Pad.other_get("list_mode"))
+			var key24 := InputEventAction.new()
+			key24.action = "overview"
+			key24.pressed = true
+			main.handle_input(key24)
+			for f1g in 4:
+				await get_tree().process_frame
+			var yours_open: bool = h1._ov_panel.visible and not h2._ov_panel.visible
+			if shots:
+				v.select(String(v.eye_get(1, "selected_id")))
+				for fs in 30:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split24_hud.png")
+				v.select("")
+			main.handle_input(key24)
+			for f1h in 4:
+				await get_tree().process_frame
+			list_ok = shut and theirs_open and picked and theirs_shut and yours_open and not h1._ov_panel.visible
+			if not list_ok:
+				print("SPLIT24 list: shut ", shut, " theirs open ", theirs_open, " picked ", picked, " (", v.eye_get(1, "selected_id"), ") theirs shut ", theirs_shut, " yours open ", yours_open)
+			v.in_eye(1, func(): v.select(""))
+			# ---- the mouse is the keyboard player's (yours, here): a row of your list, a click into space; nothing in their half
+			if DisplayServer.get_name() != "headless":
+				var vsm := get_viewport().get_visible_rect().size
+				var click24 := func(at: Vector2) -> void:
+					for down24 in [true, false]:
+						var mb24 := InputEventMouseButton.new()
+						mb24.button_index = MOUSE_BUTTON_LEFT
+						mb24.pressed = down24
+						mb24.position = at
+						mb24.global_position = at
+						Input.parse_input_event(mb24)
+						await get_tree().process_frame
+						await get_tree().process_frame
+				main.handle_input(key24)                              # your list, open
+				for fm0 in 6:
+					await get_tree().process_frame
+				var row24: Button = null
+				for rb in h1.overview_box.get_children():
+					if rb is Button and (rb as Button).is_visible_in_tree() and row24 == null:
+						row24 = rb
+				var list_click := false
+				if row24 != null:
+					await click24.call(row24.get_global_rect().get_center())
+					list_click = String(v.selected_id) != "" and String(h1.selected_id) == String(v.selected_id)
+				main.handle_input(key24)
+				v.select("")
+				p1.set_order({"type": "idle"})
+				for fm1 in 4:
+					await get_tree().process_frame
+				await click24.call(Vector2(v.eye_frame(0).size.x * 0.3, vsm.y * 0.62))      # into space (or onto what is there)
+				var space_click: bool = String(v.selected_id) != "" or String(p1.order.get("type", "")) == "move"
+				v.select("")
+				p1.set_order({"type": "idle"})
+				var sel2_was := String(v.eye_get(1, "selected_id"))
+				var ord2_was := String(p2.order.get("type", ""))
+				for fm2 in 4:
+					await get_tree().process_frame
+				await click24.call(v.eye_frame(1).position + Vector2(v.eye_frame(1).size.x * 0.3, vsm.y * 0.62))      # in their half: not yours to click in
+				var theirs_alone: bool = String(v.selected_id) == "" and String(p1.order.get("type", "")) != "move" and String(v.eye_get(1, "selected_id")) == sel2_was \
+					and String(p2.order.get("type", "")) == ord2_was
+				mouse_ok = list_click and space_click and theirs_alone
+				mouse_note = "pressed by the test at %s" % str(vsm)
+				if not mouse_ok:
+					print("SPLIT24 mouse: a row of the list ", list_click, " into space ", space_click, " (", v.selected_id, " ", p1.order.get("type", ""), ") their half left alone ", theirs_alone)
+				v.select("")
+				p1.set_order({"type": "idle"})
+			else:
+				mouse_ok = true
+			# ---- the second player's controller: targets, a lock, a fire group, the action wheel in their half
+			var npc = v.spawn_npc("civ_freighter", p2.position + Vector2(260, 40))
+			for f2 in 6:
+				await get_tree().process_frame
+			Pad.other_put("events", [])
+			Pad.other_put("sim_btn", {"l1": true})                     # next target in sensor range
+			for f2a in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f2b in 4:
+				await get_tree().process_frame
+			var aimed: bool = String(v.eye_get(1, "selected_id")) != "" and String(v.selected_id) == ""
+			Pad.other_put("sim_btn", {"triangle": true})               # lock it
+			for f2c in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f2d in 4:
+				await get_tree().process_frame
+			var locked: bool = p2.locks.size() == 1 and p1.locks.is_empty()
+			Pad.other_put("sim_btn", {"left": true})
+			for f2e in 3:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {"left": true, "l1": true})       # ← held + L1: fire group 1
+			for f2f in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f2g in 20:
+				await get_tree().process_frame
+			var ev2: Array = Pad.other_get("events")
+			var group: bool = ev2.has("module_1") and ev2.count("sel_target") == 1
+			Pad.other_put("sim_btn", {"square": true})                 # held: the action wheel
+			for f2h in 30:
+				await get_tree().process_frame
+			var wheel2 = Pad.other_get("wheel")
+			var wheel_ok: bool = wheel2 != null and is_instance_valid(wheel2) and wheel2.get_viewport() == v.eye_half(1).vp and Pad.wheel == null
+			if shots:
+				for fs2 in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split24_rad.png")
+			Pad.other_put("sim_btn", {"square": true, "circle": true}) # (◯: no choice)
+			for f2i in 4:
+				await get_tree().process_frame
+			Pad.other_put("sim_btn", {})
+			for f2j in 6:
+				await get_tree().process_frame
+			pad_ok = aimed and locked and group and wheel_ok and Pad.other_get("wheel") == null and not Pad.events.has("module_1") and int(Pad.seat) == 0 and main.hud == h1 and GameState.acting == 0
+			if not pad_ok:
+				print("SPLIT24 pad: aimed ", aimed, " locked ", locked, " (", p2.locks.size(), "/", p1.locks.size(), ") group ", group, " ", ev2, " wheel ", wheel_ok, " ", wheel2)
+			if is_instance_valid(npc):
+				npc.queue_free()
+			# ---- a line said to one player is in their list only
+			v.in_eye(1, func(): GameState.log_msg("probe-24-theirs", GameState.COL_WARN))
+			GameState.log_msg("probe-24-yours", GameState.COL_WARN)
+			for f3 in 4:
+				await get_tree().process_frame
+			var l1t: String = h1.log_label.get_parsed_text()
+			var l2t: String = h2.log_label.get_parsed_text()
+			msg_ok = l2t.contains("probe-24-theirs") and not l1t.contains("probe-24-theirs") and l1t.contains("probe-24-yours") and not l2t.contains("probe-24-yours")
+			if not msg_ok:
+				print("SPLIT24 msg: yours '", l1t.right(80), "' theirs '", l2t.right(80), "'")
+			# ---- the split screen ends: the one HUD over the whole picture, with its overview as always
+			Players.stop_split()
+			for f5 in 10:
+				await get_tree().process_frame
+			var vs5 := get_viewport().get_visible_rect().size
+			GameState.log_msg("probe-24-after", GameState.COL_WARN)
+			for f5b in 3:
+				await get_tree().process_frame
+			end_ok = main.huds.is_empty() and main.hud == hud_one and hud_one.get_parent() == main and not is_instance_valid(h2) and absf(hud_one._root.size.x - vs5.x) < 1.0 \
+				and hud_one._ov_panel.visible and hud_one.sel_panel.visible and int(Pad.seat) == 0 and String(hud_one.log_label.get_parsed_text()).contains("probe-24-after")
+			if not end_ok:
+				print("SPLIT24 end: huds ", main.huds, " parent ", hud_one.get_parent(), " size ", hud_one._root.size, " overview ", hud_one._ov_panel.visible, " selected ", hud_one.sel_panel.visible)
+	check(hud_ok, "split24: in space each player has a HUD of the same class in their half, showing their own ship and purse, laid out for the half")
+	check(list_ok, "split24: the overview is shown only while it is asked for (their touchpad, your key), each player's own, and the selected item only while something is selected")
+	check(pad_ok, "split24: the second player's controller does what yours does, for their ship: the next target, a lock, a fire group, the action wheel in their half")
+	check(mouse_ok, "split24: the mouse is the keyboard player's: a row of their list, a click into space, and nothing in the other player's half  [%s]" % mouse_note)
+	check(msg_ok, "split24: a line said to one player is in that player's list only")
+	check(end_ok, "split24: the split screen ends: the one HUD is over the whole picture again, with its overview and selected item as always")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.stop_split()
+	Pad.seat_forget()
+	GameState.act_as(0)
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap24)
+	GameState.play_time = t_keep24
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i924 in 30:
+		await get_tree().process_frame
+	for wl924 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## A look only, before stage 4 of the split screen is built (not part of the full run: `--only=fly4look`, in a
+## window): the picture in two halves on the one space, each half with a camera of its own on a ship of its own (the
+## first player's, and the second player's put beside it). Nothing of the game is changed for it: it shows what two
+## views on the one world give as they are (ships, stations, effects) and what they do not (the sky behind, the
+## overlay with radar and locks, labels sized for one zoom, the HUD). Saves "Claude outputs/fly4look_<name>.png".
+func _test_fly4look(view: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var snap4: Dictionary = GameState.to_dict()
+	var t_keep4 := GameState.play_time
+	_story_quiet()
+	for wl4 in 1200:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	for wl4b in 30:
+		await get_tree().process_frame
+	main.station_panel.close()
+	if view.player != null and is_instance_valid(view.player) and view.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t04 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t04 < 25000:
+		await get_tree().process_frame
+		if view.player != null and is_instance_valid(view.player) and not view.player.is_docked() and String(view.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	var ok4: bool = view.player != null and is_instance_valid(view.player) and not view.player.is_docked()
+	var saved4 := 0
+	if ok4:
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		var f24 = GameState.fleet_of(1)[0]
+		f24.docked_at = ""
+		f24.position = view.player.position + Vector2(260.0, 120.0)
+		var s24 := Ship.new()
+		s24.manual = true
+		s24.setup(f24, view)
+		view.ship_layer.add_child(s24)
+		s24.heading = -0.5
+		var lay4 := CanvasLayer.new()
+		lay4.layer = 100
+		add_child(lay4)
+		var black4 := ColorRect.new()
+		black4.color = Color.BLACK
+		black4.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		lay4.add_child(black4)
+		var vs4 := get_viewport().get_visible_rect().size
+		var hw4 := floorf((vs4.x - 4.0) * 0.5)
+		var cams4: Array = []
+		for s4 in 2:
+			var box4 := SubViewportContainer.new()
+			box4.stretch = true
+			box4.position = Vector2(0.0 if s4 == 0 else vs4.x - hw4, 0.0)
+			box4.size = Vector2(hw4, vs4.y)
+			lay4.add_child(box4)
+			var vp4 := SubViewport.new()
+			vp4.world_2d = get_viewport().world_2d
+			box4.add_child(vp4)
+			var cam4 := Camera2D.new()
+			cam4.limit_left = -1000000000
+			cam4.limit_top = -1000000000
+			cam4.limit_right = 1000000000
+			cam4.limit_bottom = 1000000000
+			vp4.add_child(cam4)
+			cam4.make_current()
+			cams4.append(cam4)
+		view.set_level(0)
+		for fr40 in 90:
+			await get_tree().process_frame
+		for shot4 in [["nah", 1.0], ["zoom", 0.12]]:
+			for fr4 in 60:
+				if is_instance_valid(view.player):
+					(cams4[0] as Camera2D).position = view.player.position
+					(cams4[0] as Camera2D).zoom = view.camera.zoom
+				if is_instance_valid(s24):
+					(cams4[1] as Camera2D).position = s24.position
+					(cams4[1] as Camera2D).zoom = view.camera.zoom * float(shot4[1])
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/fly4look_%s.png" % String(shot4[0]))
+			saved4 += 1
+		lay4.queue_free()
+		if is_instance_valid(s24):
+			s24.queue_free()
+	check(ok4 and saved4 == 2, "fly4look: two halves on the one space, each with a camera on a ship of its own, are rendered (a look: nothing of the game is changed for it)")
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap4)
+	GameState.play_time = t_keep4
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i94 in 30:
 		await get_tree().process_frame
 
 

@@ -80,9 +80,109 @@ const STATE_COLORS := {"off": Color(0.35, 0.42, 0.55), "on": Color(0.35, 1.0, 0.
 const KIND_NAMES := {"ship": "Ship", "asteroid": "Asteroid", "wreck": "Wreck", "anomaly": "Anomaly", "station": "Station", "gate": "Hyperspace gate", "planet": "Planet", "star": "Star", "field": "Asteroid field", "colossus": "Colossal asteroid", "haven": "Pirate haven", "pod": "Escape pod", "descent": "Descent beacon", "gold_wreck": "Wreck of the Gold Fleet"}
 
 
+## Split screen in space, stage 4B (Luz: the second player gets exactly what the first one has; "the overview and
+## contacts window only when you open it: it saves a lot of room"). While the picture is in two halves there is one
+## HUD per player, this same class: `seat` says whose it is. Each stands in its player's half (space_half.gd), so it
+## lays itself out for the half; the second player's runs with their look as the view's, so `view.player`,
+## `GameState.active()` and so on are theirs in here. What reaches a HUD from outside at any moment (a signal of the
+## game's) goes through _me(), which makes it its own player's turn for that piece.
+##
+## In a split screen the overview and contacts list is shown only while it is asked for (the controller's touchpad,
+## the key "overview"), and the selected item's panel only while something is selected. In a narrow half (below
+## NARROW_W) the foot is laid out anew: the module bar alone in the last row, above it the ship on the left and the
+## list of what happens on the right; notices and banners wrap in the room left of the right-hand panels.
+const NARROW_W := 1300.0
+var seat := 0
+var ov_open := false                 # split screen: the overview is asked for
+var _root: Control = null
+var _ship_panel: Control = null
+var _ov_panel: Control = null
+var _log_panel: Control = null
+var _lay_sig := ""
+
+
+## Runs f as this HUD's player (their look as the view's, they as the pilot).
+func _me(f: Callable) -> void:
+	if view != null and is_instance_valid(view) and view.eyes_two and view.eye != seat:
+		view.in_eye(seat, f)
+	else:
+		f.call()
+
+
+func two_up() -> bool:
+	return view != null and is_instance_valid(view) and view.eyes_two
+
+
+## A narrow half of a split screen (alone the HUD is laid out as it always was, whatever the window's size).
+func narrow() -> bool:
+	return two_up() and _root != null and _root.size.x < NARROW_W
+
+
+## Where the foot of the HUD begins (the top of the ship's panel and of the list of what happens): for what is drawn
+## above it.
+func foot_top() -> float:
+	return minf(_ship_panel.get_global_rect().position.y, _log_panel.get_global_rect().position.y)
+
+
+func set_overview(on: bool) -> void:
+	ov_open = on
+	_lay_sig = ""
+	_layout_step()                                       # (at once: the controller's list code looks for its rows right away)
+
+
+func toggle_overview() -> void:
+	set_overview(not ov_open)
+
+
+## Each frame: what is shown and where, for a whole picture, a wide half or a narrow one (only when that changes).
+func _layout_step() -> void:
+	if _root == null or _ov_panel == null:
+		return
+	var nar := narrow()
+	var two := two_up()
+	var ov_show: bool = not two or ov_open
+	var sel_show: bool = not two or selected_id != ""
+	var sig := "%s|%s|%s|%s" % [nar, two, ov_show, sel_show]
+	if sig == _lay_sig:
+		return
+	_lay_sig = sig
+	_ov_panel.visible = ov_show
+	sel_panel.visible = sel_show
+	if fps_label != null and seat == 1:
+		fps_label.modulate.a = 0.0                       # (the frame rate is the machine's: shown once, in the first player's HUD)
+	var foot := 92.0 if nar else 10.0                    # narrow: the module bar alone in the last row
+	_ship_panel.offset_bottom = -foot
+	_log_panel.offset_left = -340.0 if nar else -470.0
+	_log_panel.offset_bottom = -foot
+	_log_panel.offset_top = -(foot + 132.0) if nar else -195.0
+	_ov_panel.offset_top = 262.0 if sel_show else 54.0
+	_ov_panel.offset_bottom = -(foot + 132.0 + 10.0) if nar else -210.0
+	for lb in [codex_label, zone_label]:
+		lb.anchor_left = 0.0 if nar else 0.5
+		lb.anchor_right = 1.0 if nar else 0.5
+		lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if nar else TextServer.AUTOWRAP_OFF
+	codex_label.offset_left = 262.0 if nar else -400.0
+	codex_label.offset_right = -342.0 if nar else 400.0
+	codex_label.offset_top = 58.0 if nar else 96.0
+	zone_label.anchor_top = 0.0 if nar else 1.0
+	zone_label.anchor_bottom = 0.0 if nar else 1.0
+	zone_label.offset_left = 262.0 if nar else -360.0
+	zone_label.offset_right = -342.0 if nar else 360.0
+	zone_label.offset_top = 112.0 if nar else -112.0
+	zone_label.offset_bottom = 156.0 if nar else -90.0
+	cme_banner.offset_left = -470.0 if nar else -500.0
+	cme_banner.offset_right = 470.0 if nar else 500.0
+	cme_banner.offset_top = 170.0 if nar else 124.0
+	lock_bar.position = Vector2(262, 166) if nar else Vector2(360, 54)
+	system_label.clip_text = nar
+	system_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS if nar else TextServer.OVERRUN_NO_TRIMMING
+	system_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if nar else Control.SIZE_FILL
+
+
 func _ready() -> void:
 	layer = 10
 	var root := Control.new()
+	_root = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
@@ -138,6 +238,7 @@ func _ready() -> void:
 	sp.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	sp.custom_minimum_size = Vector2(320, 0)
 	root.add_child(sp)
+	_ship_panel = sp
 	var spv := UI.vbox(4)
 	sp.add_child(spv)
 	ship_box = UI.vbox(4)
@@ -167,6 +268,7 @@ func _ready() -> void:
 	ov.anchor_bottom = 1
 	ov.offset_bottom = -210
 	root.add_child(ov)
+	_ov_panel = ov
 	var ovv := UI.vbox(4)
 	ov.add_child(ovv)
 	var tabs := UI.hbox(4)
@@ -334,6 +436,7 @@ func _ready() -> void:
 	log_panel.offset_bottom = -10
 	log_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(log_panel)
+	_log_panel = log_panel
 	log_label = RichTextLabel.new()
 	log_label.bbcode_enabled = true
 	log_label.scroll_following = true
@@ -365,9 +468,9 @@ func _ready() -> void:
 	_refresh_keys()
 	Keybinds.changed.connect(_refresh_keys)
 
-	GameState.credits_changed.connect(func(_v): _update_header())
+	GameState.credits_changed.connect(func(_v): _me(_update_header))
 	GameState.message.connect(add_message)
-	GameState.fleet_changed.connect(rebuild_ship_panel)
+	GameState.fleet_changed.connect(func(): _me(rebuild_ship_panel))
 
 
 const HELP_TEXT := """[b]Spacefarer: Controls[/b]
@@ -404,13 +507,14 @@ You fly [b]one[/b] ship. Other ships are parked in station hangars and swapped t
 
 func set_view(v: SystemView) -> void:
 	view = v
-	view.hover_changed.connect(_on_hover)
-	view.object_selected.connect(show_selected)
+	# (two looks: the view says these for either player's look; a HUD hears its own player's)
+	view.hover_changed.connect(func(t): if not view.eyes_two or view.eye == seat: _on_hover(t))
+	view.object_selected.connect(func(id): if not view.eyes_two or view.eye == seat: show_selected(id))
 	selected_id = ""
 	_lock_sig = "-"
 	_module_sig = "-"
 	_build_selected()
-	view.level_changed.connect(_on_level_changed)
+	view.level_changed.connect(func(l): if not view.eyes_two or view.eye == seat: _on_level_changed(l))
 	_on_level_changed(view.level)
 	_on_hover("")
 	_update_header()
@@ -458,6 +562,8 @@ func set_stance(st: String) -> void:
 
 
 func add_message(text: String, color: Color) -> void:
+	if two_up() and GameState.has_pilot2() and GameState.acting != seat:
+		return                                           # (two HUDs: a line goes into the list of the player it is said to)
 	var t := Time.get_time_string_from_system().substr(0, 5)
 	log_label.append_text("[color=#8090a0]%s[/color] [color=#%s]%s[/color]\n" % [t, color.to_html(false), text])
 
@@ -791,6 +897,10 @@ var _mid_mark: Control = null
 
 
 func _draw_mid_mark() -> void:
+	_me(_draw_mid_mark_now)
+
+
+func _draw_mid_mark_now() -> void:
 	if view == null or not is_instance_valid(view) or not view.cam_off_ship() or view.level >= 2:
 		return
 	var c := _mid_mark.get_viewport_rect().size * 0.5
@@ -806,6 +916,7 @@ var _hud_slow := 0.0
 
 
 func _process(delta: float) -> void:
+	_layout_step()
 	if _mid_mark != null:
 		_mid_mark.queue_redraw()
 	_update_fps(delta)

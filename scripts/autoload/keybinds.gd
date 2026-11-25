@@ -57,6 +57,7 @@ const ACTIONS := [
 	{"id": "boost", "label": "Thrust burst (a few seconds of extra speed)", "group": "Ship commands", "def": [{"k": KEY_SHIFT}]},
 	{"id": "sel_target", "label": "Cycle targets in sensor range (ships, asteroids, wrecks, anomalies)", "group": "Ship commands", "def": [{"k": KEY_TAB}]},
 	{"id": "sel_hostile", "label": "Cycle hostile ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_V}]},
+	{"id": "overview", "label": "Split screen: show / hide the overview and contacts list", "group": "Ship commands", "def": [{"k": KEY_Z}]},
 	{"id": "sel_friend", "label": "Cycle friendly ships (nearest first)", "group": "Ship commands", "def": [{"k": KEY_C}]},
 	{"id": "sel_station", "label": "Select the nearest station (within 5,000 km)", "group": "Ship commands", "def": [{"k": KEY_B}]},
 	{"id": "drone_launch", "label": "Launch one drone", "group": "Drones", "def": [{"k": KEY_K}]},

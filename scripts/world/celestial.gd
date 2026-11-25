@@ -15,6 +15,13 @@ const COLOSSUS_BODY := 0.8      # outer radius of the rock relative to the shade
 
 static var label_scale := 1.0
 static var show_labels := true
+## Split screen, stage 4: two looks at the one space, each with a zoom of its own (SystemView, EYE_VARS). What is
+## sized for the zoom (the name, a point of interest's mark) is then drawn by two small nodes, one per look and
+## each seen in its own half only, with that look's size; the celestial itself leaves it out.
+static var eye_labels := false
+static var eye_scale := [1.0, 1.0]
+static var eye_show := [true, true]
+var _eye_lab: Array = []
 
 var kind := ""
 var data: Dictionary = {}
@@ -556,6 +563,8 @@ func _process(delta: float) -> void:
 		return
 	if kind in ["gate", "anomaly", "wreck", "beacon", "pod", "descent"] and SystemView.on_screen_at(position, radius * 4.0 + 600.0):
 		queue_redraw()
+		if kind == "beacon" or kind == "anomaly":
+			eye_redraw()                                 # (two looks: the mark pulses, an anomaly's name comes when it is revealed)
 
 
 func _draw() -> void:
@@ -650,34 +659,68 @@ func _draw() -> void:
 				draw_arc(Vector2.ZERO, radius + 8.0, -PI / 2.0, -PI / 2.0 + TAU * float(data["salvage"]) / 100.0, 32, Color(0.6, 1.0, 0.6), 4.0)
 		"descent":
 			_draw_descent()
-		"beacon":
-			var s := label_scale
-			var col := poi_color(String(data["kind"]))
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2(s, s))
-			var pts := PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)])
-			draw_colored_polygon(pts, Color(col, 0.35 + 0.2 * sin(_t * 3.0)))
-			pts.append(pts[0])
-			draw_polyline(pts, col, 2.0)
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if not eye_labels:
+		_draw_sized(self, label_scale, show_labels)
 
+
+const SIZED_KINDS := ["station", "haven", "gate", "structure", "descent", "anomaly", "beacon"]
+
+
+## What is sized for the zoom: a point of interest's mark and the name. Drawn on the celestial itself with the one
+## look's size, or, with two looks, on each look's own small node with that look's size.
+func _draw_sized(ci: CanvasItem, s: float, show: bool) -> void:
+	if kind == "beacon":
+		var bcol := poi_color(String(data["kind"]))
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2(s, s))
+		var pts := PackedVector2Array([Vector2(0, -9), Vector2(9, 0), Vector2(0, 9), Vector2(-9, 0)])
+		ci.draw_colored_polygon(pts, Color(bcol, 0.35 + 0.2 * sin(_t * 3.0)))
+		pts.append(pts[0])
+		ci.draw_polyline(pts, bcol, 2.0)
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Label (zoom-independent)
-	if show_labels and (kind in ["station", "haven", "gate", "structure", "descent"] or (kind == "anomaly" and data["revealed"])):
+	if show and (kind in ["station", "haven", "gate", "structure", "descent"] or (kind == "anomaly" and data["revealed"])):
 		var font := ThemeDB.fallback_font
-		var s := label_scale
 		var off := radius + 16.0 * s
 		if kind == "beacon":
 			off = 14.0 * s
 		if data.has("label_y"):
 			off = float(data["label_y"]) - 30.0 * s       # 0.6.39.2: a long, thin landmark – the name above it
-		draw_set_transform(Vector2(0.0, off), 0.0, Vector2(s, s))
+		ci.draw_set_transform(Vector2(0.0, off), 0.0, Vector2(s, s))
 		var text := title()
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		var col := Color(0.85, 0.9, 1.0, 0.9)
 		if kind == "beacon":
 			col = poi_color(String(data["kind"]))
-		draw_string(font, Vector2(-w / 2.0 + 1, 13.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0, 0, 0, 0.8))
-		draw_string(font, Vector2(-w / 2.0, 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		ci.draw_string(font, Vector2(-w / 2.0 + 1, 13.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0, 0, 0, 0.8))
+		ci.draw_string(font, Vector2(-w / 2.0, 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Two looks (on) or one again: the two small nodes that draw what is sized for the zoom, one per look.
+func eye_twins(on: bool) -> void:
+	for t in _eye_lab:
+		if is_instance_valid(t):
+			t.queue_free()
+	_eye_lab = []
+	if not on or not kind in SIZED_KINDS:
+		return
+	for i in 2:
+		var n := Node2D.new()
+		n.visibility_layer = int(SystemView.EYE_BIT[i])
+		n.z_index = 1
+		add_child(n)
+		n.draw.connect(_draw_sized_eye.bind(n, i))
+		_eye_lab.append(n)
+
+
+func _draw_sized_eye(n: Node2D, i: int) -> void:
+	_draw_sized(n, float(eye_scale[i]), bool(eye_show[i]))
+
+
+func eye_redraw() -> void:
+	for t in _eye_lab:
+		if is_instance_valid(t):
+			t.queue_redraw()
 
 
 ## Package 50: the descent beacon – a small probe holding station over the planet's middle: a hexagonal body, three

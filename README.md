@@ -467,6 +467,33 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.35 (stage 4B, a HUD and a controller per player in space): `scripts/world/space_half.gd` (no class_name)
+  is each look's half: its SubViewport shows the world and holds the look's sky, its `HUD`, the controller's wheel
+  and hints; for seat 1 two gates make everything of the half run inside `SystemView.eye_as(1)`; the mouse of the
+  keyboard player is pushed into their half and, if nothing takes it, handed to `SystemView._unhandled_input()`.
+  `SystemView.eyes_hook(on)` and `eye_scope(seat)` are main's part: `main._on_eyes()` moves `hud` into half 0 and
+  makes a second `HUD` (`seat = 1`) for half 1 (`main.huds`); `main._eye_scope()` makes `main.hud` and the
+  controller code (`Pad.as_seat()`, `SEAT_VARS`) that player's whenever the look changes. `main._space_step()` runs
+  `Pad.seat_step()` for the second player inside `in_eye(1)`; `Pad._do()` hands their actions to
+  `main.seat_event()` at once. `main._ship_keys()` is the ship's keys for whoever's turn it is. `HUD`: `seat`,
+  `_me()`, `narrow()` (split only, below `NARROW_W`), `_layout_step()`, `set_overview()` / `ov_open`, `foot_top()`;
+  the view's `hover_changed`, `object_selected`, `level_changed` are said for either look and a HUD hears its own.
+  `Ship._mlog()` speaks to the player who flies it (`SystemView.seat_of()`). New key action `overview`.
+- 0.8.75.34 (stage 4A, two looks at the one space): `SystemView` stays the one world; the fields in `EYE_VARS`
+  (player, camera, zoom, level, sky, background, bodies, overlay, selection, hover, input state) are the look's whose
+  turn it is (`eye`), the other look's wait in `_eye_other`; `eye_as()` swaps them (and `GameState.act_as(seat,
+  true)`), `in_eye(seat, callable)` runs a piece for one look. Outside `in_eye()` it is always eye 0, so everything
+  else that asks the view gets the first player's. `eyes_two` while `two_wanted` (set by `main._space_step()`), a
+  split screen and the first player's ship out: two `SubViewport` halves on the root's `world_2d`, the world on
+  `WORLD_BIT`, each look's own world nodes on `EYE_BIT[seat]`, the root's cull mask without `WORLD_BIT`. Per look:
+  `vsize()`, `_mouse()`, `eye_frame()`, `player_of(seat)`, `eye_get/eye_put`. `_process` = the world once,
+  `_look_step()` and `_look_zoom()` per look, `_looks_done()` (statics `screen_rect`, `screen_rect2`, `cam_zoom` for
+  both). `Celestial.eye_twins()` / `_draw_sized()`: names and marks per look. `_other_ship()`: the second player's
+  ship beside yours (`untargetable`, `Ship.no_harm` until 4B/4C). `HUD.set_frame()`. `main._keys_in_space()`.
+- 0.8.75.33 (the story is the first player's): a dialogue asked for through `GameState.story.show` is seat 0's, over
+  the whole picture, tree paused for both. Only data with `"own": true` (the Marshal's talk in
+  `GroundView._col_register()`) goes into the asker's half through `main.talk_begin()`. `StoryUI.next_talk_seat()`
+  is gone; `GroundView.STORY_FIRST` is the word the second player reads at a story zone.
 - 0.8.75.32 (apart places, stage E): `StoryUI._dlg_seat` / `_dlg_half`: a dialogue's seat is who asked for it
   (`GameState.acting`, or `next_talk_seat(1)` from `GroundView.two_use()`); while `main.halves_on()` its layer goes
   into `halves[seat]` (`main.talk_begin()`, `talk_end()`), the tree is paused as always and, while apart, the other

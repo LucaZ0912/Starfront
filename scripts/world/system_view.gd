@@ -96,35 +96,390 @@ const TrafficScript = preload("res://scripts/world/traffic.gd")
 var _t := 0.0
 
 
+# ---------------------------------------------------------------- Split screen, stage 4: one world, two looks
+##
+## (Luz, 25 Nov 2026: each player flies their own ship; each half shows its player's ship with a zoom, a view and a
+## selection of its own; the world is one.) The space view stays the one world: ships, stations, rocks, effects are
+## there once. What belongs to one player's look at it is there once per player: their ship, the camera, zoom and
+## view level, the sky behind (the stars, the planets as a backdrop), the planets' pictures on the map, the overlay
+## (radar, locks, rings), the rocks' scenery, what is selected and hovered, what the mouse and the stick do.
+##
+## The fields named in EYE_VARS are those of the look whose turn it is (`eye`); the other look's wait in
+## `_eye_other`, and eye_as() swaps them, as GameState.act_as() does for the pilot. So the code of this file runs for
+## either player unchanged. Outside in_eye() it is always the first player's look (eye 0): everything else in the
+## game that asks the view for "the player", the camera or the selection gets the first player's, as before.
+##
+## The picture: each look has a half (a SubViewport on the one world, `world_2d` shared) with a camera of its own.
+## What is drawn for one look only is on that look's visibility layer (EYE_BIT) and each half's cull mask lets its
+## own through; the world itself is on WORLD_BIT, which the whole picture's viewport leaves out while there are two
+## halves (it would draw the world a third time behind them).
+const EYE_VARS := ["player", "camera", "background", "sky", "body_layer", "bodies", "overlay", "debris_layer", "_zfx_layer",
+	"_zoom", "_min_zoom", "level", "follow", "selected_id", "hovered", "input_enabled", "_warp_auto", "_warp_saved_zoom",
+	"_left_down", "_panning", "_pan_dist", "_last_hover", "_hover_t", "_hover_mouse", "_map_to", "_shake_t", "_shake_amp",
+	"_key_flying", "_pad_latch", "_radar_cands", "_radar_t", "_radar_r", "_radar_c", "_emergency_until",
+	"eye_size", "eye_origin", "eye_rect", "eye_zoom"]
+const SpaceHalf = preload("res://scripts/world/space_half.gd")
+const EYE_BIT := [2, 4]              # visibility layers: what only the first / only the second look shows
+const WORLD_BIT := 512               # … and the world, while it is shown in two halves
+const EYE_SHIP_OFF := Vector2(260.0, 120.0)      # where the second player's ship comes into space beside yours
+var two_wanted := false              # main: a split screen in space (nothing over the whole picture that is one scene)
+var eyes_two := false                # there are two looks (and two halves) right now
+var eye := 0                         # whose look the EYE_VARS are at this moment
+var eye_size := Vector2.ZERO         # the size of this look's picture (two looks: its half)
+var eye_origin := Vector2.ZERO       # … and where it begins on the screen
+var eye_rect := Rect2()              # the part of the world this look shows (with a margin)
+var eye_zoom := 1.0
+var _eye_other := {}                 # the other look's EYE_VARS
+var _eye_acting := 0
+var _eye_layer: CanvasLayer = null
+var _eye_boxes: Array = []           # the two halves (space_half.gd)
+## main's part of two looks: eyes_hook(on) when the two halves are there (true) and before they go (false): each
+## player's HUD moves into their half and out again; eye_scope(seat) whenever the look changes: main's `hud` and the
+## controller code (Pad) are that player's from then on.
+var eyes_hook := Callable()
+var eye_scope := Callable()
+var _eye_vps: Array = []
+var _eye_mirror: Camera2D = null     # the first half's camera: it copies `camera`, which stays in the whole picture (the sounds are heard from there)
+var _eye_mask := 0                   # the whole picture's cull mask as it was
+var _zfx_layer: CanvasLayer = null
+
+
+## The size of the picture this look is shown in.
+func vsize() -> Vector2:
+	return eye_size if eyes_two else get_viewport_rect().size
+
+
+## Where the mouse is in this look's picture. With two looks the mouse is the keyboard player's and counts in their
+## half only (elsewhere: far off the picture, nothing is under it).
+func _mouse() -> Vector2:
+	var m := get_viewport().get_mouse_position()
+	if not eyes_two:
+		return m
+	if not Players.on_keys(eye) or not Rect2(eye_origin, eye_size).has_point(m):
+		return Vector2(-1000000.0, -1000000.0)
+	return m - eye_origin
+
+
+## A field of one look, whichever look's turn it is.
+func eye_get(seat: int, key: String):
+	if not eyes_two or seat == eye:
+		return get(key) if (eyes_two or seat == 0) else null
+	return _eye_other.get(key)
+
+
+func eye_put(seat: int, key: String, value) -> void:
+	if not eyes_two or seat == eye:
+		if eyes_two or seat == 0:
+			set(key, value)
+	else:
+		_eye_other[key] = value
+
+
+## The ship a player flies (null: none in space).
+func player_of(seat: int) -> Ship:
+	var p = eye_get(seat, "player")
+	return p if p != null and is_instance_valid(p) else null
+
+
+## Which player flies this ship (-1: neither, or there is one look and nothing to tell apart).
+func seat_of(ship) -> int:
+	if not eyes_two or ship == null:
+		return -1
+	if ship == player:
+		return eye
+	if ship == _eye_other.get("player"):
+		return 1 - eye
+	return -1
+
+
+## It is this player's look's turn: the EYE_VARS are theirs, and so is "the pilot" (GameState).
+func eye_as(seat: int) -> void:
+	if not eyes_two or seat == eye or seat < 0 or seat > 1:
+		return
+	for k in EYE_VARS:
+		var mine = get(k)
+		var theirs = _eye_other[k]
+		if typeof(theirs) == TYPE_OBJECT and not is_instance_valid(theirs):
+			theirs = null
+		if typeof(mine) == TYPE_OBJECT and not is_instance_valid(mine):
+			mine = null
+		set(k, theirs)
+		_eye_other[k] = mine
+	eye = seat
+	if GameState.has_pilot2():
+		if seat == 1:
+			_eye_acting = GameState.acting
+			GameState.act_as(1, true)
+		else:
+			GameState.act_as(_eye_acting, true)
+	if eye_scope.is_valid():
+		eye_scope.call(seat)
+
+
+## Runs f for one player's look, then it is whose it was again. f must come back (no await in it).
+func in_eye(seat: int, f: Callable) -> Variant:
+	if not eyes_two or seat == eye:
+		return f.call()
+	var back := eye
+	eye_as(seat)
+	var r = f.call()
+	eye_as(back)
+	return r
+
+
+## The half (space_half.gd) a player's look is shown in (null: one look).
+func eye_half(seat: int):
+	return _eye_boxes[seat] if eyes_two and seat >= 0 and seat < _eye_boxes.size() else null
+
+
+## One look again, now (main asks before it builds the system anew).
+func eyes_off() -> void:
+	_eyes_end()
+
+
+## The half a look is shown in, on the screen (two looks only).
+func eye_frame(seat: int) -> Rect2:
+	if not eyes_two:
+		return Rect2(Vector2.ZERO, get_viewport_rect().size)
+	return Rect2(eye_get(seat, "eye_origin"), eye_get(seat, "eye_size"))
+
+
+func _make_zfx(seat: int) -> CanvasLayer:
+	var zl := CanvasLayer.new()
+	zl.layer = 4
+	var zfx := ZoomFx.new()
+	zfx.view = self
+	zfx.seat = seat
+	zl.add_child(zfx)
+	return zl
+
+
+func _eye_camera() -> Camera2D:
+	var c := Camera2D.new()
+	c.limit_left = -1000000000
+	c.limit_top = -1000000000
+	c.limit_right = 1000000000
+	c.limit_bottom = 1000000000
+	return c
+
+
+## Each frame: two looks while the game is a split screen in space and you fly (main says so with `two_wanted`), one
+## otherwise; the halves at their places; the second player's ship beside yours when it is not out yet.
+func _eyes_sync() -> void:
+	var want: bool = two_wanted and Players.split and GameState.has_pilot2() and GameState.acting == 0 and eye == 0 \
+		and player != null and is_instance_valid(player) and not player.is_docked() and not player.dying and _descent.is_empty()
+	if want and not eyes_two:
+		_eyes_begin()
+	elif not want and eyes_two:
+		_eyes_end()
+	if not eyes_two:
+		return
+	_eyes_place()
+	eye_put(1, "input_enabled", input_enabled)           # (a window over the whole picture holds both, until each has their own in space: stage 4B)
+	_other_ship()
+
+
+func _eyes_begin() -> void:
+	var root_vp := get_viewport()
+	_eye_layer = CanvasLayer.new()
+	_eye_layer.layer = 1
+	add_child(_eye_layer)
+	var black := ColorRect.new()
+	black.color = Color.BLACK
+	black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_eye_layer.add_child(black)
+	_eye_boxes = []
+	_eye_vps = []
+	for s in 2:
+		var box = SpaceHalf.new()
+		box.seat = s
+		box.view = self
+		_eye_layer.add_child(box)
+		var vp: SubViewport = box.vp
+		vp.world_2d = root_vp.find_world_2d()
+		vp.canvas_cull_mask = 1 | WORLD_BIT | int(EYE_BIT[s])
+		vp.canvas_item_default_texture_filter = root_vp.canvas_item_default_texture_filter
+		vp.snap_2d_transforms_to_pixel = root_vp.snap_2d_transforms_to_pixel
+		vp.snap_2d_vertices_to_pixel = root_vp.snap_2d_vertices_to_pixel
+		_eye_boxes.append(box)
+		_eye_vps.append(vp)
+	# the first look: its own layers move into its half; its camera stays where it is and the half's copies it
+	for n in [background, sky, _zfx_layer]:
+		_eye_boxes[0].take(n)
+	_eye_mirror = _eye_camera()
+	_eye_boxes[0].take(_eye_mirror)
+	_eye_mirror.make_current()
+	_eye_mask = root_vp.canvas_cull_mask
+	root_vp.canvas_cull_mask = _eye_mask & ~WORLD_BIT
+	visibility_layer = WORLD_BIT
+	# the second look: the same parts again, made by the same code
+	var half1 = _eye_boxes[1]
+	var bg1 := SpaceBackground.new()
+	half1.take(bg1)
+	_setup_background(bg1)
+	var sky1 := CanvasLayer.new()
+	sky1.layer = -9
+	half1.take(sky1)
+	var zl1 := _make_zfx(1)
+	half1.take(zl1)
+	var cam1 := _eye_camera()
+	half1.take(cam1)
+	cam1.make_current()
+	cam1.position = camera.position
+	var bl1 := Node2D.new()
+	bl1.z_index = -20
+	bl1.visibility_layer = int(EYE_BIT[1])
+	add_child(bl1)
+	move_child(bl1, body_layer.get_index() + 1)
+	var db1 := Node2D.new()
+	db1.z_index = -2
+	db1.visibility_layer = int(EYE_BIT[1])
+	celestial_layer.add_child(db1)
+	db1.draw.connect(func(): in_eye(1, _draw_debris))
+	var ov1 := Node2D.new()
+	ov1.z_index = 50
+	ov1.visibility_layer = int(EYE_BIT[1])
+	add_child(ov1)
+	ov1.draw.connect(func(): in_eye(1, _draw_overlay))
+	var no_cands: Array = []
+	var no_bodies: Array = []
+	_eye_other = {"player": null, "camera": cam1, "background": bg1, "sky": sky1, "body_layer": bl1, "bodies": no_bodies, "overlay": ov1,
+		"debris_layer": db1, "_zfx_layer": zl1, "_zoom": float(LEVEL_ZOOMS[0]), "_min_zoom": _min_zoom, "level": 0, "follow": true,
+		"selected_id": "", "hovered": null, "input_enabled": input_enabled, "_warp_auto": false, "_warp_saved_zoom": 0.6,
+		"_left_down": false, "_panning": false, "_pan_dist": 0.0, "_last_hover": "", "_hover_t": 0.0, "_hover_mouse": Vector2(-1, -1),
+		"_map_to": Vector2.INF, "_shake_t": 0.0, "_shake_amp": 0.0, "_key_flying": false, "_pad_latch": false,
+		"_radar_cands": no_cands, "_radar_t": -10.0, "_radar_r": 0.0, "_radar_c": Vector2.INF, "_emergency_until": -1.0,
+		"eye_size": Vector2.ZERO, "eye_origin": Vector2.ZERO, "eye_rect": Rect2(), "eye_zoom": 1.0}
+	for k in EYE_VARS:
+		assert(_eye_other.has(k), "a look's field without a value: %s" % k)
+	eyes_two = true
+	eye = 0
+	_eyes_place()
+	in_eye(1, func():
+		_make_bodies()
+		_set_zoom(_zoom))
+	Celestial.eye_labels = true
+	for c in celestials:
+		if is_instance_valid(c):
+			c.eye_twins(true)
+			c.queue_redraw()
+	if eyes_hook.is_valid():
+		eyes_hook.call(true)
+
+
+## One look again: the second player's ship goes in (it stands where yours stands, as before), the halves go.
+func _eyes_end() -> void:
+	if not eyes_two:
+		return
+	eye_as(0)
+	if eyes_hook.is_valid():
+		eyes_hook.call(false)                            # (the HUDs leave the halves before these go)
+	var p2 = _eye_other.get("player")
+	if p2 != null and is_instance_valid(p2):
+		p2.fit.position = p2.position
+		p2.fit.rotation = p2.heading
+		p2.queue_free()
+	for k in ["body_layer", "overlay", "debris_layer"]:
+		var n = _eye_other.get(k)
+		if n != null and is_instance_valid(n):
+			n.queue_free()
+	for n0 in [background, sky, _zfx_layer]:
+		n0.get_parent().remove_child(n0)
+		add_child(n0)
+	move_child(background, 0)
+	eyes_two = false
+	_eye_other = {}
+	_eye_mirror = null
+	_eye_boxes = []
+	_eye_vps = []
+	if _eye_layer != null and is_instance_valid(_eye_layer):
+		_eye_layer.queue_free()                          # (with it the second look's sky, background and camera)
+	_eye_layer = null
+	visibility_layer = 1
+	get_viewport().canvas_cull_mask = _eye_mask
+	eye_size = Vector2.ZERO
+	eye_origin = Vector2.ZERO
+	var vs := get_viewport_rect().size
+	_min_zoom = minf(vs.x, vs.y) / (Universe.SYSTEM_RADIUS * 2.3)
+	Celestial.eye_labels = false
+	for c in celestials:
+		if is_instance_valid(c):
+			c.eye_twins(false)
+			c.queue_redraw()
+	GameState.ship_along()
+
+
+func _eyes_place() -> void:
+	var vs := get_viewport_rect().size
+	var hw := floorf((vs.x - 4.0) * 0.5)
+	for s in 2:
+		var box: Control = _eye_boxes[s]
+		var at := Vector2(0.0 if s == 0 else vs.x - hw, 0.0)
+		box.position = at
+		box.size = Vector2(hw, vs.y)
+		eye_put(s, "eye_origin", at)
+		eye_put(s, "eye_size", Vector2(hw, vs.y))
+		eye_put(s, "_min_zoom", minf(hw, vs.y) / (Universe.SYSTEM_RADIUS * 2.3))
+
+
+## The second player's ship: the one they fly, out in space beside yours once you are out. Until each undocks, docks
+## and jumps for themselves (stages 4D and 4E) it comes out with yours and goes in with yours. Until they have their
+## own HUD and weapons (4B) and the world's rules count for two (4C), nothing can target or harm it: said in the
+## changelog, and taken back with those stages.
+func _other_ship() -> void:
+	if player_of(1) != null or GameState.acting != 0 or eye != 0:
+		return
+	var f2: ShipFitting = null
+	for f in GameState.fleet_of(1):
+		if f.uid == GameState.active_uid2:
+			f2 = f
+	if f2 == null or player == null or not is_instance_valid(player):
+		return
+	f2.system_id = system_id
+	f2.docked_at = ""
+	f2.position = player.position + EYE_SHIP_OFF.rotated(player.heading)
+	f2.rotation = player.heading
+	in_eye(1, func():
+		sync_player()
+		if player != null and is_instance_valid(player):
+			player.untargetable = true
+			player.no_harm = true
+			camera.position = player.position)
+
+
+func _setup_background(bg: SpaceBackground) -> void:
+	bg.setup(float(system_id) * 1.37 + 0.5, float(system_id) * 0.137, 0.8)
+	if Universe.is_veil(system_id):
+		bg.veil(Universe.systems[system_id]["pos"] - Universe.MAP_SIZE * 0.5)     # package 40c
+
+
 func build(p_system: int) -> void:
 	system_id = p_system
 	layout = Universe.get_layout(system_id)
 	background = SpaceBackground.new()
 	add_child(background)
-	background.setup(float(system_id) * 1.37 + 0.5, float(system_id) * 0.137, 0.8)
+	_setup_background(background)
 	if Universe.is_belt(system_id):
 		GameState.codex.event("rim")                     # 40e
 	if Universe.is_veil(system_id):
-		background.veil(Universe.systems[system_id]["pos"] - Universe.MAP_SIZE * 0.5)     # package 40c
 		GameState.codex.event("veil")
 	sky = CanvasLayer.new()
 	sky.layer = -9
 	add_child(sky)
 	# 0.6.37.3: the holo grid and scan line of the change between the local view and the map
-	var zfx_layer := CanvasLayer.new()
-	zfx_layer.layer = 4
-	add_child(zfx_layer)
-	var zfx := ZoomFx.new()
-	zfx.view = self
-	zfx_layer.add_child(zfx)
+	_zfx_layer = _make_zfx(0)
+	add_child(_zfx_layer)
 
 	body_layer = Node2D.new()
 	body_layer.z_index = -20
+	body_layer.visibility_layer = int(EYE_BIT[0])     # (a look's own: see EYE_VARS)
 	add_child(body_layer)
 	celestial_layer = Node2D.new()
 	add_child(celestial_layer)
 	debris_layer = Node2D.new()
 	debris_layer.z_index = -2
+	debris_layer.visibility_layer = int(EYE_BIT[0])
 	celestial_layer.add_child(debris_layer)
 	debris_layer.draw.connect(_draw_debris)
 	ship_layer = Node2D.new()
@@ -133,6 +488,7 @@ func build(p_system: int) -> void:
 	add_child(fx_layer)
 	overlay = Node2D.new()
 	overlay.z_index = 50
+	overlay.visibility_layer = int(EYE_BIT[0])
 	add_child(overlay)
 	overlay.draw.connect(_draw_overlay)
 	camera = Camera2D.new()
@@ -143,7 +499,7 @@ func build(p_system: int) -> void:
 	camera.limit_bottom = 1000000000
 	add_child(camera)
 	camera.make_current()
-	var vs := get_viewport_rect().size
+	var vs := vsize()
 	_min_zoom = minf(vs.x, vs.y) / (Universe.SYSTEM_RADIUS * 2.3)
 	_set_zoom(_zoom)
 
@@ -323,7 +679,7 @@ func _draw_cme_streaks(o: Node2D, px: float, r: float) -> void:
 	var k := sin(PI * into / CME_BAND) * sky_alpha()
 	var u := cam / d                               # away from the star
 	var side := u.orthogonal()
-	var vs := get_viewport_rect().size
+	var vs := vsize()
 	var span := vs.length() * px                   # world size of the screen diagonal
 	# a warm wash over everything
 	o.draw_rect(Rect2(cam - vs * px, vs * px * 2.0), Color(1.0, 0.5, 0.2, 0.1 * k))
@@ -1252,6 +1608,18 @@ func _end_raid(outcome: String) -> void:
 
 
 func _exit_tree() -> void:
+	if eyes_two:
+		get_viewport().canvas_cull_mask = _eye_mask
+		Celestial.eye_labels = false
+		screen_rect2 = Rect2()
+		if eye != 0:
+			eye_as(0)
+		if eyes_hook.is_valid():
+			eyes_hook.call(false)
+		var p_gone = _eye_other.get("player")
+		if p_gone != null and is_instance_valid(p_gone):
+			p_gone.fit.position = p_gone.position
+		GameState.ship_along()
 	Audio.stop_all_loops()                     # package 28a
 	StationArt.reap(true)                      # package 57: wait for the wreck colossi's pictures still being made
 	# leaving the system during a live raid: the cluster simulation takes over again
@@ -1431,6 +1799,7 @@ func pirate_count() -> int:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_eyes_sync()
 	if not _descent.is_empty():
 		_update_descent(delta)
 	_update_audio()
@@ -1446,19 +1815,10 @@ func _process(delta: float) -> void:
 		_sync_platform()
 		_return_rocks()                      # 0.6.35.5
 		_hazard_tick(0.5)                    # package 40d
-	_update_camera(delta)
-	_update_screen_rect()
-	_update_bodies()
-	background.follow(camera)
-	# hover: when the mouse moves, otherwise ten times a second (picking walks all objects – 0.6.41.5)
-	_hover_t -= delta
-	var mpos := get_viewport().get_mouse_position()
-	if _hover_t <= 0.0 or mpos != _hover_mouse:
-		_hover_t = 0.1
-		_hover_mouse = mpos
-		_update_hover()
-	if sky_alpha() > 0.01:
-		debris_layer.queue_redraw()
+	_look_step(delta)
+	if eyes_two:
+		in_eye(1, _look_step.bind(delta))
+	_looks_done()
 	_cull_timer -= delta
 	if _cull_timer <= 0.0:
 		_cull_timer = 0.2
@@ -1475,6 +1835,47 @@ func _process(delta: float) -> void:
 		for spot in _spots:
 			if player == null or player.position.distance_to(spot["pos"]) > 150000.0:
 				_fill_spot(spot, false)
+	_look_zoom(delta)
+	if eyes_two:
+		in_eye(1, _look_zoom.bind(delta))
+		if _eye_mirror != null and is_instance_valid(_eye_mirror):
+			_eye_mirror.position = camera.position
+			_eye_mirror.offset = camera.offset
+			_eye_mirror.zoom = camera.zoom
+
+
+## A look's part of a frame: its camera, what it shows of the world, the sky, what is under the mouse.
+func _look_step(delta: float) -> void:
+	_update_camera(delta)
+	_update_screen_rect()
+	_update_bodies()
+	background.follow(camera)
+	# hover: when the mouse moves, otherwise ten times a second (picking walks all objects – 0.6.41.5)
+	_hover_t -= delta
+	var mpos := _mouse()
+	if _hover_t <= 0.0 or mpos != _hover_mouse:
+		_hover_t = 0.1
+		_hover_mouse = mpos
+		_update_hover()
+	if sky_alpha() > 0.01:
+		debris_layer.queue_redraw()
+
+
+## After both looks: what the world's own drawing asks about the screen (is it on it, how big is a pixel) is answered
+## for both: on either look's picture, at the closer look's zoom.
+func _looks_done() -> void:
+	if not eyes_two:
+		screen_rect = eye_rect
+		screen_rect2 = Rect2()
+		cam_zoom = eye_zoom
+		return
+	screen_rect = eye_get(0, "eye_rect")
+	screen_rect2 = eye_get(1, "eye_rect")
+	cam_zoom = maxf(float(eye_get(0, "eye_zoom")), float(eye_get(1, "eye_zoom")))
+
+
+## A look's zoom gliding to its level, its labels' size, its overlay.
+func _look_zoom(delta: float) -> void:
 	# Glide smoothly to the target zoom level (unless the warp is steering the camera)
 	if not (_warp_auto and player != null and is_instance_valid(player) and player.in_warp()):
 		var target := level_zoom(level)
@@ -1492,7 +1893,15 @@ func _process(delta: float) -> void:
 			_set_zoom(target)
 	var ls := 1.0 / camera.zoom.x
 	var show := camera.zoom.x > switch_zoom()
-	if Celestial.label_scale != ls or Celestial.show_labels != show:
+	if eyes_two:
+		# (two looks, two zooms: each look's labels are drawn by small nodes of their own, see Celestial.eye_twins())
+		if float(Celestial.eye_scale[eye]) != ls or bool(Celestial.eye_show[eye]) != show:
+			Celestial.eye_scale[eye] = ls
+			Celestial.eye_show[eye] = show
+			for c2 in celestials:
+				if is_instance_valid(c2):
+					c2.eye_redraw()
+	elif Celestial.label_scale != ls or Celestial.show_labels != show:
 		Celestial.label_scale = ls
 		Celestial.show_labels = show
 		for c in celestials:
@@ -1501,23 +1910,29 @@ func _process(delta: float) -> void:
 	overlay.queue_redraw()
 
 
+static var screen_rect2 := Rect2()        # two looks: the part of the world the second one shows (no size: there is one look)
+
+
 static func on_screen(r: Rect2) -> bool:
-	return screen_rect.intersects(r)
+	return screen_rect.intersects(r) or (screen_rect2.size.x > 0.0 and screen_rect2.intersects(r))
 
 
 static func on_screen_at(p: Vector2, radius: float) -> bool:
-	return screen_rect.intersects(Rect2(p - Vector2(radius, radius), Vector2(radius, radius) * 2.0))
+	return on_screen(Rect2(p - Vector2(radius, radius), Vector2(radius, radius) * 2.0))
 
 
 func _update_screen_rect() -> void:
 	if camera == null:
 		return
-	var vs := get_viewport_rect().size
+	var vs := vsize()
 	var z := maxf(camera.zoom.x, 0.000001)
 	var half := vs * 0.5 / z
 	var c := camera.get_screen_center_position()
-	screen_rect = Rect2(c - half, half * 2.0).grow(maxf(half.x, half.y) * 0.25 + 200.0)
-	cam_zoom = z
+	eye_rect = Rect2(c - half, half * 2.0).grow(maxf(half.x, half.y) * 0.25 + 200.0)
+	eye_zoom = z
+	if not eyes_two:
+		screen_rect = eye_rect
+		cam_zoom = z
 
 
 ## A dashed ring in one draw call (0.6.41.6: one draw_arc per dash cost dearly on the map). `dashes` dashes,
@@ -1539,10 +1954,10 @@ static func dashed_ring(o: CanvasItem, c: Vector2, r: float, dashes: int, col: C
 func level_zoom(l: int) -> float:
 	if l == 1:
 		# recon: the radar shows exactly the recon range, whatever the window size
-		var vs := get_viewport_rect().size
+		var vs := vsize()
 		return minf(vs.x, vs.y) * RADAR_SCREEN / GameData.RECON_RANGE
 	if l == 2:
-		var vs2 := get_viewport_rect().size
+		var vs2 := vsize()
 		return maxf(minf(vs2.x, vs2.y) * 0.5 / ORBIT_VIEW, _min_zoom)
 	return _min_zoom if l >= 3 else float(LEVEL_ZOOMS[l])
 
@@ -1561,10 +1976,11 @@ func morph_p() -> float:
 ## sweeps across the screen.
 class ZoomFx extends Node2D:
 	var view
+	var seat := 0                    # whose look it belongs to
 	var _last := 0.0
 
 	func _process(_d: float) -> void:
-		var p: float = view.morph_p() if view != null else 0.0
+		var p: float = view.in_eye(seat, view.morph_p) if view != null else 0.0
 		if p != _last or (p > 0.0 and p < 1.0):
 			queue_redraw()
 		_last = p
@@ -1572,7 +1988,7 @@ class ZoomFx extends Node2D:
 	func _draw() -> void:
 		if view == null:
 			return
-		var p: float = view.morph_p()
+		var p: float = view.in_eye(seat, view.morph_p)
 		if p <= 0.0 or p >= 1.0:
 			return
 		var vs := get_viewport_rect().size
@@ -1612,9 +2028,9 @@ func map_alpha() -> float:
 
 func set_level(l: int) -> void:
 	l = clampi(l, 0, 3)
-	if story_zoom == "locked":
+	if eye == 0 and story_zoom == "locked":
 		return                                         # package 56: Dan is still explaining this view
-	if story_zoom == "step":
+	if eye == 0 and story_zoom == "step":
 		l = clampi(l, level - 1, level + 1)            # package 56: one view after the other
 	# 0.6.36.2: no Orbit level during a warp – the wheel skips it, the key is refused
 	if l == 2 and player != null and is_instance_valid(player) and player.in_warp():
@@ -1622,7 +2038,7 @@ func set_level(l: int) -> void:
 	_warp_auto = false
 	if l != level:
 		level = l
-		level_changed.emit(level)
+		level_changed.emit(level)                      # (each player's HUD hears its own look's: it asks whose turn it is)
 
 
 func _set_zoom(z: float) -> void:
@@ -1651,15 +2067,16 @@ func _update_camera(delta: float) -> void:
 			_shake_amp = 0.0
 	if input_enabled and get_viewport().gui_get_focus_owner() == null:
 		var move := Vector2.ZERO
-		if Input.is_action_pressed("cam_up"):
+		var keys := _seat_keys()
+		if keys and Input.is_action_pressed("cam_up"):
 			move.y -= 1
-		if Input.is_action_pressed("cam_down"):
+		if keys and Input.is_action_pressed("cam_down"):
 			move.y += 1
-		if Input.is_action_pressed("cam_left"):
+		if keys and Input.is_action_pressed("cam_left"):
 			move.x -= 1
-		if Input.is_action_pressed("cam_right"):
+		if keys and Input.is_action_pressed("cam_right"):
 			move.x += 1
-		var pv := Pad.camera()                         # package 80: the right stick
+		var pv := _seat_cam_stick()                    # package 80: the right stick
 		if move != Vector2.ZERO or pv != Vector2.ZERO:
 			follow = false
 			camera.position += (move.normalized() + pv) * 900.0 * delta / camera.zoom.x
@@ -1669,7 +2086,7 @@ func _update_camera(delta: float) -> void:
 	if wship != null and is_instance_valid(wship) and wship.in_warp() and _warp_auto:
 		var p := wship.warp_progress()
 		var dist := (wship.warp["from"] as Vector2).distance_to(wship.warp["to"])
-		var vs := get_viewport_rect().size
+		var vs := vsize()
 		var far_zoom := clampf(minf(vs.x, vs.y) / (dist * 1.4), _min_zoom, _warp_saved_zoom)
 		var k := 1.0
 		if p < 0.25:
@@ -1686,9 +2103,9 @@ func _update_camera(delta: float) -> void:
 				_map_to = Vector2.INF
 	if follow and player != null and is_instance_valid(player):
 		camera.position = player.position             # every level is centred on the ship (0.6.35.3)
-	if story_cam != Vector2.INF:
-		camera.position = story_cam                   # package 56: a story scene
-	if story_follow != null and is_instance_valid(story_follow):
+	if eye == 0 and story_cam != Vector2.INF:
+		camera.position = story_cam                   # package 56: a story scene (the story is the first player's)
+	if eye == 0 and story_follow != null and is_instance_valid(story_follow):
 		camera.position = story_follow.position
 	camera.position = camera.position.limit_length(Universe.SYSTEM_RADIUS * 1.05)
 
@@ -1698,6 +2115,20 @@ func _update_camera(delta: float) -> void:
 var _key_flying := false
 
 
+## In a split screen: is this look's player the one at the keyboard and mouse? (Alone: yes.)
+func _seat_keys() -> bool:
+	return not (Players.split and GameState.has_pilot2()) or Players.on_keys(eye)
+
+
+## The right stick of this look's player (the camera).
+func _seat_cam_stick() -> Vector2:
+	if not (Players.split and GameState.has_pilot2()):
+		return Pad.camera()
+	if Players.on_keys(eye):
+		return Vector2.ZERO
+	return Pad.camera()                         # (the controller code is this look's player's: main's eye_scope)
+
+
 func key_direction() -> Vector2:
 	var d := Vector2.ZERO
 	if MenuNav.menu_open():
@@ -1705,6 +2136,20 @@ func key_direction() -> Vector2:
 		return d                                # 0.5.28.2: the keys belong to the open menu
 	if is_map():
 		return d                                # package 80 (Luz): Orbit and System are maps – the ship does not fly here
+	if Players.split and GameState.has_pilot2():
+		# two players: each flies with their own device (the keyboard's keys, or their controller's left stick)
+		if Players.sim.has("%d:move" % eye):
+			return Players.sim["%d:move" % eye]
+		if not Players.on_keys(eye):
+			var pf0: Vector2 = Pad.flight()
+			if Pad.wheel != null and is_instance_valid(Pad.wheel):
+				_pad_latch = true
+				return Vector2.ZERO
+			if _pad_latch:
+				if pf0.length() < 0.15:
+					_pad_latch = false
+				pf0 = Vector2.ZERO
+			return pf0
 	if Input.is_action_pressed("ship_up"):
 		d.y -= 1
 	if Input.is_action_pressed("ship_down"):
@@ -1715,6 +2160,8 @@ func key_direction() -> Vector2:
 		d.x += 1
 	# package 56 (Luz): while the controller's wheel is open the stick picks there – no new course; after it closes the
 	# stick counts again only once it has been let go (orders given before – a click, approach – fly on meanwhile)
+	if Players.split and GameState.has_pilot2():
+		return d                                # (two players: the controller's part is above)
 	var pf: Vector2 = Pad.flight()
 	if Pad.wheel != null and is_instance_valid(Pad.wheel):
 		_pad_latch = true
@@ -1729,7 +2176,7 @@ func key_direction() -> Vector2:
 
 func _key_flight() -> void:
 	steer(key_direction())
-	if is_map() and not MenuNav.menu_open():
+	if is_map() and not MenuNav.menu_open() and _seat_keys():
 		for spec in [["ship_up", Vector2.UP], ["ship_down", Vector2.DOWN], ["ship_left", Vector2.LEFT], ["ship_right", Vector2.RIGHT]]:
 			if Input.is_action_just_pressed(String(spec[0])):
 				map_flick(spec[1])                    # the keys pick the next object that way
@@ -1849,7 +2296,7 @@ static func sky_radius(r: float, dist: float, vmin: float, star: bool = false) -
 ## Star and planets: background bodies when close, flat on the map when far.
 func _update_bodies() -> void:
 	var z := camera.zoom.x
-	var vs := get_viewport_rect().size
+	var vs := vsize()
 	var vmin := minf(vs.x, vs.y)
 	var center := vs * 0.5
 	var mp := morph_p()                                        # 0.6.37.3: 0 local view … 1 map
@@ -1923,7 +2370,7 @@ func _set_pixels(spr: Sprite2D, px: float) -> void:
 # ---------------------------------------------------------------- Input
 
 func _screen_to_world(p: Vector2) -> Vector2:
-	return camera.position + (p - get_viewport_rect().size / 2.0) / camera.zoom.x
+	return camera.position + (p - vsize() / 2.0) / camera.zoom.x
 
 
 func _zoom_at(factor: float, _screen_pos: Vector2) -> void:
@@ -1931,6 +2378,20 @@ func _zoom_at(factor: float, _screen_pos: Vector2) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if eyes_two:
+		# two looks: the mouse is the keyboard player's and works in their half
+		if not (event is InputEventMouse):
+			return
+		var ks := 0 if Players.on_keys(0) else (1 if Players.on_keys(1) else -1)
+		if ks < 0:
+			return
+		if ks != eye:
+			in_eye(ks, _unhandled_input.bind(event))
+			return
+		if event is InputEventMouseButton and not Rect2(eye_origin, eye_size).has_point((event as InputEventMouseButton).position):
+			if not (event as InputEventMouseButton).pressed:
+				_panning = false
+			return
 	if not input_enabled:
 		return
 	if event is InputEventMouseButton:
@@ -1957,7 +2418,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						_forward_hotkey(ev)
 			MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT:
 				if mb.pressed:
-					click(_screen_to_world(mb.position))
+					click(_screen_to_world(mb.position - (eye_origin if eyes_two else Vector2.ZERO)))
 			_:
 				_forward_hotkey(mb)
 		get_viewport().set_input_as_handled()
@@ -2654,7 +3115,7 @@ func _update_hover() -> void:
 	var text := ""
 	hovered = null
 	if input_enabled:
-		var p := pick(_screen_to_world(get_viewport().get_mouse_position()))
+		var p := pick(_screen_to_world(_mouse()))
 		if not p.is_empty():
 			if p["kind"] == "body":
 				var t: Dictionary = p["target"]
@@ -2746,7 +3207,7 @@ func _draw_belt_background(a: float) -> void:
 			continue
 		var dens := clampf(1.2 - edge, 0.0, 1.0)
 		var bg := cp * BELT_PARALLAX                       # the background moves slower than the camera
-		var half := get_viewport_rect().size * 0.5 / camera.zoom.x + Vector2(200, 200)
+		var half := vsize() * 0.5 / camera.zoom.x + Vector2(200, 200)
 		var c0 := Vector2i(floori((bg.x - half.x) / BELT_CELL), floori((bg.y - half.y) / BELT_CELL))
 		var c1 := Vector2i(floori((bg.x + half.x) / BELT_CELL), floori((bg.y + half.y) / BELT_CELL))
 		if (c1.x - c0.x + 1) * (c1.y - c0.y + 1) > 160:
@@ -2780,7 +3241,7 @@ func _draw_debris() -> void:
 	if a <= 0.01:
 		return
 	_draw_belt_background(a)                           # package 35
-	var half := get_viewport_rect().size * 0.5 / camera.zoom.x + Vector2(120, 120)
+	var half := vsize() * 0.5 / camera.zoom.x + Vector2(120, 120)
 	var cp := camera.position
 	var mod := Color(0.82, 0.82, 0.86, a)
 	for d in layout.get("debris", []):
@@ -2872,22 +3333,33 @@ const MIN_ROCK_PX := 1.8
 
 ## Asteroids are only visible (and get their texture) near the camera in the local zoom levels.
 func _cull_asteroids() -> void:
-	var local := sky_alpha() > 0.01
-	var half := get_viewport_rect().size * 0.5 / camera.zoom.x * 1.4 + Vector2(400, 400)
-	var cp := camera.position
-	# 40e: a rock smaller than about two pixels is not drawn at all (the dense fields of the Rim held thousands)
-	var min_r := MIN_ROCK_PX / maxf(camera.zoom.x, 0.0001)
+	# [local, half, the camera's place, the least radius] of each look
+	var looks: Array = [_cull_look()]
+	if eyes_two:
+		looks.append(in_eye(1, _cull_look))
 	for a in asteroid_nodes:
 		if not is_instance_valid(a):
 			continue
-		var d: Vector2 = a.position - cp
-		var vis: bool = local and absf(d.x) < half.x and absf(d.y) < half.y and float(a.radius) >= min_r
+		var vis := false
+		for lk in looks:
+			var d: Vector2 = a.position - (lk[2] as Vector2)
+			if bool(lk[0]) and absf(d.x) < (lk[1] as Vector2).x and absf(d.y) < (lk[1] as Vector2).y and float(a.radius) >= float(lk[3]):
+				vis = true
 		if vis != a.visible:
 			a.visible = vis
 			a.set_process(vis)                           # package 35: hidden rocks cost nothing
 	for co in colossi:
-		var d2: Vector2 = co.position - cp
-		co.visible = local and absf(d2.x) < half.x + co.radius * 1.3 and absf(d2.y) < half.y + co.radius * 1.3
+		var cvis := false
+		for lk2 in looks:
+			var d2: Vector2 = co.position - (lk2[2] as Vector2)
+			if bool(lk2[0]) and absf(d2.x) < (lk2[1] as Vector2).x + co.radius * 1.3 and absf(d2.y) < (lk2[1] as Vector2).y + co.radius * 1.3:
+				cvis = true
+		co.visible = cvis
+
+
+func _cull_look() -> Array:
+	# 40e: a rock smaller than about two pixels is not drawn at all (the dense fields of the Rim held thousands)
+	return [sky_alpha() > 0.01, vsize() * 0.5 / camera.zoom.x * 1.4 + Vector2(400, 400), camera.position, MIN_ROCK_PX / maxf(camera.zoom.x, 0.0001)]
 
 
 # ---------------------------------------------------------------- Drawing (overlay)
@@ -2977,7 +3449,7 @@ func _draw_overlay() -> void:
 		dashed_ring(o, gbv["pos"], gr * Universe.BAND_OUT, 36, Color(gcol, 0.45), maxf(px * 1.5, 1.0), 3)
 		o.draw_arc(gbv["pos"], gr * (Universe.BAND_IN + (Universe.BAND_OUT - Universe.BAND_IN) * 0.55), 0.0, TAU, 96, Color(1.0, 0.4, 0.2, 0.18), maxf(px * 1.0, 1.0))
 	# No-fire zones around stations (dashed amber ring) and the haven gun range (red)
-	var view_r := get_viewport_rect().size.length() * 0.5 / z
+	var view_r := vsize().length() * 0.5 / z
 	for st in stations.values():
 		if not is_instance_valid(st):
 			continue
@@ -3131,7 +3603,7 @@ func _draw_overlay() -> void:
 		var p := player.warp_progress()
 		var strength := clampf(minf(p, 1.0 - p) * 5.0, 0.0, 1.0)
 		var dir := Vector2.from_angle(player.heading)
-		var vs := get_viewport_rect().size
+		var vs := vsize()
 		for i in 40:
 			var h := fmod(float(i) * 0.6180339 + 0.13, 1.0)
 			var h2 := fmod(float(i) * 0.7548776 + 0.37, 1.0)
@@ -3169,7 +3641,7 @@ var _radar_c := Vector2.INF
 
 
 func _draw_radar(o: Node2D, c: Vector2, px: float, a: float) -> void:
-	var vs := get_viewport_rect().size
+	var vs := vsize()
 	var r := minf(vs.x, vs.y) * RADAR_SCREEN * px
 	var sweep := fmod(_t / RADAR_PERIOD, 1.0) * TAU
 	var font := ThemeDB.fallback_font
@@ -3431,7 +3903,7 @@ func _draw_warp_tunnel(o: Node2D, s: Ship, px: float) -> void:
 	var d: Vector2 = (to - from).normalized()
 	var c: Vector2 = s.position
 	var rt := TUNNEL_RADIUS                                       # 0.6.35.9: a fixed size – a whole formation fits in
-	var L := get_viewport_rect().size.length() * 0.6 * px          # reaches past the screen
+	var L := vsize().length() * 0.6 * px          # reaches past the screen
 	# 0.6.35.14: only from the start to the end of the warp (on the system map it used to reach to infinity)
 	var x0 := maxf(-L, (from - c).dot(d))
 	var x1 := minf(L, (to - c).dot(d))
@@ -3583,7 +4055,7 @@ func body_view(bid: String) -> Dictionary:
 		var sky: Sprite2D = b["sky"]
 		if sky.visible and b.has("sky_pos"):
 			var z := camera.zoom.x
-			var vs := get_viewport_rect().size
+			var vs := vsize()
 			return {"pos": camera.get_screen_center_position() + ((b["sky_pos"] as Vector2) - vs * 0.5) / z, "r": float(b["sky_r"]) / z}
 		return {"pos": b["data"]["pos"], "r": float(b["data"]["radius"])}
 	return {}
@@ -3683,7 +4155,7 @@ class DysonShell extends Node2D:
 	func _draw() -> void:
 		var z: float = view.camera.zoom.x
 		var px := 1.0 / maxf(z, 0.0000001)
-		var vs: Vector2 = view.get_viewport_rect().size * px
+		var vs: Vector2 = view.vsize() * px
 		var view_r := Rect2(view.camera.position - vs * 0.6, vs * 1.2)
 		if px > WIDTH / 8.0:
 			_draw_far(px)
@@ -4424,6 +4896,9 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 		player = null
 		GameState.on_player_ship_lost(ship.fit)
 		return
+	if eyes_two and ship == _eye_other.get("player"):
+		_eye_other["player"] = null
+		return
 	if ship.wingman_id >= 0:                     # package 33: a wingman died
 		wing_nodes.erase(ship.wingman_id)
 		if ship.wingman_id == 0:
@@ -4796,3 +5271,7 @@ func sync_to_fits() -> void:
 	if player != null and is_instance_valid(player):
 		player.fit.position = player.position
 		player.fit.rotation = player.heading
+	var p_two := player_of(1) if eyes_two else null
+	if p_two != null:
+		p_two.fit.position = p_two.position
+		p_two.fit.rotation = p_two.heading

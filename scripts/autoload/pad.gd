@@ -121,6 +121,112 @@ var sim_l := Vector2.ZERO
 var sim_r := Vector2.ZERO
 
 
+# ---------------------------------------------------------------- split screen in space: a controller per player
+##
+## (Luz: the second player gets exactly what the first one has.) This file is the controller of one player: which
+## buttons are down, what is held for a combination, the wheel that is open, the list being picked from, the hints.
+## In space with two looks (SystemView, stage 4) all of that is there once per player: the fields in SEAT_VARS are
+## those of the player whose turn it is (`seat`), the other one's wait in `_seat_other`, and as_seat() swaps them, as
+## SystemView.eye_as() does for the look (main calls it from there). So the very same code reads the second
+## player's controller: main runs seat_step() for them once a frame while it is their turn. What the code does to
+## "the view" and "the HUD" is then done to their look and their HUD, and an action of the game is handed to main at
+## once (seat_event) instead of being sent round as an input event, which would arrive when it is nobody's turn.
+const SEAT_VARS := ["device", "kind", "using_pad", "_down", "_active", "_used_hold", "_pending", "_rep", "_stick_dir", "_flick_armed",
+	"_opt_t", "_circ_t", "list_mode", "_list_i", "wheel", "_wheel_layer", "_wheel_btn", "_hint", "_mg_down", "_map_armed",
+	"sim_on", "sim_btn", "sim_l", "sim_r", "events"]
+var seat := 0
+var _seat_other := {}
+
+
+func _seat_fresh() -> Dictionary:
+	var d := {"device": -1, "kind": "", "using_pad": false, "_down": {}, "_active": {}, "_used_hold": {}, "_pending": {}, "_rep": {},
+		"_stick_dir": Vector2.ZERO, "_flick_armed": true, "_opt_t": -1.0, "_circ_t": -1.0, "list_mode": false, "_list_i": 0, "wheel": null,
+		"_wheel_layer": null, "_wheel_btn": "", "_hint": null, "_mg_down": {}, "_map_armed": true, "sim_on": false, "sim_btn": {},
+		"sim_l": Vector2.ZERO, "sim_r": Vector2.ZERO}
+	var none: Array = []
+	d["events"] = none
+	return d
+
+
+## It is this player's controller's turn (0: the first player's, as always outside of a look of the second player's).
+func as_seat(s: int) -> void:
+	if s == seat or s < 0 or s > 1:
+		return
+	if _seat_other.is_empty():
+		_seat_other = _seat_fresh()
+	for k in SEAT_VARS:
+		var mine = get(k)
+		var theirs = _seat_other[k]
+		if typeof(theirs) == TYPE_OBJECT and not is_instance_valid(theirs):
+			theirs = null
+		if typeof(mine) == TYPE_OBJECT and not is_instance_valid(mine):
+			mine = null
+		set(k, theirs)
+		_seat_other[k] = mine
+	seat = s
+	if s == 1:
+		device = Players.pad_of(1) if Players.split else -1
+		using_pad = device >= 0 or sim_on
+		kind = _kind_of(device)
+
+
+## A field of the second player's controller while it is not their turn (the smoke test plays it: "sim_on", "sim_btn").
+func other_put(key: String, value) -> void:
+	if _seat_other.is_empty():
+		_seat_other = _seat_fresh()
+	if seat == 1:
+		set(key, value)
+	else:
+		_seat_other[key] = value
+
+
+## The two looks are gone: the second player's controller state with them (a wheel, the list, what was held).
+func seat_forget() -> void:
+	_seat_other = {}
+
+
+func other_get(key: String):
+	if seat == 1:
+		return get(key)
+	return _seat_other.get(key) if not _seat_other.is_empty() else _seat_fresh()[key]
+
+
+## The second player's controller for one frame (main calls it while it is their turn, in space, with nothing up
+## that is the first player's over the whole picture).
+func seat_step(delta: float) -> void:
+	if seat != 1 or MenuNav.menu_open():
+		return
+	_process(delta)
+
+
+func _kind_of(dev: int) -> String:
+	if dev < 0:
+		return ""
+	var nm := Input.get_joy_name(dev).to_lower()
+	return "ps" if (nm.contains("ps5") or nm.contains("ps4") or nm.contains("dualsense") or nm.contains("dualshock") or nm.contains("playstation") or nm.contains("sony")) else "xbox"
+
+
+## The half of the picture this player's wheel, hints and list are in (null: there is one picture).
+func _half():
+	var m := _main()
+	if m != null and m.view != null and is_instance_valid(m.view) and "eyes_two" in m.view and m.view.eyes_two:
+		return m.view.eye_half(seat)
+	return null
+
+
+func _ui_vp() -> Viewport:
+	var h = _half()
+	return h.vp if h != null else get_viewport()
+
+
+func _ui_add(n: Node) -> void:
+	var h = _half()
+	if h != null:
+		h.take(n)
+	else:
+		add_child(n)
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	reset_binds()
@@ -244,10 +350,7 @@ func _pick_device() -> void:
 	device = pads[0] if not pads.is_empty() else -1
 	if Players.split:                            # split screen: the controller of whose windows these are (the first player's, mostly), or none (the keyboard)
 		device = Players.pad_of(Players.act_seat) if Players.pad_of(Players.act_seat) in pads else -1
-	kind = ""
-	if device >= 0:
-		var nm := Input.get_joy_name(device).to_lower()
-		kind = "ps" if (nm.contains("ps5") or nm.contains("ps4") or nm.contains("dualsense") or nm.contains("dualshock") or nm.contains("playstation") or nm.contains("sony")) else "xbox"
+	kind = _kind_of(device)
 	if device < 0:
 		using_pad = false
 	device_changed.emit()
@@ -637,6 +740,9 @@ func _do(ctx: String, id: String, pressed: bool) -> void:
 	ev.action = id
 	ev.pressed = pressed
 	ev.strength = 1.0 if pressed else 0.0
+	if seat == 1 and m != null and m.has_method("seat_event"):
+		m.seat_event(ev)                                   # (the second player's: done now, while it is their turn)
+		return
 	Input.parse_input_event(ev)
 
 
@@ -680,10 +786,11 @@ func _special(ctx: String, id: String, m) -> void:
 		"pad_list":
 			list_mode = not list_mode
 			_list_i = 0
+			_list_show()
 			if list_mode:
 				_list_focus(0)
 			else:
-				get_viewport().gui_release_focus()
+				_ui_vp().gui_release_focus()
 		"pad_wheel":
 			_open_wheel("actions", "square")
 		"pad_options":
@@ -780,7 +887,16 @@ func _list_press(b: String) -> void:
 				(rows[_list_i] as Button).pressed.emit()
 		"circle", "touchpad":
 			list_mode = false
-			get_viewport().gui_release_focus()
+			_list_show()
+			_ui_vp().gui_release_focus()
+
+
+## The list is asked for or given up: in a split screen the HUD shows it only then (Luz: the overview only when you
+## open it, it saves a lot of room).
+func _list_show() -> void:
+	var m := _main()
+	if m != null and m.hud != null and m.hud.has_method("set_overview"):
+		m.hud.set_overview(list_mode)
 
 
 # ---------------------------------------------------------------- on foot: flick the right stick at a foe
@@ -825,8 +941,9 @@ func _open_wheel(which: String, btn: String) -> void:
 	_close_wheel(false)
 	_wheel_layer = CanvasLayer.new()
 	_wheel_layer.layer = 90
-	add_child(_wheel_layer)
+	_ui_add(_wheel_layer)                                # (two looks in space: in this player's half)
 	wheel = load("res://scripts/ui/pad_wheel.gd").new()
+	wheel.seat = seat
 	wheel.items = ACTION_ITEMS if which == "actions" else (_drone_items() if which == "drones" else WINDOW_ITEMS)
 	wheel.title = glyph(btn) + " held"
 	if which == "drones":
@@ -914,11 +1031,15 @@ func _close_wheel(do_it: bool) -> void:
 
 
 func _tap(act: String) -> void:
+	var m := _main()
 	for p in [true, false]:
 		var ev := InputEventAction.new()
 		ev.action = act
 		ev.pressed = p
-		Input.parse_input_event(ev)
+		if seat == 1 and m != null and m.has_method("seat_event"):
+			m.seat_event(ev)
+		else:
+			Input.parse_input_event(ev)
 
 
 # ---------------------------------------------------------------- rebinding (Settings → Controller)
@@ -955,6 +1076,12 @@ func rumble(weak: float, strong: float, sec: float) -> void:
 
 func _update_hint(ctx: String) -> void:
 	var show := using_pad and ctx == "space" and _main() != null and wheel == null
+	if _hint != null and not is_instance_valid(_hint):
+		_hint = null                                         # (it went with the half it was in)
+	var hh = _half()
+	if _hint != null and _hint.get_parent() != (hh.vp if hh != null else self):
+		_hint.queue_free()                                   # (the picture is in two halves now, or whole again: the hints anew, where they belong)
+		_hint = null
 	if not show:
 		if _hint != null:
 			_hint.visible = false
@@ -962,8 +1089,9 @@ func _update_hint(ctx: String) -> void:
 	if _hint == null:
 		_hint = CanvasLayer.new()
 		_hint.layer = 6
-		add_child(_hint)
+		_ui_add(_hint)
 		var h = load("res://scripts/ui/pad_hint.gd").new()
+		h.seat = seat
 		h.name = "Hint"
 		_hint.add_child(h)
 	_hint.visible = true

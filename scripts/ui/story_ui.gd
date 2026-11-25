@@ -31,12 +31,14 @@ var dialogue: Control = null            # the dialogue open (its layer pauses th
 var _dlg_layer: CanvasLayer = null
 var _dlg := {}                          # {id, mission, line, said}
 var _dlg_q: Array = []
-## Split screen (Luz, rule 7: a talk runs in the half of who began it; what it moves on counts for both): whose talk
-## the open one is. While the picture is in two halves its window stands over their half and their own device
-## answers; while you are in different places the other player's view goes on meanwhile (main.talk_begin()).
+## Split screen (Luz, 25 Nov 2026, rule 7 as Luz set it: "the story's things happen with player 1 only, and both
+## stand still during the talks"): a talk of the story is the first player's, stands over the whole picture and the
+## game is paused for both players, wherever each of them is. What it moves on counts for both.
+## The one exception is a counter's talk of their own (the Colosseum's Marshal, where everybody signs up for
+## themselves: its data says "own"): it stands over the half of who began it, their own device answers, and while
+## you are in different places the other player's view goes on meanwhile (main.talk_begin()).
 var _dlg_seat := 0
 var _dlg_half := false                  # … it stands in a half (main.talk_end() gives the half back)
-var _next_seat_t := 0.0                 # the next talk asked for is the second player's (they pressed use at one of the story's people)
 
 
 func _ready() -> void:
@@ -70,8 +72,7 @@ func _on_show(kind: String, data: Dictionary) -> void:
 		"dialogue":
 			if not data.has("seat"):
 				data = data.duplicate()
-				data["seat"] = 1 if (Players.split and GameState.has_pilot2() and (GameState.acting == 1 or _next_seat_t > 0.0)) else 0
-			_next_seat_t = 0.0
+				data["seat"] = 1 if (Players.split and GameState.has_pilot2() and GameState.acting == 1 and bool(data.get("own", false))) else 0
 			_dlg_q.append(data)
 			if dialogue == null:
 				_next_dialogue()
@@ -80,11 +81,6 @@ func _on_show(kind: String, data: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- dialogues (the game pauses)
-
-## The second player has pressed use at one of the story's people beside you: the talk that follows is theirs.
-func next_talk_seat(seat: int) -> void:
-	_next_seat_t = 1.5 if seat == 1 else 0.0
-
 
 func _next_dialogue() -> void:
 	if _dlg_q.is_empty():
@@ -99,9 +95,9 @@ func _next_dialogue() -> void:
 	_dlg_layer.layer = 80
 	_dlg_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	_dlg_seat = int(d.get("seat", 0)) if (Players.split and GameState.has_pilot2()) else 0
-	_dlg_half = main != null and main.has_method("talk_begin") and main.halves_on()
+	_dlg_half = bool(d.get("own", false)) and main != null and main.has_method("talk_begin") and main.halves_on()
 	if _dlg_half:
-		main.talk_begin(_dlg_seat, _dlg_layer)           # (over their half; in different places the other's view goes on)
+		main.talk_begin(_dlg_seat, _dlg_layer)           # (a counter's own talk: over their half; in different places the other's view goes on)
 	else:
 		add_child(_dlg_layer)
 	var dim := ColorRect.new()
@@ -509,7 +505,6 @@ func _process(dt: float) -> void:
 	_marker.queue_redraw()
 	if dialogue != null and not get_tree().paused:
 		get_tree().paused = true
-	_next_seat_t = maxf(0.0, _next_seat_t - dt)
 	if dialogue != null and _dlg_half and main != null:
 		main.talk_tick()                                 # (the game is paused for who talks: the halves and the other player's view are seen to from here)
 	_near_t -= dt

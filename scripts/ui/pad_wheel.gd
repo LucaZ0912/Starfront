@@ -32,7 +32,18 @@ func chosen() -> String:
 	return String(items[sel][1]) if sel >= 0 and sel < items.size() else ""
 
 
+var seat := 0                       # split screen in space: whose controller it belongs to (it is drawn as theirs)
+
+
 func _draw() -> void:
+	var m0 := get_tree().current_scene
+	if seat == 1 and m0 != null and "view" in m0 and m0.view != null and is_instance_valid(m0.view) and "eyes_two" in m0.view and m0.view.eyes_two:
+		m0.view.in_eye(1, _draw_now)                  # (their glyphs, their HUD, their view's level)
+	else:
+		_draw_now()
+
+
+func _draw_now() -> void:
 	var font := get_theme_font("font", "Label")
 	var k := clampf(get_viewport_rect().size.y / 900.0, 1.0, 2.4)
 	var n := items.size()
