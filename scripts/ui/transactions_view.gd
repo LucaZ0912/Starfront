@@ -50,6 +50,29 @@ func _build_transactions() -> void:
 
 func _build_contracts() -> void:
 	var box := _scroll()
+	# split screen (Luz): what the other player offers you to take with them
+	for sm in GameState.shares_for(GameState.acting):
+		var scol: Color = MISSION_COLORS.get(String(sm["type"]), Color.WHITE)
+		var sp := UI.neon_panel(Color(UI.GOLD, 0.8), Color(0.09, 0.08, 0.04, 0.95), 1)
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(sp)
+		var sv := UI.vbox(4)
+		sp.add_child(sv)
+		var sh := UI.hbox(10)
+		sv.add_child(sh)
+		sh.add_child(UI.label("OFFERED BY %s" % GameState.other_name().to_upper(), 13, UI.GOLD))
+		sh.add_child(UI.label(MISSION_LABELS.get(String(sm["type"]), "?"), 13, scol))
+		sh.add_child(UI.label(sm["title"], 16))
+		sh.add_child(UI.spacer())
+		sh.add_child(UI.label(GameData.fmt_credits(int(sm["reward"])), 16, UI.GOLD))
+		sv.add_child(UI.wrap_label(sm.get("desc", ""), 13, UI.TEXT_DIM, 1100))
+		sv.add_child(UI.wrap_label("Taken, it is one contract for both of you: what either of you does for it counts, and handed in it pays each of you in full.", 12, UI.TEXT_DIM, 1100))
+		var srow := UI.hbox(8)
+		sv.add_child(srow)
+		srow.add_child(UI.spacer())
+		var sid: String = sm["id"]
+		srow.add_child(UI.button("Take it", func(): _share_do("mission_share_accept", sid)))
+		srow.add_child(UI.button("No", func(): _share_do("mission_share_decline", sid)))
 	if GameState.missions.is_empty():
 		var c := _card(box, "NO ACTIVE CONTRACTS")
 		c.add_child(UI.wrap_label("Contracts are offered on the BlackLedger bulletin boards of the stations. You can hold up to %d at a time." % GameState.MAX_ACTIVE_MISSIONS, 13, UI.TEXT_DIM, 900))
@@ -91,6 +114,13 @@ func _build_contracts() -> void:
 			row.add_child(UI.button("Course to %s (hand in)" % Universe.systems[ds]["name"], func(): _course(ds)))
 		row.add_child(UI.spacer())
 		var mid: String = m["id"]
+		if GameState.has_pilot2():                           # split screen (Luz): a contract can be shared with the other player
+			if GameState.shared_with_other(m):
+				row.add_child(UI.label("held with %s" % GameState.other_name(), 12, UI.GOLD))
+			elif GameState.shares.any(func(shx): return is_same(shx["m"], m)):
+				row.add_child(UI.label("offered to %s" % GameState.other_name(), 12, UI.TEXT_DIM))
+			else:
+				row.add_child(UI.button("Share with %s" % GameState.other_name(), func(): _share_do("mission_share", mid), "They can take it in their journal: one contract for both, each paid in full"))
 		var armed := _abandon_armed == mid
 		var ab := UI.button("Really abandon?" if armed else "Abandon", func(): _abandon(mid), "Cancel this contract (click twice)")
 		if armed:
@@ -204,3 +234,14 @@ func _kv(parent: Control, lines: Array) -> void:
 			continue
 		grid.add_child(UI.label(s.substr(0, idx), 13, Color(0.65, 0.72, 0.85)))
 		grid.add_child(UI.label(s.substr(idx + 1).strip_edges(), 13, Color(0.95, 0.97, 1.0)))
+
+
+## Split screen: a contract offered, taken or turned down (the commands' own words on why not go into the list).
+func _share_do(cmd: String, id: String) -> void:
+	var e: String = Commands.execute({"type": cmd, "id": id})
+	if e != "":
+		GameState.log_msg(e, GameState.COL_WARN)
+		Audio.play("ui_error", "contract not shared")
+	else:
+		Audio.play("ui_click", "contract shared")
+	rebuild()

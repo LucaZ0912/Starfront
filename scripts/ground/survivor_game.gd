@@ -108,6 +108,7 @@ var booms: Array = []              # where a seeker went off this step (worked o
 var lights: Array = []             # the searchlights: {p, v, ph}
 var search_t := 0.0                # … seconds they still hunt
 var lit_t := 0.0                   # … seconds you have stood in one
+var lit_t2 := 0.0                  # … and the second player (split screen)
 var pods: Array = []               # landing pods: {pos, t (until it lands), husk (seconds its husk still stands)}
 var klines: Array = []             # kill lines: {c (where its middle began), dir, s, far, half, gaps, warm}
 var emp_t := 0.0                   # seconds none of your weapons charges
@@ -490,7 +491,7 @@ func setup(p_view, p_map: GroundMap, p_run: Dictionary) -> void:
 	hud = SUI.Hud.new()
 	hud.game = self
 	view._ui.add_child(hud)
-	if Players.split and GameState.has_pilot2():          # split screen: the second player stands beside you
+	if GameState.col_two():                               # split screen (chosen at the counter): the second player stands beside you
 		two_join()
 
 
@@ -1182,14 +1183,23 @@ func spawn_kind(kind: String, count: int, cap: int = 9999) -> int:
 
 ## Something happens (the clock calls this, and the debug menu): "flock", "ring", "wall", "sleepers", "blackout",
 ## "supply".
+## Split screen (Luz, 25 Nov 2026: the traps hunted the first player only): whom a thing that is aimed goes for: one
+## of the two of you by lot while both stand, else the one who stands.
+func _either_pos() -> Vector2:
+	if two_up() and not one_down and rng.randf() < 0.5:
+		return two.pos
+	return focus_pos()
+
+
 func event(kind: String) -> void:
 	var pp: Vector2 = view.pilot.pos
+	var tp: Vector2 = _either_pos()                         # (what comes for one of you: for whom)
 	var half := _half()
 	match kind:
 		"flock":                                            # screechers, in a wedge, straight through where you stand
 			var a := rng.randf() * TAU
 			var hunters := String(stg["flock"]) in ["hunter", "glider", "saucer"]      # (part 8b: on AI Takeover hunters come, along a line shown first; part 9b: on Whiteout gliders; part 11b: in the laboratory saucers)
-			flock_warn = {"dir": Vector2.from_angle(a), "t": 1.5 if hunters else 1.3, "at": pp}
+			flock_warn = {"dir": Vector2.from_angle(a), "t": 1.5 if hunters else 1.3, "at": tp}
 			Audio.play("sv_alarm" if hunters else "sv_screech", "survivor: the flock", -10.0)
 		"ring":                                             # a ring of shamblers closes round you
 			var rad := half.length() + 16.0
@@ -1224,13 +1234,14 @@ func event(kind: String) -> void:
 		"searchlight":                                      # (part 8b) two searchlights come hunting for a while
 			search_t = SD.SEARCH_TIME
 			lit_t = 0.0
+			lit_t2 = 0.0
 			lights.clear()
-			for q3 in 2:
-				lights.append({"p": pp + Vector2.from_angle(rng.randf() * TAU) * (half.length() * 0.8), "v": Vector2.ZERO, "ph": rng.randf() * TAU})
+			for q3 in 2:                                        # (split screen: one hunts each of you)
+				lights.append({"p": pp + Vector2.from_angle(rng.randf() * TAU) * (half.length() * 0.8), "v": Vector2.ZERO, "ph": rng.randf() * TAU, "who": q3})
 		"reinforce":                                        # landing pods come down in a ring round you
 			var a2 := rng.randf() * TAU
 			for q4 in 8:
-				var pp2 := pp + Vector2.from_angle(a2 + q4 * TAU / 8.0) * rng.randf_range(92.0, 128.0)
+				var pp2 := tp + Vector2.from_angle(a2 + q4 * TAU / 8.0) * rng.randf_range(92.0, 128.0)
 				if pp2.x > 40.0 and pp2.y > 40.0 and pp2.x < _w * TL - 40.0 and pp2.y < _h * TL - 40.0 and _solid[_ti(pp2)] == 0:
 					pods.append({"pos": pp2, "t": 1.1 + q4 * 0.12, "husk": 0.0})
 					tele.append({"kind": "spot", "pos": pp2, "r": 14.0, "t": 0.0, "len": 1.1 + q4 * 0.12})
@@ -1379,6 +1390,8 @@ func _move(delta: float, pp: Vector2) -> void:
 				_hurt(_sa_beam)
 				hurt_ok = false
 				hold_t = _sa_hold
+			if k == _saucer_k and two_open() and p.distance_squared_to(two.pos) < _sa_r * _sa_r:
+				two_hurt(_sa_beam)                              # (split screen: its beam burns the second player too)
 			if k == _glider_k:                                # (part 9b) a glider lets chunks of ice fall along its way, each onto a mark
 				fbo[i] -= delta
 				if fbo[i] <= 0.0:
@@ -1402,6 +1415,8 @@ func _move(delta: float, pp: Vector2) -> void:
 				ftm[i] -= delta
 				if ftm[i] <= 0.0:
 					_erupt(i)
+					if two_open() and p.distance_squared_to(two.pos) < _bur_r * _bur_r:
+						two_hurt(_bur_dmg * (1.5 if fal[i] != 0 else 1.0))      # (split screen: it breaks out under the second player too)
 					if hurt_ok and p.distance_squared_to(pp) < _bur_r * _bur_r:
 						_hurt(_bur_dmg * (1.5 if fal[i] != 0 else 1.0))
 						hurt_ok = false
@@ -4364,6 +4379,14 @@ func _wo_events(delta: float, pp: Vector2) -> void:
 			if along >= s0 and along < s1 + 6.0 and not in_cover and can_hurt():
 				_hurt(SD.AVA_DMG)
 				throw_you(ad, 0.45)
+			if two_open():                                    # (split screen: the avalanche reaches the second player too, unless something solid covers them)
+				var along2 := (two.pos - base).dot(ad)
+				var cov2 := false
+				for k2 in range(1, 8):
+					if _solid[_ti(two.pos - ad * (k2 * 8.0))] != 0:
+						cov2 = true
+				if along2 >= s0 and along2 < s1 + 6.0 and not cov2:
+					two_hurt(SD.AVA_DMG)
 			var admg := SD.AVA_FOES * (1.0 + float(run["t"]) / 200.0)
 			_kbk = 4.0                                          # (it carries them off with it)
 			for i in range(n - 1, -1, -1):
@@ -4414,24 +4437,35 @@ func _events(delta: float, pp: Vector2) -> void:
 	if search_t > 0.0:
 		search_t -= delta
 		var in_light := false
+		var in_light2 := false
+		var both: bool = two_up() and not one_down            # (split screen: each light hunts one of you; either light marks whoever stands in it)
 		for l in lights:
 			var lp: Vector2 = l["p"]
-			var to_you := pp - lp
+			var to_you: Vector2 = (two.pos if (both and int(l.get("who", 0)) == 1) else pp) - lp
 			var wl := to_you.length()
 			var steer := to_you / maxf(wl, 1.0) * 40.0 + Vector2.from_angle(float(l["ph"]) + float(run["t"]) * 0.9) * 22.0
 			l["v"] = (l["v"] as Vector2).lerp(steer, minf(1.0, delta * 1.2))
 			l["p"] = lp + (l["v"] as Vector2) * delta
-			if wl < SD.SEARCH_R:
+			if pp.distance_to(lp) < SD.SEARCH_R:
 				in_light = true
+			if both and two.pos.distance_to(lp) < SD.SEARCH_R:
+				in_light2 = true
 		lit_t = lit_t + delta if in_light else maxf(0.0, lit_t - delta * 0.6)
+		lit_t2 = lit_t2 + delta if in_light2 else maxf(0.0, lit_t2 - delta * 0.6)
 		if lit_t >= SD.SEARCH_LIT:
 			lit_t = 0.0
 			shells.append({"from": Vector2.INF, "pos": pp, "t": 0.0, "len": 1.0, "r": 34.0, "dmg": 22.0, "foes": 60.0})
 			tele.append({"kind": "spot", "pos": pp, "r": 34.0, "t": 0.0, "len": 1.0})
 			Audio.play("sv_alarm", "survivor: you are marked", -8.0)
+		if lit_t2 >= SD.SEARCH_LIT and both:
+			lit_t2 = 0.0
+			shells.append({"from": Vector2.INF, "pos": two.pos, "t": 0.0, "len": 1.0, "r": 34.0, "dmg": 22.0, "foes": 60.0})
+			tele.append({"kind": "spot", "pos": two.pos, "r": 34.0, "t": 0.0, "len": 1.0})
+			Audio.play("sv_alarm", "survivor: the second player is marked", -8.0)
 		if search_t <= 0.0:
 			lights.clear()
 			lit_t = 0.0
+			lit_t2 = 0.0
 	# ---- shells: a bulwark's, the artillery's: they come down on their marks
 	var q := shells.size() - 1
 	while q >= 0:
@@ -4755,6 +4789,7 @@ func clear_swarm() -> void:
 	_ovr_hits.clear()
 	search_t = 0.0
 	lit_t = 0.0
+	lit_t2 = 0.0
 	emp_t = 0.0
 	ovr_t = 0.0
 	sweep = {}
@@ -5741,6 +5776,9 @@ func draw_over(o: Node2D) -> void:
 	if lit_t > 0.0 and view != null and is_instance_valid(view) and view.pilot != null:      # you stand in a searchlight: how long until you are marked
 		var lc0: Vector2 = view.pilot.pos * S + Vector2(0.0, -36.0)
 		o.draw_arc(lc0, 62.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(lit_t / SD.SEARCH_LIT, 0.0, 1.0), 40, Color(1.0, 0.25, 0.2, 0.95), 5.0)
+	if lit_t2 > 0.0 and two_up():                           # … and the second player in one
+		var lc2: Vector2 = two.pos * S + Vector2(0.0, -36.0)
+		o.draw_arc(lc2, 62.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(lit_t2 / SD.SEARCH_LIT, 0.0, 1.0), 40, Color(1.0, 0.25, 0.2, 0.95), 5.0)
 	for sy in sentries:                                     # a sentry's gun: on three legs, turned to whoever it fires at (it blinks before it goes)
 		var syq: Vector2 = (sy["p"] as Vector2) * S
 		var stx: Texture2D = SArt.sentry(int(sy["face"]), float(sy["flash"]) > 0.0)

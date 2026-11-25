@@ -186,6 +186,19 @@ var acting := 0
 var fleet2: Array = []
 var active_uid2 := -1
 var storage2 := {}
+## (Luz, 25 Nov 2026) Each player has for themselves, besides gear, purse and ships: their contracts (and bounty
+## bonds), their standing with the factions (and their record with the powers), their collection and their career's
+## numbers. The story with what it gives (the acquaintances), the codex and the permits are for both. Like the rest,
+## these are the pilot's while it is their turn (act_as): the other one's wait here.
+var missions2: Array = []
+var bonds2: Array = []
+var rep2 = ReputationScript.new()
+var law2 = LawScript.new()
+var collection2 := {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}
+var stats2 := {}
+## Contracts one player offers the other (journal, Transactions): {"m": the contract, "to": the seat it is offered to}.
+## Taken, it is one contract held by both: what happens counts for both, and handed in it pays each of them.
+var shares: Array = []
 var wake_pending := false        # 0.7.51.4: the ship was lost – after the buy-back window you wake in the clinic
 const DATA_PRICE := 5000           # per unit of data …
 const DATA_REP := 0.5              # … and standing with the Directorate
@@ -235,6 +248,7 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	active_uid2 = -1
 	storage2 = {}
 	acting = 0
+	_own2_reset()
 	surveys.clear()
 	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0,
 		# package 30: achievements for the skill tree
@@ -539,6 +553,12 @@ func fab_tree_error(mid: String) -> String:
 
 
 ## Package 62a, part 4: into the house's gear for a fight (your own is put by), and back into your own.
+## Split screen: do the two of you play the Colosseum together? Only when "Split screen" was picked as the way to
+## play at the counter (Luz, 25 Nov 2026): with "Singleplayer" one of you plays alone, even in a split screen.
+func col_two() -> bool:
+	return Players.split and has_pilot2() and String(col_state().get("play", "single")) == "split"
+
+
 func col_gear_on() -> void:
 	if col_own_gear == null:
 		col_own_gear = gear
@@ -743,6 +763,25 @@ func act_as(seat: int, quiet: bool = false) -> void:
 	var my_storage: Dictionary = storage
 	storage = storage2
 	storage2 = my_storage
+	# their contracts and bonds, their standing and record, their collection, their career's numbers
+	var my_missions: Array = missions
+	missions = missions2
+	missions2 = my_missions
+	var my_bonds: Array = bonds
+	bonds = bonds2
+	bonds2 = my_bonds
+	var my_rep = rep
+	rep = rep2
+	rep2 = my_rep
+	var my_law = law
+	law = law2
+	law2 = my_law
+	var my_coll: Dictionary = collection
+	collection = collection2
+	collection2 = my_coll
+	var my_stats: Dictionary = stats
+	stats = stats2
+	stats2 = my_stats
 	var ship_now := active()
 	if seat == 1 and ship_was != null and ship_now != null and not quiet:
 		ship_now.system_id = ship_was.system_id
@@ -793,7 +832,23 @@ func storage_seat(seat: int) -> Dictionary:
 
 ## Split screen: a new second pilot from the creator's data. Starts like the first one did: level 1, the starting
 ## gear, and the first pilot's start system as the place to come into the game.
+## The second player's own contracts, standing, collection and numbers: as a pilot who has just begun has them.
+func _own2_reset() -> void:
+	missions2 = []
+	bonds2 = []
+	rep2 = ReputationScript.new()
+	rep2.reset()
+	law2 = LawScript.new()
+	law2.reset()
+	collection2 = {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}
+	stats2 = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0,
+		"warps": 0, "systems": [], "refined_station": 0, "markets": [], "turnover": 0, "bounty_jobs": 0, "jobs_covenant": 0,
+		"jobs_assembly": 0, "passengers": 0, "exotic": 0, "scans": 0, "bounties": 0}
+	shares = []
+
+
 func new_pilot2(data: Dictionary) -> void:
+	_own2_reset()
 	pilot2 = make_pilot("Wingmate", data)
 	pilot2["start_system"] = Universe.home_system
 	pilot2["credits"] = START_CREDITS                  # (Luz, 25 Nov 2026) their own money: they act for themselves
@@ -856,6 +911,9 @@ func to_dict() -> Dictionary:
 		"on_foot": on_foot.duplicate(),
 		"pilot2": pilot2.duplicate(true), "gear2": (col_own_gear2 if col_own_gear2 != null else gear2).to_dict() if not pilot2.is_empty() else {},
 		"fleet2": fleet2.map(func(f2): return f2.to_dict()), "active_uid2": active_uid2, "storage2": storage2.duplicate(true),
+		"missions2": missions2.duplicate(true), "bonds2": bonds2.duplicate(true), "reputation2": rep2.to_dict(), "wanted2": law2.to_dict(),
+		"collection2": collection2.duplicate(true), "stats2": stats2.duplicate(true),
+		"shares": shares.map(func(sh): return {"id": String(sh["m"]["id"]), "to": int(sh["to"])}),
 	}
 
 
@@ -973,6 +1031,24 @@ func from_dict(d: Dictionary) -> void:
 		notorious.from_dict(d["notorious"])
 	else:
 		notorious.setup()
+	# the second player's own (a contract both hold is one contract again, not two copies)
+	_own2_reset()
+	if d.has("missions2"):
+		missions2 = (d["missions2"] as Array).duplicate(true)
+		for i2 in missions2.size():
+			for m1 in missions:
+				if String(m1["id"]) == String(missions2[i2]["id"]):
+					missions2[i2] = m1
+		bonds2 = (d.get("bonds2", []) as Array).duplicate(true)
+		rep2.from_dict(d.get("reputation2", {}))
+		law2.from_dict(d.get("wanted2", {}))
+		for ck2 in (d.get("collection2", {}) as Dictionary):
+			collection2[ck2] = (d["collection2"][ck2] as Array).duplicate(true)
+		stats2.merge(d.get("stats2", {}), true)
+		for sh in d.get("shares", []):
+			for mh in (missions if int(sh["to"]) == 1 else missions2):
+				if String(mh["id"]) == String(sh["id"]):
+					shares.append({"m": mh, "to": int(sh["to"])})
 	credits_changed.emit(credits)
 	fleet_changed.emit()
 	missions_changed.emit()
@@ -1608,6 +1684,7 @@ func collect_perks() -> void:
 
 ## 0.6.37.2: a star class goes into the collection the first time the pilot is in a system with such a star.
 func collect_star(type_id: String) -> void:
+	_collect_other("stars", type_id)
 	var have: Array = collection.get("stars", [])
 	if type_id == "" or type_id in have:
 		return
@@ -1619,6 +1696,7 @@ func collect_star(type_id: String) -> void:
 
 ## 0.6.38.1: planet and moon types go into the collection the first time the pilot is in a system with one.
 func collect_planet(type_id: String) -> void:
+	_collect_other("planets", type_id)
 	var have: Array = collection.get("planets", [])
 	if type_id == "" or type_id in have:
 		return
@@ -1626,6 +1704,17 @@ func collect_planet(type_id: String) -> void:
 	collection["planets"] = have
 	log_msg("Collection: %s recorded." % String(Universe.body_type(type_id)["name"]), COL_GOOD)
 	codex.event("collection")
+
+
+## Split screen: a star, a world the two of you come to together is seen by both (the other one rides along until
+## they fly themselves): it goes into the other player's collection too, without a word.
+func _collect_other(kind: String, type_id: String) -> void:
+	if not has_pilot2() or type_id == "":
+		return
+	var theirs: Array = collection2.get(kind, [])
+	if not type_id in theirs:
+		theirs.append(type_id)
+		collection2[kind] = theirs
 
 
 ## A notorious pirate destroyed by the pilot goes into the collection – with the mugshot.
@@ -2076,8 +2165,114 @@ func _accept_passengers(m: Dictionary) -> String:
 	return ""
 
 
+# ---------------------------------------------------------------- split screen: contracts of two
+
+## Is this very contract in a list (the same one, not one that reads the same)?
+func _same_in(list: Array, m: Dictionary) -> bool:
+	for x in list:
+		if is_same(x, m):
+			return true
+	return false
+
+
+## Every contract either of you holds. What happens out there counts for both, as long as you travel together
+## (the second player's ship comes along with the first one's).
+func _held() -> Array:
+	var out: Array = missions.duplicate()
+	if has_pilot2():
+		for m in missions2:
+			if not _same_in(out, m):
+				out.append(m)
+	return out
+
+
+## Does the other player hold this contract too?
+func shared_with_other(m: Dictionary) -> bool:
+	return has_pilot2() and _same_in(missions2, m)
+
+
+## The other player's first name.
+func other_name() -> String:
+	return String(pilot2.get("name", "the other pilot")).get_slice(" ", 0)
+
+
+## The contracts offered to a player and still to be had (whoever offered them still holds them).
+func shares_for(seat: int) -> Array:
+	var theirs: Array = missions2 if seat == acting else missions      # (the one who offers is the other one)
+	shares = shares.filter(func(sh): return _same_in(missions if int(sh["to"]) != acting else missions2, sh["m"]))
+	var out: Array = []
+	for sh in shares:
+		if int(sh["to"]) == seat and _same_in(theirs, sh["m"]):
+			out.append(sh["m"])
+	return out
+
+
+## You offer one of your contracts to the other player. "" or why not.
+func share_mission(m: Dictionary) -> String:
+	if not has_pilot2():
+		return "There is nobody to share it with."
+	if not _same_in(missions, m):
+		return "Unknown contract."
+	if _same_in(missions2, m):
+		return "%s holds it already." % other_name()
+	for sh in shares:
+		if is_same(sh["m"], m):
+			return "It is offered to %s already." % other_name()
+	shares.append({"m": m, "to": 1 - acting})
+	log_msg("Contract offered to %s: %s. They can take it in their journal, Transactions." % [other_name(), m["title"]], COL_INFO)
+	missions_changed.emit()
+	return ""
+
+
+## You take a contract the other player offered you: one contract, held by both of you from now on.
+func share_accept(m: Dictionary) -> String:
+	if not _same_in(shares_for(acting), m):
+		return "That contract is not on offer any more."
+	if String(m["type"]) == "passenger":
+		if passenger_count() >= Missions.MAX_PASSENGER_JOBS:
+			return "You can carry at most %d passenger groups at once." % Missions.MAX_PASSENGER_JOBS
+	elif contract_count() >= MAX_ACTIVE_MISSIONS:
+		return "You can hold at most %d contracts." % MAX_ACTIVE_MISSIONS
+	shares = shares.filter(func(sh): return not is_same(sh["m"], m))
+	missions.append(m)
+	m["shared"] = true
+	log_msg("Contract taken with %s: %s" % [other_name(), m["title"]], COL_GOOD)
+	missions_changed.emit()
+	return ""
+
+
+func share_decline(m: Dictionary) -> void:
+	shares = shares.filter(func(sh): return not is_same(sh["m"], m))
+	missions_changed.emit()
+
+
+## The other holder's part when a contract of both is handed in: their pay, their standing, their numbers.
+func _turn_in_too(m: Dictionary) -> void:
+	missions.erase(m)
+	var pay := int(round(Missions.payout(m) * (1.0 + skill_bonus("negotiation"))))
+	add_credits(pay)
+	stats["missions_done"] = int(stats.get("missions_done", 0)) + 1
+	skill_xp("negotiation", 12.0)
+	log_msg("Contract complete with %s: %s  (+%s)" % [other_name(), m["title"], GameData.fmt_credits(pay)], COL_GOOD)
+	rep.on_contract(m)
+
+
+func _fail_one(m: Dictionary, why: String, rep_loss: float) -> void:
+	missions.erase(m)
+	log_msg("Contract failed: %s, %s" % [m["title"], why], COL_BAD)
+	if has_perk("fine_print"):
+		rep_loss *= 0.5                          # package 30
+	rep.change(String(m.get("faction", "")), -rep_loss, "contract failed")
+
+
 func abandon_mission(m: Dictionary) -> void:
 	missions.erase(m)
+	shares = shares.filter(func(sh): return not is_same(sh["m"], m))
+	if shared_with_other(m):                             # (the other player keeps it: it goes on for them, with what belongs to it)
+		m.erase("shared")
+		log_msg("You are out of the contract you held with %s: %s" % [other_name(), m["title"]], COL_WARN)
+		missions_changed.emit()
+		return
 	if m.get("site") is Dictionary and (m["site"] as Dictionary).has("city"):
 		var cid := String(m["site"]["city"])                # review 7 K3: the city's lift no longer goes to the job's dark tunnel
 		if maint_sites.has(cid) and String((maint_sites[cid] as Dictionary).get("id", "")) == String(m["site"].get("id", "")):
@@ -2125,13 +2320,16 @@ func turn_in_mission(m: Dictionary, station_id: String) -> String:
 	log_msg("Contract complete: %s  (+%s)" % [m["title"], GameData.fmt_credits(pay)], COL_GOOD)
 	Audio.play("mission_complete", "contract complete")   # package 28a
 	rep.on_contract(m)
+	if shared_with_other(m):                             # held by both: handed in for both, each is paid and thanked
+		with_seat(1 - acting, _turn_in_too.bind(m))
+		credits_changed.emit(credits)
 	missions_changed.emit()
 	return ""
 
 
 ## The pilot destroyed a hunted captain or an intercepted smuggler (package 17).
 func notify_target(captain_id: String, smuggler_mission: String) -> void:
-	for m in missions:
+	for m in _held():
 		if int(m["progress"]) >= 1:
 			continue
 		if (m["type"] == "hunt" and captain_id != "" and String(m["captain"]) == captain_id) or (m["type"] == "smuggler" and smuggler_mission != "" and String(m["id"]) == smuggler_mission):
@@ -2142,18 +2340,20 @@ func notify_target(captain_id: String, smuggler_mission: String) -> void:
 
 ## A faction contract failed (convoy lost, smuggler escaped, target died elsewhere …).
 func fail_mission(m: Dictionary, why: String, rep_loss: float = 2.0) -> void:
-	if not m in missions:
+	var mine := _same_in(missions, m)
+	var theirs := shared_with_other(m)
+	if not mine and not theirs:
 		return
-	missions.erase(m)
-	log_msg("Contract failed: %s, %s" % [m["title"], why], COL_BAD)
-	if has_perk("fine_print"):
-		rep_loss *= 0.5                          # package 30
-	rep.change(String(m.get("faction", "")), -rep_loss, "contract failed")
+	shares = shares.filter(func(sh): return not is_same(sh["m"], m))
+	if mine:
+		_fail_one(m, why, rep_loss)
+	if theirs:                                           # (a contract of both, or the other player's own: it failed for them)
+		with_seat(1 - acting, _fail_one.bind(m, why, rep_loss))
 	missions_changed.emit()
 
 
 func _on_convoy_done(c: Dictionary, delivered: bool) -> void:
-	for m in missions.duplicate():
+	for m in _held():
 		if m["type"] != "escort" or int(m.get("convoy", -1)) != int(c["id"]):
 			continue
 		if not delivered:
@@ -2169,7 +2369,7 @@ func _on_convoy_done(c: Dictionary, delivered: bool) -> void:
 
 ## Faction contracts that run over time (package 17): escort presence, smuggler deadline, hunt target.
 func _update_faction_jobs(delta: float) -> void:
-	for m in missions.duplicate():
+	for m in _held():
 		match String(m["type"]):
 			"escort":
 				if int(m["progress"]) >= 1:
@@ -2246,7 +2446,7 @@ func _find_relic(system_id: int) -> void:
 	var f := active()
 	if f == null:
 		return
-	var jobs: Array = missions.filter(func(m): return m.get("relic", false) and int(m["target_system"]) == system_id and int(m["progress"]) < 1)
+	var jobs: Array = _held().filter(func(m): return m.get("relic", false) and int(m["target_system"]) == system_id and int(m["progress"]) < 1)
 	if jobs.is_empty() and randf() >= curia.RELIC_FIND:
 		return
 	if f.cargo_free() < GameData.item_volume("earth_relic"):
@@ -2264,7 +2464,7 @@ func _find_relic(system_id: int) -> void:
 func notify_drone_kill(system_id: int) -> void:
 	if Universe.controller(system_id) != "assembly":
 		return
-	for m in missions:
+	for m in _held():
 		if m["type"] == "drone_trial" and int(m["progress"]) < int(m["amount"]):
 			m["progress"] = int(m["progress"]) + 1
 			if int(m["progress"]) >= int(m["amount"]):
@@ -2286,7 +2486,7 @@ func notify(event: String, system_id: int) -> void:
 			_find_relic(system_id)                   # package 39b
 			research_data += 1                        # package 39c: data for the Research Exchange
 	var changed := false
-	for m in missions:
+	for m in _held():
 		if (event == "kill" and m["type"] == "bounty") or (event == "analyse" and m["type"] == "survey"):
 			if int(m["target_system"]) == system_id and int(m["progress"]) < int(m["amount"]):
 				m["progress"] = int(m["progress"]) + 1
@@ -2482,7 +2682,7 @@ func pois_for(system_id: int, body: Dictionary) -> Array:
 	var ss: Dictionary = story.flags.get("w58_relay_site", {}) if story != null else {}
 	if not ss.is_empty() and int(ss.get("system", -1)) == system_id and String(ss.get("body", "")) == String(body.get("id", "")):
 		out.append(ss)                                   # package 58, part 7: the pirates' relay station
-	for mm in missions:                                  # package 53c: the sites of your jobs on foot
+	for mm in _held():                                   # package 53c: the sites of your jobs on foot (either player's)
 		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and not (mm["site"] as Dictionary).has("city"):     # (a city's: below it)
 			var ms: Dictionary = mm["site"]
 			if int(ms["system"]) == system_id and String(ms["body"]) == String(body.get("id", "")) and not poi_used.has(String(ms["id"])):
@@ -2542,7 +2742,7 @@ func corp_poi(system_id: int, city: Dictionary) -> Dictionary:
 
 ## 0.7.53.19: the corporate tower of a city when a job on foot goes there – that job's site, else {}.
 func corp_site_for(city_id: String) -> Dictionary:
-	for mm in missions:
+	for mm in _held():
 		var st: Dictionary = mm.get("site", {})
 		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and String(st.get("theme", "")) == "corp" and String(st.get("city", "")) == city_id:
 			return st
@@ -2569,7 +2769,7 @@ var maint_sites := {}
 func maint_site_for(city_id: String) -> Dictionary:
 	if maint_sites.has(city_id):
 		return maint_sites[city_id]
-	for mm in missions:
+	for mm in _held():
 		if String(mm.get("type", "")) == "ground" and String(mm["goal"]) == "reactivate" and int(mm["progress"]) < 1 and String(mm["site"].get("city", "")) == city_id:
 			return mm["site"]
 	return {}
@@ -2577,7 +2777,7 @@ func maint_site_for(city_id: String) -> Dictionary:
 
 ## 0.7.53.17 (Luz): the sewers under a city when a heist goes for its dealer's safe – that job's site, else {}.
 func sewer_site_for(city_id: String) -> Dictionary:
-	for mm in missions:
+	for mm in _held():
 		var st: Dictionary = mm.get("site", {})
 		if String(mm.get("type", "")) == "ground" and int(mm["progress"]) < 1 and String(st.get("theme", "")) == "sewer" and String(st.get("city", "")) == city_id:
 			return st
@@ -2605,10 +2805,12 @@ func underdeck_site(city: Dictionary) -> Dictionary:
 ## Package 53c: a job on foot's goal reached at its site (or failed there). ok, a pay factor (heist with an alarm,
 ## spying unseen).
 func ground_goal(site: Dictionary, ok: bool, pay_mult: float = 1.0, note: String = "") -> void:
-	for mm in missions:
+	for mm in _held():
 		if String(mm.get("type", "")) == "ground" and String(mm["site"]["id"]) == String(site.get("id", "")) and int(mm["progress"]) < 1:
 			if not ok:
 				missions.erase(mm)
+				missions2.erase(mm)                          # (whoever of you held it)
+				shares = shares.filter(func(sh): return not is_same(sh["m"], mm))
 				log_msg("Contract failed: %s%s" % [mm["title"], (" – " + note) if note != "" else ""], COL_WARN)
 			else:
 				mm["progress"] = 1

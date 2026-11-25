@@ -12,10 +12,12 @@ const SV = preload("res://data/survivor.gd")                 # package 62a, part
 const SU = preload("res://scripts/ground/survivor_ui.gd")
 const CG = preload("res://scripts/ground/colosseum_gen.gd")
 const NEON := [Color(1.0, 0.36, 0.66), Color(0.3, 0.9, 1.0), Color(1.0, 0.82, 0.25), Color(0.72, 0.5, 1.0)]
+const SplitSetup = preload("res://scripts/ground/split_setup.gd")
 
 
 class Play extends Control:
 	signal finished(won: bool)
+	signal wants_setup                                # "Split screen" picked with nobody beside you yet: the second player's device and pilot first
 	var sel := 0
 	var msg := "How do you want to play?"
 	var _t := 0.0
@@ -39,6 +41,10 @@ class Play extends Control:
 	## You pick a way to play (0 … 3). The ones that are not open yet only say so.
 	func pick(i: int) -> void:
 		sel = clampi(i, 0, CD.PLAY.size() - 1)
+		if String(CD.PLAY[sel][0]) == "split" and not (Players.split and GameState.has_pilot2()):
+			Audio.play("ui_open", "colosseum: split screen, the second player")
+			wants_setup.emit()                              # (Luz: from single player a split screen for the Colosseum alone)
+			return
 		var e: String = Commands.execute({"type": "col_play", "seat": 0, "play": String(CD.PLAY[sel][0])})
 		if e != "":
 			msg = e
@@ -116,6 +122,14 @@ class Play extends Control:
 				draw_line(Vector2(c.x, c.y - 66.0), Vector2(c.x, c.y + 50.0), fc, 4.0)
 			draw_string(font, Vector2(r.position.x, r.position.y + 236.0), String(p[1]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 30, Color(1, 1, 1) if open else Color(0.5, 0.52, 0.6))
 			draw_string(font, Vector2(r.position.x, r.position.y + 272.0), String(p[2]), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 17, Color(0.8, 0.85, 0.95) if open else Color(0.4, 0.42, 0.5))
+			var with_two: bool = Players.split and GameState.has_pilot2()
+			var note := ""
+			if String(p[0]) == "split":                         # (Luz, 25 Nov 2026: who plays is chosen here)
+				note = ("You and %s, side by side." % String(GameState.pilot_of(1).get("name", "Player 2"))) if with_two else "A second player joins you, for the Colosseum only."
+			elif String(p[0]) == "single" and with_two:
+				note = "You alone: %s sits this one out." % String(GameState.pilot_of(1).get("name", "Player 2"))
+			if note != "" and open:
+				draw_string(font, Vector2(r.position.x + 16.0, r.position.y + 304.0), note, HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 32.0, 14, Color(1.0, 0.85, 0.4))
 			if not open:                                        # the band across it
 				draw_set_transform(r.get_center(), -0.16, Vector2.ONE)
 				draw_rect(Rect2(-r.size.x * 0.62, -24.0, r.size.x * 1.24, 48.0), Color(1.0, 0.82, 0.25, 0.94))
@@ -147,7 +161,7 @@ class Prep extends Control:
 		return true
 
 	func two() -> bool:
-		return Players.split and GameState.has_pilot2()
+		return GameState.col_two()
 
 	func fit_key() -> String:
 		return "fit2" if seat == 1 and two() else "fit"
@@ -740,7 +754,7 @@ class SvPrep extends Control:
 		return true
 
 	func two() -> bool:
-		return Players.split and GameState.has_pilot2()
+		return GameState.col_two()
 
 	func seat_rect(i: int) -> Rect2:
 		return Rect2(get_viewport_rect().size.x - 810.0 + 250.0 + i * 180.0, 140.0, 170.0, 28.0)

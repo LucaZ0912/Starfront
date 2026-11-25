@@ -14,6 +14,8 @@ const KBM := "kbm"
 
 var split := false                  # a split screen game is running (a matter of the session, not of the save)
 var devices: Array = [KBM, ""]      # the device of each player ("" none)
+var test_pads: Array = []           # tests: controllers (ids) that count as connected
+var guest := false                  # this split screen was asked for at the Colosseum's counter: it ends when you walk out of the Colosseum
 var act_seat := 0                   # whose device the menus and windows listen to (0; 1 while the second player has a window of their own up)
 var sim := {}                       # the smoke test presses for a player: "<player>:<action>" -> true, "<player>:move" -> Vector2
 var _now := [{}, {}]                # action -> held this frame, per player
@@ -36,6 +38,9 @@ func device_list() -> Array:
 	for id in Input.get_connected_joypads():
 		out.append({"id": "pad:%d" % id, "name": "Controller %d  (%s)" % [n, Input.get_joy_name(id)]})
 		n += 1
+	for id2 in test_pads:
+		out.append({"id": "pad:%d" % int(id2), "name": "Controller %d  (test)" % n})
+		n += 1
 	return out
 
 
@@ -52,7 +57,7 @@ func device_name(dev: String) -> String:
 func device_ok(dev: String) -> bool:
 	if dev == KBM:
 		return true
-	return dev.begins_with("pad:") and int(dev.trim_prefix("pad:")) in Input.get_connected_joypads()
+	return dev.begins_with("pad:") and (int(dev.trim_prefix("pad:")) in Input.get_connected_joypads() or int(dev.trim_prefix("pad:")) in test_pads)
 
 
 ## What stands in the way of a start with these two devices ("" nothing).
@@ -103,6 +108,7 @@ func stop_split() -> void:
 
 func _reset_state() -> void:
 	act_seat = 0
+	guest = false
 	_now = [{}, {}]
 	_was = [{}, {}]
 	sim = {}

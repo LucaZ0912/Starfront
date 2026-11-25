@@ -386,6 +386,9 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 	if map != null and _mm != null and map.has_meta("poi"):
 		map.set_meta("seen", poi_seen)                  # 0.7.53.3: the minimap of the level you leave stays
 	_split_close()                                        # (split screen: a new place starts as one picture)
+	if Players.guest and not col_house(String(p_level)):
+		Players.stop_split()                              # (a split screen asked for at the Colosseum's counter: outside you are on your own again)
+		GameState.log_msg("You have left the Colosseum: you are on your own again.", Color(0.6, 0.9, 1.0))
 	col_down = false
 	_side = {"col_lost": false, "col_down": false, "col_down_t": 0.0, "_revive": -1.0, "_tab_held": -1.0, "_team_held": -1.0, "_drone_held": [-1.0, -1.0],
 		"_wheel_stick": Vector2.ZERO, "_col_vel": Vector2.ZERO, "_socket": -1}
@@ -6262,10 +6265,38 @@ func _col_after_talk() -> void:
 		if e != "":
 			_say_toast(e, 4.0)
 			return
+	_col_play_open()
+
+
+## The way to play (Luz, 25 Nov 2026): alone, or the two of you in a split screen. On your own, "Split screen" asks
+## for the second player's device and pilot first and is a split screen for the Colosseum alone.
+func _col_play_open() -> void:
 	var pl = ColosseumUI.Play.new()
 	pl.setup({})
 	pl.finished.connect(func(ok: bool): _close_game(); _col_go(ok))
+	pl.wants_setup.connect(func():
+		var su = ColosseumUI.SplitSetup.new()
+		su.setup({})
+		su.finished.connect(func(ok2: bool):
+			_close_game()
+			if ok2:
+				_col_go(true)
+			else:
+				_col_play_open())
+		_open_game(su))
 	_open_game(pl)
+
+
+## Is this place inside the Colosseum's house (its hall, the stands, the arena, the hologram, Survivor)? The square
+## before it ("zcol") is outside.
+func col_house(lv: String) -> bool:
+	return lv in ["zcolin", "zcolst", "zcolar", "zcolvr", "zcolsv"]
+
+
+## Are you in one of the Colosseum's games (the arena, a match in the hologram, Survivor)? In there the pilot's
+## window and the ship's menu stay shut and the tracked mission is not shown (Luz, 25 Nov 2026).
+func in_colosseum() -> bool:
+	return String(level) in ["zcolar", "zcolvr", "zcolsv"]
 
 
 ## The way to play is picked: the first time the fighters' area opens in its scene; then you walk through the gate.
@@ -6471,7 +6502,7 @@ func _col_intro_step(delta: float) -> void:
 						ml["suit"] = "suit_mil_light"
 						ml["helmet"] = false
 						vmates.append({"name": String(tm["name"]).to_upper(), "tex": ChibiArt.frame(ml, 0, 0)})
-				if Players.split and GameState.has_pilot2():     # split screen: the second player stands beside you in the picture
+				if GameState.col_two():                          # split screen: the second player stands beside you in the picture
 					var l2: Dictionary = (GameState.pilot2.get("look", {}) as Dictionary).duplicate()
 					l2["suit"] = String(cst["fit2"]["suit"]).get_slice(":", 0)
 					l2["helmet"] = false
@@ -6785,6 +6816,8 @@ func p2_may_act() -> bool:
 
 ## Is the second player with you in this place? (Survivor has its own second figure in one picture.)
 func wants_two() -> bool:
+	if String(level) == "zcolvr" and not GameState.col_two():
+		return false                                      # (a match one of you plays alone: "Singleplayer" picked at the counter)
 	return Players.split and GameState.has_pilot2() and String(level) != "zcolsv" and pilot != null and map != null
 
 

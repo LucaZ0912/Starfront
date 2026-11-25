@@ -768,6 +768,8 @@ func _process(delta: float) -> void:
 				await _test_split11(main.view)          # split screen: the dangers of a place for both pilots
 				await _test_split12(main.view)          # split screen: a window in its player's half, the other plays on
 				await _test_split13(main.view)          # split screen: the second player's own ship menu and galaxy map
+				await _test_split14(main.view)          # split screen: contracts, standing, collection and numbers per player
+				await _test_split15(main.view)          # split screen: chosen at the Colosseum's counter; no windows in its games
 				_shooting = false
 				timer = 0.0
 				return
@@ -2873,6 +2875,7 @@ func _test_faction_jobs(view: SystemView) -> void:
 			ms2 = Missions.generate_faction(sys, st, rng)
 		ms2["target_system"] = (sys + 1) % Universe.systems.size()
 		GameState.accept_mission(ms2)
+		GameState.play_time = maxf(GameState.play_time, 5.0)      # (run alone, the clock stands at half a second: a deadline a second ago would be below zero, which means "none")
 		ms2["expires"] = GameState.play_time - 1.0
 		GameState._update_faction_jobs(0.1)
 		check(not ms2 in GameState.missions, "intercept fails when the smuggler gets through")
@@ -18202,7 +18205,7 @@ func _test_colprep62a(_view: SystemView) -> void:
 		and (CD.options("grenades") as Array).size() == 4 and (CD.options("suit") as Array).size() == 30 \
 		and foes.size() == 3 and foes.filter(func(f): return bool(f["strong"])).size() == 1 and int(foes[0]["who"]) != int(foes[1]["who"]) and int(foes[1]["who"]) != int(foes[2]["who"]) and int(foes[0]["who"]) != int(foes[2]["who"]) \
 		and int(CD.reward(9)["coins"]) > int(CD.reward(1)["coins"]) and int(CD.reward(9)["points"]) > int(CD.reward(1)["points"]) \
-		and (CD.PLAY as Array).filter(func(p): return bool(p[3])).size() == 1 and (CD.PLAY as Array).size() == 4 and (CD.MODES as Array).filter(func(m): return bool(m["open"])).size() == 3 \
+		and (CD.PLAY as Array).filter(func(p): return bool(p[3])).size() == 2 and (CD.PLAY as Array).size() == 4 and (CD.MODES as Array).filter(func(m): return bool(m["open"])).size() == 3 \
 		and float(CD.totals(e_ok["fit"])["shield"]) > float(CD.totals(f0)["shield"]) and CD.piece_name("gr_frag").begins_with("2") \
 		and SD.DIALOGUES.has("col_marshal") and SD.DIALOGUES.has("col_marshal_back") and String(SD.CHARACTERS["marshal"]["name"]) == "Cass Ardent" \
 		and String(SD.DIALOGUES["col_marshal"]["lines"][0]["answers"][0][0]) == "Register" and String(SD.DIALOGUES["col_marshal"]["lines"][0]["answers"][0][2][0]) == "col_go"
@@ -18472,7 +18475,7 @@ func _test_colprep62a(_view: SystemView) -> void:
 			if not again_ok:
 				print("COLPREP62A again: talk ", back_talk, " play ", play2, " at once ", at_once, " room ", room2, " level ", g.level)
 	check(data_ok and arena_ok and talk_ok and walk_ok and prep_ok and in_ok and again_ok,
-		"62a, part 3: the way into the arena: gear from gear points (costs by piece and quality, a budget, a fit within it), the talk with Cass Ardent the Marshal of the Lists (\"Register\"), the way to play (singleplayer; three more under COMING SOON), the fighters' area opens, you walk through the gate by yourself, the fighters' room (a fit through the command bus, over the budget refused, the mode, READY), the countdown that can be called off, the white, the arena of white tiles and the way back out; the second time \"Compete\" and no scene  [%s %s %s %s %s %s %s]" % [data_ok, arena_ok, talk_ok, walk_ok, prep_ok, in_ok, again_ok])
+		"62a, part 3: the way into the arena: gear from gear points (costs by piece and quality, a budget, a fit within it), the talk with Cass Ardent the Marshal of the Lists (\"Register\"), the way to play (singleplayer and split screen; two more under COMING SOON), the fighters' area opens, you walk through the gate by yourself, the fighters' room (a fit through the command bus, over the budget refused, the mode, READY), the countdown that can be called off, the white, the arena of white tiles and the way back out; the second time \"Compete\" and no scene  [%s %s %s %s %s %s %s]" % [data_ok, arena_ok, talk_ok, walk_ok, prep_ok, in_ok, again_ok])
 	if main.story_ui.dialogue != null:
 		main.story_ui._close_dialogue()
 	if main.ground != null and is_instance_valid(main.ground):
@@ -29967,6 +29970,7 @@ func _test_split1(_view: SystemView) -> void:
 		look["color1"] = 5
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		g.ctr_stop = 2
 		g.go_level("zcolin", "from_reg")
 		for f0 in 8:
@@ -30266,6 +30270,7 @@ func _test_split2(_view: SystemView) -> void:
 		look["color1"] = 5
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		g.ctr_stop = 2
 		g.go_level("zcolin", "from_reg")
 		for f0 in 8:
@@ -30511,6 +30516,7 @@ func _test_split3(_view: SystemView) -> void:
 		look["hair"] = 9
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		g.ctr_stop = 2
 		g.go_level("zcolin", "from_reg")
 		for f0 in 8:
@@ -30782,6 +30788,7 @@ func _test_split4(_view: SystemView) -> void:
 		look["hair"] = 9
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		g.ctr_stop = 2
 		g.go_level("zcolin", "from_reg")
 		for f0 in 8:
@@ -31098,6 +31105,7 @@ func _test_split5(_view: SystemView) -> void:
 		var look: Dictionary = GameState.PilotArt.default_look()
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		g.ctr_stop = 2
 		g.go_level("zcolin", "from_reg")
 		for f0 in 8:
@@ -31300,6 +31308,7 @@ func _test_split6(_view: SystemView) -> void:
 		var shut: bool = _find_button(lb0, "Player 2") != null and _find_button(lb0, "Player 2").disabled
 		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		var lb = Lobby.new()
 		lb.setup("billiards", {"id": "test_bar"}, [], [])
 		g._open_game(lb)
@@ -31496,6 +31505,7 @@ func _test_split7(_view: SystemView) -> void:
 		b0.free()
 		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		var purse_ok: bool = GameState.coins_of(1) == 0 and GameState.credits_of(1) == GameState.START_CREDITS and GameState.coins_of(0) == GameState.coins
 		GameState.coins = 300
 		Commands.execute({"type": "debug_casino", "coins2": 200})          # (their own purse: the debug menu's button)
@@ -31697,6 +31707,7 @@ func _test_split8(_view: SystemView) -> void:
 		look["hair"] = 9
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		for f1 in 8:
 			await get_tree().process_frame
 		var vs: Vector2 = get_viewport().get_visible_rect().size
@@ -31849,6 +31860,7 @@ func _test_split9(_view: SystemView) -> void:
 		GameState.pilot2["credits"] = 4321
 		GameState.pilot2["coins"] = 77
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		for f1 in 8:
 			await get_tree().process_frame
 		# ---- who the pilot is: the second player steps into the place and out again; the save is the right way round
@@ -32461,6 +32473,7 @@ func _test_split12(_view: SystemView) -> void:
 		look["color1"] = 5
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		var ts := Time.get_ticks_msec()
 		while Time.get_ticks_msec() - ts < 10000 and not (g.split_open() and main.halves_on()):
 			await get_tree().process_frame
@@ -32764,6 +32777,7 @@ func _test_split13(_view: SystemView) -> void:
 		look["hair"] = 9
 		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
 		var ts := Time.get_ticks_msec()
 		while Time.get_ticks_msec() - ts < 10000 and not (g.split_open() and main.halves_on()):
 			await get_tree().process_frame
@@ -32904,6 +32918,545 @@ func _test_split13(_view: SystemView) -> void:
 	if main.pause_menu.visible:
 		main.pause_menu.close()
 	for wz in [main.pilot_window, main.ship_menu, main.galaxy, main.pilot_window2, main.ship_menu2, main.galaxy2]:
+		if wz != null:
+			wz.close()
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen (Luz, 25 Nov 2026): each player has their own contracts, their own standing with the factions,
+## their own collection and their own career's numbers; the story and the codex are for both. A contract can be
+## offered to the other player in the journal's Transactions and taken there: then it is one contract held by both,
+## what happens counts for both, and handed in it pays each of them.
+func _test_split14(_view: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT14_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid0 := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid0)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var rep_ok := false
+	var own_ok := false
+	var share_ok := false
+	var pay_ok := false
+	var fail_ok := false
+	var coll_ok := false
+	var save_ok := false
+	var texts := func(root: Node) -> String:
+		var out := ""
+		for lb in root.find_children("*", "Label", true, false):
+			out += String((lb as Label).text) + "\n"
+		for bt in root.find_children("*", "Button", true, false):
+			out += String((bt as Button).text) + "\n"
+		return out
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		var look: Dictionary = GameState.PilotArt.default_look()
+		look["hair"] = 9
+		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		GameState.col_state()["play"] = "split"              # (the way to play picked at the counter: the two of you)
+		var ts := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts < 10000 and not (g.split_open() and main.halves_on()):
+			await get_tree().process_frame
+		for f0 in 6:
+			await get_tree().process_frame
+		GameState.missions.clear()
+		var sid: int = GameState.current_system
+		var here := String(GameState.active().docked_at)
+		var mk := func(tag: String) -> Dictionary:
+			return {"id": "t_" + tag, "type": "bounty", "title": "Test bounty " + tag, "desc": "Two pirates in this system.", "reward": 1000, "giver": here, "giver_system": sid,
+				"client": "Test", "progress": 0, "item": "", "amount": 2, "target_system": sid, "target_station": "", "faction": "assembly", "against": ""}
+		var first := GameState.pilot_name.get_slice(" ", 0)
+		# ---- standing: theirs moves, yours does not; their record is their own
+		var r1: float = float(GameState.rep.values.get("assembly", 0.0))
+		var r2: float = float(GameState.rep2.values.get("assembly", 0.0))
+		GameState.with_seat(1, func(): GameState.rep.change("assembly", 12.0, "test"))
+		rep_ok = is_equal_approx(float(GameState.rep.values.get("assembly", 0.0)), r1) and float(GameState.rep2.values.get("assembly", 0.0)) > r2 + 11.0 and GameState.rep != GameState.rep2 \
+			and GameState.law != GameState.law2 and GameState.acting == 0
+		if not rep_ok:
+			print("SPLIT14 standing: mine ", [r1, GameState.rep.values.get("assembly")], " theirs ", [r2, GameState.rep2.values.get("assembly")])
+		# ---- a contract of their own: in their list, not in yours; what happens out there counts for it; your numbers are yours
+		var mb: Dictionary = mk.call("b")
+		var e_acc := String(GameState.with_seat(1, GameState.accept_mission.bind(mb)))
+		var k2: float = float(GameState.stats2.get("kills", 0))
+		GameState.notify("kill", sid)
+		own_ok = e_acc == "" and GameState._same_in(GameState.missions2, mb) and not GameState._same_in(GameState.missions, mb) and GameState.contract_count() == 0 \
+			and int(GameState.with_seat(1, GameState.contract_count)) == 1 and int(mb["progress"]) == 1 and is_equal_approx(float(GameState.stats2.get("kills", 0)), k2) \
+			and not GameState.shared_with_other(mb) == false
+		if not own_ok:
+			print("SPLIT14 own: accept '", e_acc, "' theirs ", GameState.missions2.size(), " mine ", GameState.missions.size(), " progress ", mb["progress"], " kills2 ", [k2, GameState.stats2.get("kills", 0)])
+		# ---- they offer it; you see it in your journal's Transactions and take it there: one contract, held by both
+		var e_sh := String(GameState.with_seat(1, Commands.execute.bind({"type": "mission_share", "id": "t_b"})))
+		var offered: bool = e_sh == "" and (GameState.shares_for(0) as Array).size() == 1 and is_same(GameState.shares_for(0)[0], mb) and (GameState.shares_for(1) as Array).is_empty() \
+			and not GameState._same_in(GameState.missions, mb)
+		var pw = main.pilot_window
+		pw.jsub = "transactions"
+		main.open_journal()
+		for f1 in 6:
+			await get_tree().process_frame
+		var seen: bool = pw.visible and String(texts.call(pw)).contains("OFFERED BY MIRA") and String(texts.call(pw)).contains("Test bounty b")
+		var take: Button = _find_button(pw, "Take it")
+		var had_take: bool = take != null
+		if shots:
+			main.open_journal(1)
+			main.pilot_window2.jsub = "transactions"
+			main.pilot_window2.rebuild()
+			for f1b in 12:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split14_offer.png")
+		if take != null:
+			take.pressed.emit()
+		for f2 in 4:
+			await get_tree().process_frame
+		var both: bool = GameState._same_in(GameState.missions, mb) and GameState._same_in(GameState.missions2, mb) and GameState.shared_with_other(mb) and (GameState.shares_for(0) as Array).is_empty() \
+			and String(texts.call(pw)).contains("held with Mira") and not String(texts.call(pw)).contains("OFFERED BY")
+		if main.pilot_window2 == null or not main.pilot_window2.visible:
+			main.open_journal(1)
+		var pw2 = main.pilot_window2
+		pw2.jsub = "transactions"
+		pw2.rebuild()
+		for f3 in 6:
+			await get_tree().process_frame
+		var theirs_txt: String = String(texts.call(pw2))
+		share_ok = offered and seen and had_take and both and theirs_txt.contains("held with %s" % first) and theirs_txt.contains("Test bounty b") and GameState.acting == 0
+		if shots:
+			for f3b in 10:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split14_both.png")
+		if not share_ok:
+			print("SPLIT14 share: offered ", offered, " '", e_sh, "' seen ", seen, " take ", had_take, " both ", both, " theirs ", [theirs_txt.contains("held with %s" % first), theirs_txt.contains("Test bounty b")])
+		# ---- what happens counts for both; handed in once, it pays each of you, and thanks each of you
+		GameState.notify("kill", sid)
+		var c1: int = GameState.credits
+		var c2: int = GameState.credits_of(1)
+		var d1: int = int(GameState.stats.get("missions_done", 0))
+		var d2: int = int(GameState.stats2.get("missions_done", 0))
+		var s1: float = float(GameState.rep.values.get("assembly", 0.0))
+		var s2: float = float(GameState.rep2.values.get("assembly", 0.0))
+		var e_in := String(GameState.turn_in_mission(mb, here))
+		pay_ok = int(mb["progress"]) == 2 and e_in == "" and GameState.credits >= c1 + 1000 and GameState.credits_of(1) >= c2 + 1000 and GameState.missions.is_empty() and GameState.missions2.is_empty() \
+			and int(GameState.stats.get("missions_done", 0)) == d1 + 1 and int(GameState.stats2.get("missions_done", 0)) == d2 + 1 \
+			and float(GameState.rep.values.get("assembly", 0.0)) > s1 and float(GameState.rep2.values.get("assembly", 0.0)) > s2 and GameState.acting == 0
+		if not pay_ok:
+			print("SPLIT14 pay: '", e_in, "' progress ", mb["progress"], " credits ", [c1, GameState.credits, c2, GameState.credits_of(1)], " lists ", [GameState.missions.size(), GameState.missions2.size()],
+				" done ", [d1, GameState.stats.get("missions_done"), d2, GameState.stats2.get("missions_done")], " standing ", [s1, GameState.rep.values.get("assembly"), s2, GameState.rep2.values.get("assembly")])
+		# ---- a contract of theirs that fails costs them standing, not you
+		var mc: Dictionary = mk.call("c")
+		GameState.with_seat(1, GameState.accept_mission.bind(mc))
+		var f1s: float = float(GameState.rep.values.get("assembly", 0.0))
+		var f2s: float = float(GameState.rep2.values.get("assembly", 0.0))
+		GameState.fail_mission(mc, "a test")
+		fail_ok = GameState.missions2.is_empty() and float(GameState.rep2.values.get("assembly", 0.0)) < f2s and is_equal_approx(float(GameState.rep.values.get("assembly", 0.0)), f1s)
+		if not fail_ok:
+			print("SPLIT14 fail: theirs ", GameState.missions2.size(), " standing ", [f1s, GameState.rep.values.get("assembly"), f2s, GameState.rep2.values.get("assembly")])
+		# ---- the collection: a star you come to together is seen by both; a deed is theirs who did it; the codex is one
+		var star := ""
+		for stt in Universe.STAR_TYPES:
+			if star == "" and not String(stt["id"]) in (GameState.collection.get("stars", []) as Array) and not String(stt["id"]) in (GameState.collection2.get("stars", []) as Array):
+				star = String(stt["id"])
+		GameState.collect_star(star)
+		GameState.with_seat(1, func(): (GameState.collection["special"] as Array).append("test:deed"))
+		var w2: float = float(GameState.stats2.get("warps", 0))
+		GameState.count_stat("warps")
+		coll_ok = star != "" and star in (GameState.collection["stars"] as Array) and star in (GameState.collection2["stars"] as Array) and "test:deed" in (GameState.collection2["special"] as Array) \
+			and not "test:deed" in (GameState.collection["special"] as Array) and is_equal_approx(float(GameState.stats2.get("warps", 0)), w2) and GameState.codex == GameState.with_seat(1, func(): return GameState.codex) \
+			and GameState.story == GameState.with_seat(1, func(): return GameState.story)
+		if not coll_ok:
+			print("SPLIT14 collection: star '", star, "' mine ", GameState.collection["stars"], " theirs ", GameState.collection2["stars"], " special ", [GameState.collection["special"], GameState.collection2["special"]])
+		# ---- all of it comes back out of a save: a contract of both is one contract again, an offer is still on the table
+		for wz in [main.pilot_window, main.pilot_window2]:
+			if wz != null:
+				wz.close()
+		var md: Dictionary = mk.call("d")
+		var me: Dictionary = mk.call("e")
+		GameState.accept_mission(md)
+		GameState.share_mission(md)
+		GameState.with_seat(1, GameState.share_accept.bind(md))
+		GameState.accept_mission(me)
+		GameState.share_mission(me)
+		var rv2: float = float(GameState.rep2.values.get("assembly", 0.0))
+		var dd: Dictionary = GameState.to_dict()
+		GameState.from_dict(dd)
+		var one := false
+		for ma in GameState.missions:
+			for mz in GameState.missions2:
+				if String(ma["id"]) == "t_d" and is_same(ma, mz):
+					one = true
+		save_ok = one and GameState.missions.size() == 2 and GameState.missions2.size() == 1 and (GameState.shares_for(1) as Array).size() == 1 and String(GameState.shares_for(1)[0]["id"]) == "t_e" \
+			and is_equal_approx(float(GameState.rep2.values.get("assembly", 0.0)), rv2) and star in (GameState.collection2["stars"] as Array) and "test:deed" in (GameState.collection2["special"] as Array) \
+			and int(GameState.stats2.get("missions_done", 0)) == d2 + 1 and GameState.acting == 0
+		if not save_ok:
+			print("SPLIT14 save: one ", one, " lists ", [GameState.missions.size(), GameState.missions2.size()], " offers ", (GameState.shares_for(1) as Array).size(), " standing ", [rv2, GameState.rep2.values.get("assembly")],
+				" collection ", GameState.collection2, " done ", GameState.stats2.get("missions_done"))
+	check(rep_ok, "split14: each player has their own standing with the factions and their own record: what the second player does moves theirs and not yours")
+	check(own_ok, "split14: a contract the second player takes is theirs alone (their list, their count), what happens out there counts for it while you travel together, and your career's numbers are not theirs")
+	check(share_ok, "split14: they offer it in their journal's Transactions; yours shows it as offered and you take it there: one contract held by both, and each journal says with whom")
+	check(pay_ok, "split14: what happens counts for the contract of both; handed in once it is gone for both, pays each of you in full and counts for each one's standing and numbers")
+	check(fail_ok, "split14: a contract of the second player's own that fails costs them standing, not you")
+	check(coll_ok, "split14: a star you come to together goes into both collections, a deed into theirs who did it, your numbers stay yours; the codex and the story are one for both")
+	check(save_ok, "split14: their contracts, standing, collection and numbers come back out of a save; a contract of both is one contract again and an offer is still on the table")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	for wz2 in [main.pilot_window, main.ship_menu, main.galaxy, main.pilot_window2, main.ship_menu2, main.galaxy2]:
+		if wz2 != null:
+			wz2.close()
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen at the Colosseum's counter (Luz, 25 Nov 2026): "Split screen" is a way to play you can pick. On your
+## own it asks for the second player's device and pilot and is a split screen for the Colosseum alone; in a split
+## screen only that choice lets both of you play. In the Colosseum's games the pilot's window and the ship's menu
+## stay shut and the tracked mission is not shown; Survivor's searchlights and hunters go for both of you.
+## SPLIT15_SHOTS=1 (in a window) saves pictures.
+func _test_split15(_view: SystemView) -> void:
+	var CD = load("res://data/colosseum.gd")
+	var SD = load("res://data/survivor.gd")
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT15_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	CD.force.clear()
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var menu_ok := false
+	var setup_ok := false
+	var two_ok := false
+	var light_ok := false
+	var lock_ok := false
+	var leave_ok := false
+	var single_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.col_registered = true
+		GameState.col = {}
+		GameState.pilot2 = {}
+		Players.test_pads = [97]
+		var calm15 := func():                                 # the sign-up's scene and the walk to the gate, cut off
+			g._col_scene = {}
+			g._col_walk = {}
+			g.story_cam = Vector2.INF
+			g._col_sheet(Color(0, 0, 0, 0))
+		var fake_track := false
+		if main.story_ui._tracker == null:                  # (no mission tracked in this game: a panel in its place to look at)
+			main.story_ui._tracker = PanelContainer.new()
+			main.story_ui.add_child(main.story_ui._tracker)
+			fake_track = true
+		g.ctr_stop = 2
+		g.go_level("zcolin", "from_reg")
+		for f0 in 8:
+			await get_tree().process_frame
+		# ---- on your own: "Split screen" is open and asks for the second player
+		var e_no := String(Commands.execute({"type": "col_play", "seat": 0, "play": "split"}))
+		g._col_play_open()
+		for f1 in 4:
+			await get_tree().process_frame
+		var play = g.minigame
+		var open3: bool = String(CD.PLAY[3][0]) == "split" and bool(CD.PLAY[3][3]) and play != null and play.has_method("is_col_play")
+		if shots:
+			for f1b in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split15_spielart.png")
+		if open3:
+			play.pick(3)
+		for f2 in 4:
+			await get_tree().process_frame
+		var su = g.minigame
+		var is_su: bool = su != null and su != play and su.has_method("is_split_setup")
+		if is_su:
+			su.dev = ["kbm", "pad:97"]                        # (whatever is plugged in at this machine: the test's own two devices)
+		var need_pilot: bool = is_su and String(su.dev[1]) == "pad:97" and String(su.error()) == "Player 2 needs a pilot."
+		menu_ok = e_no.contains("second player") and open3 and is_su and need_pilot and not Players.split
+		if not menu_ok:
+			print("SPLIT15 menu: refused '", e_no, "' open ", open3, " setup ", is_su, " needs a pilot ", need_pilot, " split ", Players.split)
+		# ---- back is the way to play again; a pilot made, and in you go: a split screen for the Colosseum
+		var back_play := false
+		var ready := false
+		if is_su:
+			su.back()
+			for f3 in 4:
+				await get_tree().process_frame
+			back_play = g.minigame != null and g.minigame != su and g.minigame.has_method("is_col_play") and not Players.split
+			if back_play:
+				g.minigame.pick(3)
+			for f4 in 4:
+				await get_tree().process_frame
+			su = g.minigame
+			if su != null and su.has_method("is_split_setup"):
+				var look: Dictionary = GameState.PilotArt.default_look()
+				look["hair"] = 9
+				look["color1"] = 5
+				su.dev = ["kbm", "pad:97"]
+				su.new_pilot = {"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()}
+				su._build()
+				for f5 in 4:
+					await get_tree().process_frame
+				ready = String(su.error()) == ""
+				if shots:
+					for f5b in 20:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split15_einrichten.png")
+					su.creating = true                             # (a look at the creator in this window)
+					su._build()
+					for f5c in 20:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split15_ersteller.png")
+					su.creating = false
+					su._build()
+					for f5d in 4:
+						await get_tree().process_frame
+				su.start()
+			for f6 in 6:
+				await get_tree().process_frame
+		var on_way: bool = g.minigame == null and (not (g._col_scene as Dictionary).is_empty() or not (g._col_walk as Dictionary).is_empty())
+		setup_ok = back_play and ready and Players.split and Players.guest and GameState.has_pilot2() and String(GameState.pilot_of(1).get("name", "")) == "Mira Voss" \
+			and GameState.col_two() and String(GameState.col_state()["play"]) == "split" and on_way
+		if not setup_ok:
+			print("SPLIT15 setup: back ", back_play, " ready ", ready, " split ", Players.split, " guest ", Players.guest, " pilot ", GameState.has_pilot2(), " two ", GameState.col_two(), " on the way ", on_way)
+		calm15.call()
+		g.input_enabled = true
+		g.go_level("zcolin", "from_reg")
+		for f6b in 4:
+			await get_tree().process_frame
+		var ts := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts < 8000 and not (g.split_open() and g.p2_walker() != null):
+			await get_tree().process_frame
+		var lobby_two: bool = g.split_open() and g.p2_walker() != null
+		if not lobby_two:
+			print("SPLIT15 lobby: open ", g.split_open(), " two ", g.two, " wants ", g.wants_two(), " scene ", g._two_scene(), " cam ", g.story_cam, " seen ", g.pilot.visible, " intro ", g._col_intro,
+				" down ", g._collapsed, " touch ", g._touch, " ride ", g._ride, " stair ", g._stair, " lift ", g._clift, " level ", g.level, " input ", g.input_enabled, " game ", g.minigame)
+		# the way to play, with the two of you there
+		g._col_play_open()
+		for f7 in 4:
+			await get_tree().process_frame
+		if shots and g.minigame != null:
+			for f7b in 20:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split15_spielart_zu_zweit.png")
+		g._close_game()
+		# the pilot's window is yours in the lobby
+		main.toggle_pilot_window()
+		for f8 in 4:
+			await get_tree().process_frame
+		var lobby_win: bool = main.pilot_window.visible
+		main.pilot_window.close()
+		main.story_ui._place_tracker()
+		var lobby_track: bool = main.story_ui._tracker != null and main.story_ui._tracker.visible
+		# ---- Survivor for two: both stand on the field
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f9 in 10:
+			await get_tree().process_frame
+		var sv = g.survivor
+		two_ok = lobby_two and String(g.level) == "zcolsv" and sv != null and sv.two != null and sv.two_up()
+		if not two_ok:
+			print("SPLIT15 two: lobby ", lobby_two, " level ", g.level, " survivor ", sv != null)
+		# ---- no windows in here, for neither of you, and no tracked mission
+		if sv != null:
+			main.toggle_pilot_window()
+			main.open_ship_menu()
+			main.open_journal()
+			for f10 in 4:
+				await get_tree().process_frame
+			var shut1: bool = not main.pilot_window.visible and not main.ship_menu.visible
+			var shut2: bool = main.col_locked(1) and (main.pilot_window2 == null or not main.pilot_window2.visible)
+			main.story_ui._place_tracker()
+			var no_track: bool = main.story_ui._tracker != null and not main.story_ui._tracker.visible
+			lock_ok = lobby_win and shut1 and shut2 and lobby_track and no_track and g.in_colosseum()
+			if not lock_ok:
+				print("SPLIT15 lock: lobby window ", lobby_win, " shut ", shut1, " theirs ", shut2, " tracker in the lobby ", lobby_track, " gone in the game ", no_track)
+		# ---- the searchlights: one hunts each of you, and the second player is marked in one; a hunter's line goes for either
+		if sv != null and sv.two_up():
+			sv.clear_swarm()
+			sv.two.pos = g.pilot.pos + Vector2(260.0, 0.0)
+			sv.event("searchlight")
+			var who_ok: bool = sv.lights.size() == 2 and int(sv.lights[0].get("who", -1)) == 0 and int(sv.lights[1].get("who", -1)) == 1
+			var mid: Vector2 = g.pilot.pos + Vector2(130.0, -150.0)
+			if who_ok:
+				sv.lights[0]["p"] = mid
+				sv.lights[1]["p"] = mid
+				sv.lights[0]["v"] = Vector2.ZERO
+				sv.lights[1]["v"] = Vector2.ZERO
+			var tl := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tl < 3500:
+				await get_tree().process_frame
+			var apart: bool = who_ok and sv.lights.size() == 2 and (sv.lights[1]["p"] as Vector2).x > (sv.lights[0]["p"] as Vector2).x + 40.0
+			if not apart and sv.lights.size() == 2:
+				print("SPLIT15 lights: ", sv.lights[0]["p"], " ", sv.lights[1]["p"], " from ", mid, " you ", g.pilot.pos, " they ", sv.two.pos)
+			var marked := false
+			var mine_t := 0.0
+			var tl2 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tl2 < 3200 and not marked and sv.lights.size() == 2 and sv.two_up():
+				sv.lights[0]["p"] = sv.two.pos
+				sv.lights[1]["p"] = sv.two.pos
+				await get_tree().process_frame
+				mine_t = maxf(mine_t, float(sv.lit_t))
+				for sh in sv.shells:
+					if (sh["pos"] as Vector2).distance_to(sv.two.pos) < 12.0 and (sh["from"] as Vector2) == Vector2.INF:
+						marked = true
+			var lots := [0, 0]
+			for q in 40:
+				var ep: Vector2 = sv._either_pos()
+				lots[1 if ep.distance_to(sv.two.pos) < ep.distance_to(g.pilot.pos) else 0] += 1
+			light_ok = who_ok and apart and marked and mine_t < 0.2 and int(lots[0]) > 3 and int(lots[1]) > 3
+			if not light_ok:
+				print("SPLIT15 light: who ", who_ok, " apart ", apart, " marked ", marked, " mine ", mine_t, " lots ", lots, " lights ", sv.lights.size())
+			sv.search_t = 0.0
+		# ---- out of the Colosseum: you are on your own again, the second pilot stays in the game
+		if sv != null:
+			Commands.execute({"type": "debug_casino", "sv": "end"})
+			for f11 in 10:
+				await get_tree().process_frame
+			if g.minigame != null:
+				g._sv_done()
+			var td := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - td < 8000 and String(g.level) != "zcolin":
+				await get_tree().process_frame
+			for f12 in 8:
+				await get_tree().process_frame
+		var still: bool = String(g.level) == "zcolin" and Players.split and Players.guest
+		g.go_level("zcol", "from_station")
+		for f13 in 12:
+			await get_tree().process_frame
+		leave_ok = still and not Players.split and not Players.guest and g.two == null and not g.split_open() and GameState.has_pilot2() and GameState.acting == 0
+		if not leave_ok:
+			print("SPLIT15 leave: still two in the lobby ", still, " (level ", g.level, ") split ", Players.split, " guest ", Players.guest, " two ", g.two, " open ", g.split_open(), " acting ", GameState.acting)
+		# ---- a split screen from the start menu: "Singleplayer" at the counter and one of you plays alone
+		Players.start_split("kbm", "pad:97")
+		g.go_level("zcolin", "from_reg")
+		for f13b in 4:
+			await get_tree().process_frame
+		var t2 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t2 < 8000 and not (g.split_open() and g.p2_walker() != null):
+			await get_tree().process_frame
+		var c2_0: int = GameState.coins_of(1)
+		g._col_play_open()
+		for f14 in 4:
+			await get_tree().process_frame
+		if g.minigame != null and g.minigame.has_method("is_col_play"):
+			g.minigame.pick(0)
+		for f15 in 5:
+			await get_tree().process_frame
+		var alone: bool = Players.split and not Players.guest and not GameState.col_two() and String(GameState.col_state()["play"]) == "single" and g.wants_two()
+		calm15.call()
+		g._close_game()
+		g.input_enabled = true
+		Commands.execute({"type": "debug_casino", "sv": "start"})
+		for f16 in 10:
+			await get_tree().process_frame
+		var sv_alone: bool = String(g.level) == "zcolsv" and g.survivor != null and g.survivor.two == null
+		Commands.execute({"type": "debug_casino", "sv": "end"})
+		for f17 in 10:
+			await get_tree().process_frame
+		var none_paid: bool = GameState.coins_of(1) == c2_0
+		if g.minigame != null:
+			g._sv_done()
+		var t3 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t3 < 8000 and String(g.level) != "zcolin":
+			await get_tree().process_frame
+		for f18 in 8:
+			await get_tree().process_frame
+		# … and "Split screen" picked there goes straight on, for both
+		g._col_play_open()
+		for f19 in 4:
+			await get_tree().process_frame
+		var pl3 = g.minigame
+		if pl3 != null and pl3.has_method("is_col_play"):
+			pl3.pick(3)
+		for f20 in 5:
+			await get_tree().process_frame
+		var both: bool = Players.split and GameState.col_two() and (g.minigame == null or not g.minigame.has_method("is_split_setup"))
+		single_ok = alone and sv_alone and none_paid and both
+		if fake_track:
+			main.story_ui._refresh_tracker()
+		if not single_ok:
+			print("SPLIT15 single: alone ", alone, " survivor alone ", sv_alone, " nothing paid to them ", none_paid, " both again ", both, " level ", g.level)
+		calm15.call()
+		g._close_game()
+		g.input_enabled = true
+	check(menu_ok, "split15: on your own \"Split screen\" is a way to play at the Colosseum's counter: it asks for the second player's device and pilot, and without them there is no split screen")
+	check(setup_ok, "split15: back is the way to play again; with a device and a pilot you go in for two: a split screen for the Colosseum, the second pilot in the game, and on to the fighters' gate")
+	check(two_ok, "split15: with \"Split screen\" picked the second player walks the lobby beside you and stands on Survivor's field")
+	check(lock_ok, "split15: in the Colosseum's games the pilot's window, the journal and the ship's menu stay shut for both of you and the tracked mission is not shown; in the lobby they are yours")
+	check(light_ok, "split15: Survivor's searchlights hunt one of you each, the second player is marked in one and you are not; what is aimed goes for either of you by lot")
+	check(leave_ok, "split15: out of the Colosseum's house the split screen asked for at the counter is over: one picture, one player, and the second pilot stays in the game")
+	check(single_ok, "split15: in a split screen \"Singleplayer\" lets one of you play alone (nobody second on the field, no Coins for them); \"Split screen\" goes on for both without asking again")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	Players.test_pads = []
+	for wz in [main.pilot_window, main.ship_menu, main.galaxy]:
 		if wz != null:
 			wz.close()
 	GameState.act_as(0)

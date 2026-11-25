@@ -402,7 +402,7 @@ func _place_tracker() -> void:
 	if _tracker == null:
 		return
 	var on_foot: bool = main != null and main.ground != null and is_instance_valid(main.ground)
-	_tracker.visible = GameState.running and dialogue == null
+	_tracker.visible = GameState.running and dialogue == null and not (on_foot and main.ground.in_colosseum())      # (Luz: not in the Colosseum)
 	var vs := get_viewport().get_visible_rect().size
 	if on_foot:
 		# 0.8.58.6 (Luz: it covered the team): bottom left, over the belt – the top left is the suit's, the cover's

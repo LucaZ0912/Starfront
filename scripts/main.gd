@@ -618,6 +618,8 @@ func _start_dan_work(where: String = "load") -> void:
 
 
 func close_deck(open_window: bool = true) -> void:
+	if Players.guest:
+		Players.stop_split()                           # (a split screen for the Colosseum: it ends with the walk on the ground)
 	if ground != null and is_instance_valid(ground):
 		ground.leave_ground()                          # review 7 W1/K2: the site's state kept, who is down stays down
 		ground.queue_free()
@@ -685,6 +687,20 @@ func toggle_ship_menu() -> void:
 		open_ship_menu()
 
 
+## In the Colosseum the pilot's window and the ship's menu stay shut, whatever is played there (Luz, 25 Nov 2026).
+## True (and a word why) when that is so for this player.
+func col_locked(seat: int = 0) -> bool:
+	if ground == null or not is_instance_valid(ground) or not ground.in_colosseum():
+		return false
+	var why := "The Colosseum's rules: the pilot's window and the ship's menu stay shut in here."
+	if seat == 1:
+		ground.two_say(why)
+	else:
+		ground._say_toast(why, 3.0)
+	Audio.play("ui_error", "colosseum: no windows in here")
+	return true
+
+
 ## Package 29: the Pilot window – also over the station. 0.5.30.5: U always opens the Pilot tab (Info);
 ## the HUD hint for tiles / perk points opens the tab it is about.
 func toggle_pilot_window(p_tab: int = 0, seat: int = 0) -> void:
@@ -694,6 +710,8 @@ func toggle_pilot_window(p_tab: int = 0, seat: int = 0) -> void:
 	if pilot_window.visible:
 		pilot_window.close()
 	elif not in_hyperspace:
+		if col_locked(0):
+			return
 		galaxy.close()
 		ship_menu.close()
 		_halves_step()                                   # (split screen: in its half before it lays itself out)
@@ -751,9 +769,11 @@ func _wins2() -> Array:
 func _toggle_two(kind: String, p_tab: int = 0) -> void:
 	if not halves_on() or in_hyperspace:
 		return
-	GameState.ship_along()
 	var w = _win2(kind)
 	var was: bool = w.visible
+	if not was and kind in ["pilot", "ship"] and col_locked(1):
+		return
+	GameState.ship_along()
 	for o in _wins2():
 		if o.visible:
 			o.close()
@@ -875,7 +895,7 @@ func _event_seat(event: InputEvent) -> int:
 
 
 func open_ship_menu() -> void:
-	if in_hyperspace:
+	if in_hyperspace or col_locked(0):
 		return
 	galaxy.close()
 	ship_menu.open(view)

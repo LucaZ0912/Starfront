@@ -1149,7 +1149,11 @@ func _c_col_play(c: Dictionary) -> String:
 		if String(p[0]) == String(c.get("play", "")):
 			if not bool(p[3]):
 				return "%s: coming soon." % String(p[1])
+			if String(p[0]) == "split" and not (Players.split and GameState.has_pilot2()):
+				return "Split screen needs a second player: their device and their pilot first."
 			GameState.col_state()["play"] = String(p[0])
+			if String(p[0]) != "split" and Players.guest:          # (a split screen asked for here, and now you play alone: it is over)
+				Players.stop_split()
 			return ""
 	return "No such way to play."
 
@@ -1210,7 +1214,7 @@ func _c_col_fight_end(c: Dictionary) -> String:
 	var st: Dictionary = GameState.col_state()
 	var res: Dictionary = CD.settle(st, bool(c.get("won", false)))
 	GameState.coins += int(res["coins"])
-	if Players.split and GameState.has_pilot2():
+	if GameState.col_two():
 		GameState.add_coins(1, int(res["coins"]))             # (split screen: the second player fought too: the same Coins into their own purse)
 	st["last"] = res
 	if bool(res["won"]):
@@ -1320,7 +1324,7 @@ func _c_sv_end(_c: Dictionary) -> String:
 	var res: Dictionary = SV.settle(st, sv.run, bool(sv.survived))
 	sv.run["paid"] = true
 	GameState.coins += int(res["coins"])
-	if Players.split and GameState.has_pilot2():
+	if GameState.col_two():
 		GameState.add_coins(1, int(res["coins"]))             # (split screen: the same Coins into the second player's own purse)
 	st["sv_last"] = res
 	GameState.log_msg("Survivor: %s on %s. %d Coins, %d rank points, %d cores." % [SV.time_text(float(res["time"])), String(SV.stage(String(res["stage"]))["name"]), int(res["coins"]),
@@ -1346,7 +1350,7 @@ func _c_col_ready(_c: Dictionary) -> String:
 		return "Pick a mode first."
 	if CD.fit_cost(st["fit"]) > CD.budget(st):
 		return "Your fit costs more gear points than you have."
-	if Players.split and GameState.has_pilot2() and CD.fit_cost(st["fit2"]) > CD.budget(st):
+	if GameState.col_two() and CD.fit_cost(st["fit2"]) > CD.budget(st):
 		return "The second player's fit costs more gear points than there are."
 	if String(st["mode"]) == "team" and bool(st.get("team_open", false)):
 		return "Your team is not full: pick who stands beside you."
@@ -2439,6 +2443,29 @@ func _c_debug_wanted(c: Dictionary) -> String:
 	if p > 0:
 		GameState.law.records[fid] = {"points": p, "last": GameState.play_time}
 	GameState.wanted_changed.emit(fid, GameState.law.level(fid))
+	return ""
+
+
+## {"type":"mission_share", "id": String} – split screen: one of your contracts offered to the other player.
+func _c_mission_share(c: Dictionary) -> String:
+	var m := _find_mission(GameState.missions, String(c["id"]))
+	if m.is_empty():
+		return "Unknown contract."
+	return GameState.share_mission(m)
+
+
+## {"type":"mission_share_accept", "id": String} – … and taken by the one it was offered to (again: "decline").
+func _c_mission_share_accept(c: Dictionary) -> String:
+	var m := _find_mission(GameState.shares_for(GameState.acting), String(c["id"]))
+	if m.is_empty():
+		return "That contract is not on offer any more."
+	return GameState.share_accept(m)
+
+
+func _c_mission_share_decline(c: Dictionary) -> String:
+	var m := _find_mission(GameState.shares_for(GameState.acting), String(c["id"]))
+	if not m.is_empty():
+		GameState.share_decline(m)
 	return ""
 
 

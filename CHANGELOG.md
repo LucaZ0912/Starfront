@@ -3,6 +3,72 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.23 – 2026-11-25
+
+**Package 75, split screen: the Colosseum after Luz played Survivor for two (four points from that evening).**
+- **"Split screen" is a way to play at the Colosseum's counter** (it stood under "coming soon"):
+  - **On your own** it asks for the second player first: their device, and their pilot (the one this game already
+    has, or a new one from the creator). Then the two of you go in. It is a split screen **for the Colosseum
+    alone**: once you walk out of its house you are on your own again, and the second pilot stays in the game for
+    the next time.
+  - **In a split screen** the two of you play the Colosseum together only when "Split screen" is picked there.
+    With "Singleplayer" one of you plays alone: nobody second in the match or on Survivor's field, no Coins for
+    them. Each tile says who plays.
+- **Survivor's traps are for both of you.** A searchlight hunts each of you, and whoever stands in one is marked
+  and shelled (the second player has the ring that fills, as you have). The hunters' line, the landing pods and
+  what else is aimed at "you" go for one of the two by lot. A saucer's beam, a burrower breaking out and an
+  avalanche reach the second player too.
+- **No pilot's window, no journal and no ship's menu in the Colosseum's games** (the arena, a match in the
+  hologram, Survivor), for neither player; a word says why. In the lobby and the stands they open as before.
+- **The tracked mission is not shown** in those games.
+- **Not built, said outright:**
+  - With "Singleplayer" picked in a split screen it is **the first player** who plays, and the second player waits
+    until it is over: the second player signing up for themselves, and their half going on with something else
+    meanwhile, need the two of you in two places at once, which is not built yet.
+  - The lobby and the stands keep the windows and the tracked mission, as before (Luz: only in the games).
+- **Asked: does the foes' health grow with time in Survivor?** Yes: a foe's health is its own times
+  (1 + seconds / 200): half as much again after 1:40, double after 3:20, four times after ten minutes. Bosses and
+  what flies do not grow. More of them come as well (from one a second, 1.15 more each minute, up to twenty), and
+  1.6 times as many for two.
+- Smoke test group `split15` (7 checks); every split test that plays the Colosseum for two picks "Split screen"
+  now. With it run: `split1` to `split5`, `split8`, `split12` and the single player's `colprep62a`, `colsurv62a`,
+  `coltakeb62a`, `colfight62a`, `colrig62a`. No full run; nothing tried with two real controllers (the set-up
+  window was tried with a controller the test says is connected).
+
+## alpha 0.8.75.22 – 2026-11-25
+
+**Package 75, split screen: contracts, standing and collection for each player (Luz: the story and what it gives
+are for both; contracts apart, and shared in the Transactions; standing apart; the codex for both, the collection
+by character).**
+- **Each player has their own contracts** (and bounty bonds): their own list, their own limit of five, their own
+  pay. A contract is theirs who took it.
+- **A contract can be shared.** In the journal's Transactions every contract of yours has "Share with …". The other
+  player then finds it at the top of their Transactions as offered and can take it there or say no. Taken, it is
+  one contract held by both of you; each journal says with whom.
+- **Each player has their own standing** with the factions and their own record with the powers: what one of you
+  does moves theirs alone. Prices, contracts on offer and what a counter says follow the standing of whoever
+  stands at it.
+- **Each player has their own collection and their own career's numbers** (the Pilot page). The codex, the story
+  and the acquaintances are one for both, as before.
+- **All of it is kept in the save.** A contract of both is one contract again after loading, and an offer not yet
+  answered is still on the table.
+- **How I read the rules where they did not say** (Luz has since said they fit):
+  - A contract of both pays **each of you in full** when it is handed in, and counts for each one's standing and
+    numbers. One hand-in settles it for both.
+  - **What happens out there counts for both players' contracts** while you travel together (a pirate shot down
+    counts for the second player's bounty too): their ship comes along with yours until they fly themselves. A
+    contract that fails, fails for whoever holds it.
+  - **A star or a world you come to together** goes into both collections. A deed (a notorious pirate destroyed,
+    a special opponent beaten) goes into the collection of who did it.
+  - **Career numbers count for who acts.** Until the second player flies themselves, their flight numbers do not
+    grow, and with them the tiles of their skill tree that open by flying.
+  - The entry **permits** stay one for both (not asked about).
+- Smoke test group `split14` (7 checks). With it run: `split9`, `split12`, `split13` and the single player's
+  `reputation`, `law`, `faction_jobs`, `tours43`, `ground_jobs`, `collection`, `pilot`: none failed. No full run.
+  The second player taking a contract at a station's board was tried through the game's own call, not by walking
+  to the board. One check of `faction_jobs` failed when the group ran alone because the game's clock stood at half
+  a second (a deadline "a second ago" was below zero, which means none); the check sets the clock now.
+
 ## alpha 0.8.75.21 – 2026-11-25
 
 **Package 75, split screen: the narrow layout of the windows, for half a picture of 1920 × 1080 (Luz: start it).**

@@ -82,7 +82,7 @@ const PLAY := [
 	["single", "Singleplayer", "You against the house.", true],
 	["coop", "Online co-op", "Side by side with a friend.", false],
 	["versus", "Online versus", "Against other pilots.", false],
-	["split", "Split screen", "Two at one screen.", false],
+	["split", "Split screen", "Two at one screen.", true],
 ]
 ## The modes: id, name, what it is, open yet.
 const MODES := [

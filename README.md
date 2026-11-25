@@ -467,6 +467,23 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.23 (split screen at the Colosseum's counter): `GameState.col_two()` (split screen **and** "split" picked as
+  the way to play): what was `Players.split and has_pilot2()` in the Colosseum asks this now (the fighters' room,
+  the pay, Survivor's `two_join()`, `GroundView.wants_two()` for the hologram). `Players.guest` (a split screen
+  asked for at the counter; `GroundView.go_level()` ends it outside `col_house()`, `main.close_deck()` too),
+  `Players.test_pads`. `scripts/ground/split_setup.gd` (preloaded as `ColosseumUI.SplitSetup`, opened by
+  `GroundView._col_play_open()` on `Play.wants_setup`). `GroundView.in_colosseum()` (the three games) and
+  `main.col_locked(seat)` shut the pilot's window, the journal and the ship's menu; `StoryUI._place_tracker()`
+  hides the tracked mission. Survivor: `_either_pos()`, `lit_t2`, a light's `"who"`.
+- 0.8.75.22 (each player's own contracts, standing, collection): `GameState.missions2`, `bonds2`, `rep2`, `law2`,
+  `collection2`, `stats2` change places with the first player's in `act_as()`, like gear and purse: code that reads
+  `GameState.missions` or `GameState.rep` gets those of whoever's turn it is. `_held()` (every contract either
+  holds: the loops of what happens out there go over it), `_same_in()`, `shared_with_other(m)`, `shares`,
+  `shares_for(seat)`, `share_mission()`, `share_accept()`, `share_decline()`; a contract of both is **the same
+  Dictionary in both lists** (re-linked by id on load). `turn_in_mission()` pays the other holder through
+  `_turn_in_too()`, `fail_mission()` fails it for each holder. Commands `mission_share`, `mission_share_accept`,
+  `mission_share_decline`. `_collect_other()`. The story, the codex, the permits, the acquaintances are not
+  swapped: one for both.
 - 0.8.75.21 (the narrow layout): `UI.NARROW_W` (1200), `UI.narrow(node)` (is its picture narrower?),
   `UI.wrap_long(root)` (every line of text too wide for the half wraps). `PilotWindow` and `ShipMenu`: `_narrow()`,
   `_nw(wide, narrow)` for a measure that depends on the picture, the frame's margins set in `_rebuild()`.
