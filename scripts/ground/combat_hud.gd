@@ -12,6 +12,7 @@ const DT_COL := {"optical": Color(0.45, 0.85, 1.0), "kinetic": Color(1.0, 0.8, 0
 var combat: GroundCombat
 var suit_hud: SuitHud
 var seat := 0                       # split screen: whose fight this display shows (0 the first player, 1 the second: over their half)
+var solo := false                   # … the second player's own view (apart places): they are the only pilot of its fight
 
 
 func _ready() -> void:
@@ -45,7 +46,7 @@ func _k(action: String) -> String:
 func _draw() -> void:
 	if combat == null or not is_instance_valid(combat):
 		return
-	if seat == 1 and not combat.two_in:
+	if seat == 1 and not combat.two_in and not solo:
 		return
 	combat.with_seat(seat, _draw_all)              # (in this player's turn: the fight's own vars are theirs while it is drawn)
 

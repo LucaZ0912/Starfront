@@ -31,6 +31,12 @@ var dialogue: Control = null            # the dialogue open (its layer pauses th
 var _dlg_layer: CanvasLayer = null
 var _dlg := {}                          # {id, mission, line, said}
 var _dlg_q: Array = []
+## Split screen (Luz, rule 7: a talk runs in the half of who began it; what it moves on counts for both): whose talk
+## the open one is. While the picture is in two halves its window stands over their half and their own device
+## answers; while you are in different places the other player's view goes on meanwhile (main.talk_begin()).
+var _dlg_seat := 0
+var _dlg_half := false                  # … it stands in a half (main.talk_end() gives the half back)
+var _next_seat_t := 0.0                 # the next talk asked for is the second player's (they pressed use at one of the story's people)
 
 
 func _ready() -> void:
@@ -62,6 +68,10 @@ func _on_show(kind: String, data: Dictionary) -> void:
 			else:
 				_radio_q.append(data)
 		"dialogue":
+			if not data.has("seat"):
+				data = data.duplicate()
+				data["seat"] = 1 if (Players.split and GameState.has_pilot2() and (GameState.acting == 1 or _next_seat_t > 0.0)) else 0
+			_next_seat_t = 0.0
 			_dlg_q.append(data)
 			if dialogue == null:
 				_next_dialogue()
@@ -70,6 +80,11 @@ func _on_show(kind: String, data: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- dialogues (the game pauses)
+
+## The second player has pressed use at one of the story's people beside you: the talk that follows is theirs.
+func next_talk_seat(seat: int) -> void:
+	_next_seat_t = 1.5 if seat == 1 else 0.0
+
 
 func _next_dialogue() -> void:
 	if _dlg_q.is_empty():
@@ -83,7 +98,12 @@ func _next_dialogue() -> void:
 	_dlg_layer = CanvasLayer.new()
 	_dlg_layer.layer = 80
 	_dlg_layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(_dlg_layer)
+	_dlg_seat = int(d.get("seat", 0)) if (Players.split and GameState.has_pilot2()) else 0
+	_dlg_half = main != null and main.has_method("talk_begin") and main.halves_on()
+	if _dlg_half:
+		main.talk_begin(_dlg_seat, _dlg_layer)           # (over their half; in different places the other's view goes on)
+	else:
+		add_child(_dlg_layer)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.0 if bool(d.get("no_dim", false)) else 0.45)      # (Luz) a cutscene: the scene stays clear
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -131,7 +151,8 @@ func _speaker(who: String) -> void:
 	if dialogue == null:
 		return
 	if who == "you":
-		dialogue.set_speaker(PilotArt.portrait(GameState.pilot.get("look", {})), GameState.pilot_name, "", Color(0.45, 0.85, 1.0))
+		var me: Dictionary = GameState.pilot_of(_dlg_seat)   # (the pilot who talks)
+		dialogue.set_speaker(PilotArt.portrait(me.get("look", {})), String(me.get("name", GameState.pilot_name)), "", Color(0.45, 0.85, 1.0))
 		return
 	var c: Dictionary = Data.CHARACTERS.get(who, {})
 	dialogue.set_speaker(GameState.story.portrait_of(who), String(c.get("name", who)), String(c.get("sub", "")), c.get("col", GOLD))
@@ -202,6 +223,10 @@ func _close_dialogue() -> void:
 	dialogue = null
 	_dlg = {}
 	get_tree().paused = false
+	if _dlg_half and main != null:
+		main.talk_end()
+	_dlg_half = false
+	_dlg_seat = 0
 
 
 # ---------------------------------------------------------------- radio calls (the game goes on)
@@ -484,6 +509,9 @@ func _process(dt: float) -> void:
 	_marker.queue_redraw()
 	if dialogue != null and not get_tree().paused:
 		get_tree().paused = true
+	_next_seat_t = maxf(0.0, _next_seat_t - dt)
+	if dialogue != null and _dlg_half and main != null:
+		main.talk_tick()                                 # (the game is paused for who talks: the halves and the other player's view are seen to from here)
 	_near_t -= dt
 	if _near_t <= 0.0:
 		_near_t = 0.5

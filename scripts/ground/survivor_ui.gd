@@ -275,9 +275,12 @@ class Hud extends Control:
 		var vs := get_viewport_rect().size
 		var font := ThemeDB.fallback_font
 		# ---- the shards towards the next level: a bar of segments, your level in a six-sided plate at its left end
-		var bw := 660.0
-		var bx := vs.x * 0.5 - bw * 0.5
-		var by := 18.0
+		# (a picture too narrow for it, a half of a split screen: the bar under the place's title instead of running
+		# into it, the health above the weapons and the list of what happens instead of into the list)
+		var bw := minf(660.0, vs.x - 190.0)
+		var slim_top: bool = vs.x * 0.5 - bw * 0.5 - 66.0 < 560.0         # (the place's title plate reaches about this far)
+		var bx := vs.x * 0.5 - bw * 0.5 - (9.0 if slim_top else 0.0)
+		var by := 76.0 if slim_top else 18.0
 		var plate := Rect2(bx - 66.0, by - 8.0, bw + 150.0, 34.0)
 		draw_rect(plate, Color(DARK, 0.84))
 		draw_line(Vector2(plate.position.x, plate.end.y), Vector2(plate.end.x, plate.end.y), Color(CYAN, 0.8), 2.0)
@@ -307,7 +310,9 @@ class Hud extends Control:
 		draw_string(font, Vector2(cx - 118.0, by + 68.0), SD.time_text(float(run["t"])), HORIZONTAL_ALIGNMENT_CENTER, 236.0, 38, Color(1, 1, 1))
 		draw_string(font, Vector2(cx - 118.0, by + 100.0), "of %s" % SD.time_text(SD.RUN_TIME), HORIZONTAL_ALIGNMENT_CENTER, 236.0, 12, Color(0.72, 0.78, 0.9))
 		# ---- at the foot: your health in segments, your dodges
-		var hb := Rect2(vs.x * 0.5 - 300.0, vs.y - 42.0, 600.0, 16.0)
+		var hbw := minf(600.0, vs.x - 340.0)
+		var slim_foot: bool = vs.x * 0.5 + hbw * 0.5 + 170.0 > vs.x - 465.0      # (the list of what happens begins about there)
+		var hb := Rect2(vs.x * 0.5 - hbw * 0.5, vs.y - (224.0 if slim_foot else 42.0), hbw, 16.0)
 		var hk := clampf(float(run["hp"]) / SD.max_hp(run), 0.0, 1.0)
 		var hcol := RED if hk < 0.35 else GREEN
 		draw_rect(hb.grow(5.0), Color(DARK, 0.84))
@@ -327,7 +332,7 @@ class Hud extends Control:
 			var dc := Vector2(hb.end.x + 26.0 + dq * 24.0, hb.position.y + 8.0)
 			draw_colored_polygon(PackedVector2Array([dc + Vector2(-8.0, -8.0), dc + Vector2(2.0, -8.0), dc + Vector2(9.0, 0.0), dc + Vector2(2.0, 8.0), dc + Vector2(-8.0, 8.0), dc + Vector2(-1.0, 0.0)]),
 				GREEN if full else Color(0.14, 0.2, 0.2))
-		draw_string(font, Vector2(hb.end.x + 68.0, hb.position.y + 13.0), "%s dodge" % Keybinds.key_text("foot_dodge"), HORIZONTAL_ALIGNMENT_LEFT, 200.0, 12, Color(0.72, 0.8, 0.86))
+		draw_string(font, Vector2(hb.end.x + 68.0, hb.position.y + 13.0), "%s dodge" % (game.view.key_of("foot_dodge") if game.view != null and Players.split else Keybinds.key_text("foot_dodge")), HORIZONTAL_ALIGNMENT_LEFT, 200.0, 12, Color(0.72, 0.8, 0.86))
 		var ex := hb.end.x + 34.0                                # (part 7c-3) beside them: the Shield Cell as it charges, the last chance while it is still to come
 		if float(game.mods.get("cell", 0.0)) > 0.0:
 			var ck := 1.0 - clampf(float(game.cell_t) / float(game.mods["cell"]), 0.0, 1.0)

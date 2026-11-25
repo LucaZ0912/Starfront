@@ -261,13 +261,17 @@ func _ready() -> void:
 	combat_hud = CombatHud.new()                    # package 52
 	combat_hud.suit_hud = hud
 	ui.add_child(combat_hud)
+	if owner_seat == 1:                                  # (the second player's own view: its displays are theirs)
+		hud.seat = 1
+		combat_hud.seat = 1
+		combat_hud.solo = true
 
 
 ## The line under the title: how to walk – and the way back (0.7.50.15: by the place you are in).
 func _set_hint() -> void:
 	if _hint == null:
 		return
-	_hint.text = _hint_for(0)
+	_hint.text = _hint_for(owner_seat)
 
 
 ## … in the words of one of the two players' own keys.
@@ -367,6 +371,16 @@ func restore_spot(spot: Dictionary) -> void:
 ## Goes to a level of the station – "hangar" or "commercial"; arrive: "stairs" (at the hangar's stairs), "lift" (out
 ## of a lift, the doors opening).
 func go_level(p_level: String, arrive: String = "lift") -> void:
+	# apart places (Luz, 25 Nov 2026): a way you take yourself, or a game of the Colosseum one of you plays alone: the
+	# second player stays where they are, in a view of their own
+	if owner_seat == 0 and seat_now == 0 and two != null and is_instance_valid(two) and can_part() and place_key(p_level) != place_key() \
+			and (_own_way_t > 0.0 or (p_level in ["zcolvr", "zcolsv", "zcolar"] and not GameState.col_two())):
+		get_tree().current_scene.part_two(two_spot())
+		two_drop()
+	_own_way_t = 0.0
+	var mn_s = get_tree().current_scene if is_inside_tree() else null
+	if mn_s != null and mn_s.has_method("site_sync"):
+		mn_s.site_sync(self)                             # (apart places: who has fallen where the other player is, is known where you go)
 	if level == "zcolsv" and p_level != "zcolsv":
 		_sv_drop()                                       # package 62a, part 7: out of Survivor's stage
 		GameState.col_gear_off()
@@ -1247,7 +1261,7 @@ func _env_step(delta: float) -> void:
 		return
 	var g = GameState.gear
 	var h0: float = g.health
-	var r: Dictionary = g.env_step(delta, env, (Input.is_action_pressed("foot_run") or Pad.run_held()))
+	var r: Dictionary = g.env_step(delta, env, runs())
 	if Commands.suit_god:
 		g.health = h0                                   # 0.7.51.5 (debug): the world outside does not hurt
 	if hud != null:
@@ -2201,6 +2215,19 @@ var col_down_t := 0.0
 ## fight's own vars are theirs (GroundCombat.swap_vars()) and the controller asked is theirs: so the code written for
 ## "the pilot" runs for them as it is.
 var seat_now := 0
+## Apart places (Luz, 25 Nov 2026): whose view this is. 0: the first player's, the one there always was (the second
+## player is a guest in it while the two of you are in the same place). 1: the second player's own, made by main when
+## you part (main.ground2): the same class, alone in it, standing in their half; everything of it runs in their name
+## (ground_half.gd) and seat_now stays 1.
+var owner_seat := 0
+var two_at := Vector2.INF               # where the second player stands when they come back into this view (INF: beside you)
+var _own_way_t := 0.0                   # you have taken a way out of this place yourself (seconds it still counts): the other stays
+## The ways out of a place the second player takes alone (a view of their own opens for it).
+const TWO_WAYS := ["lift", "ctr_up", "ctr_exit", "ctr_casino_in", "ctr_down", "ctr_board", "ctr_alight", "board", "alight", "museum_in", "museum_go", "museum_out",
+	"mine_path", "town_path", "dungeon_in"]
+## Places nobody is left behind in (there is no way to build them again round the one who stays): you leave them together.
+const GAME_MIN_W := 1760.0              # a game's window is laid out for a picture at least this wide
+const NO_STAY := ["", "quarters", "dungeon", "museum_down", "clinic", "zcolvr", "zcolar", "zcolsv", "ztrain", "ctrain", "zroom", "sim", "office"]
 var _side := {"col_lost": false, "col_down": false, "col_down_t": 0.0, "_revive": -1.0, "_tab_held": -1.0, "_team_held": -1.0, "_drone_held": [-1.0, -1.0],
 	"_wheel_stick": Vector2.ZERO, "_col_vel": Vector2.ZERO, "_socket": -1}
 var _pad_keep: Array = []
@@ -2526,6 +2553,9 @@ func weather_now() -> Dictionary:
 
 ## Package 80 (Luz): a wheel of the controller or a menu over the ground (the pause menu, Settings …) – you do not walk.
 func background_locked() -> bool:
+	if Players.split:
+		# (a window of the other player's, in their half, does not hold you: only a menu that is yours)
+		return (owner_seat == 0 and Pad.wheel != null) or MenuNav.active_menu(owner_seat) != null
 	return Pad.wheel != null or MenuNav.menu_open()
 
 
@@ -3189,9 +3219,11 @@ func _process(delta: float) -> void:
 	if level == "ztrain":
 		_ctr_car_step()                                   # package 61a: Centauria's train, its doors by the timetable
 	_toast_t = maxf(_toast_t - delta, 0.0)
+	_own_way_t = maxf(_own_way_t - delta, 0.0)
 	if is_town():
 		_update_city_day(delta)
-	_bg_step()                                            # (Luz) the bar's music, Survivor's
+	if owner_seat == 0:
+		_bg_step()                                        # (Luz) the bar's music, Survivor's (apart: the first player's place is the one heard)
 	_update_dust(delta)
 	_env_step(delta)
 	_socket_step(delta)
@@ -3222,7 +3254,7 @@ func _process(delta: float) -> void:
 	elif not _col_intro.is_empty():
 		_col_intro_step(delta)                           # … part 4: the entrance before a fight
 	elif input_enabled and not col_down and talk == null and _lift_menu == null and minigame == null and not background_locked():
-		var dir: Vector2 = Players.move(0)                  # (split screen: your own device only)
+		var dir: Vector2 = Players.move(owner_seat)         # (split screen: your own device only)
 		if combat != null and combat.wheel_open:
 			dir = Vector2.ZERO                              # (Luz) the command wheel open: the sticks point into it, you stand
 		_pilot_walk(dir, delta)
@@ -3338,8 +3370,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not input_enabled or pilot == null or col_down:
 		return
-	if Players.split and (event is InputEventKey or event is InputEventMouseButton) and not Players.on_keys(0):
-		return                                         # (split screen: the keyboard is the second player's: asked in their own step)
+	if Players.split and (event is InputEventKey or event is InputEventMouseButton) and not Players.on_keys(owner_seat):
+		return                                         # (split screen: the keyboard is the other player's: asked in their own step)
 	if combat != null and _ride.is_empty() and _touch < 0.0 and not _collapsed:
 		if event.is_action_pressed("foot_tactics", false, true):
 			get_viewport().set_input_as_handled()
@@ -3527,7 +3559,7 @@ func down_of(s: int) -> bool:
 ## The pilots a danger of this place can catch: those here and on their feet, by their seats.
 func _pilots_up() -> Array:
 	var out: Array = []
-	for s in (combat.seats() if combat != null else [0]):
+	for s in (combat.seats() if combat != null else [seat_now]):
 		if pilot_w(s) != null and not down_of(s):
 			out.append(s)
 	return out
@@ -3549,6 +3581,28 @@ func _hurt_as(s: int, dmg: float, dtype: String) -> void:
 ## The key or button of the pilot whose turn it is, in words.
 func key_of(action: String) -> String:
 	return Players.key_text(seat_now, action)
+
+
+## The player whose view this is skips what plays by itself (a ride, a scene, a walk): their use key or their back.
+## In a split screen only their own device counts.
+func _skip_now() -> bool:
+	if not Players.split:
+		return Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel")
+	return Players.just_pressed(owner_seat, "interact") or Players.just_pressed(owner_seat, "menu_back", "menu") \
+		or (Players.on_keys(owner_seat) and Input.is_action_just_pressed("ui_cancel"))
+
+
+## … presses their dodge key in this very frame (Survivor's dash).
+func _dodge_now() -> bool:
+	return Players.just_pressed(owner_seat, "foot_dodge") if Players.split else Input.is_action_just_pressed("foot_dodge")
+
+
+## … and holds their back (or Options) down: the entrance before a fight goes straight to the fight.
+func _skip_held() -> bool:
+	if not Players.split:
+		return Input.is_action_pressed("ui_cancel") or Input.is_joy_button_pressed(0, JOY_BUTTON_START)
+	return Players.pressed(owner_seat, "menu_back", "menu") or Players.pressed(owner_seat, "pad_options") \
+		or (Players.on_keys(owner_seat) and Input.is_action_pressed("ui_cancel"))
 
 
 ## Is that key held by the pilot whose turn it is?
@@ -3711,9 +3765,42 @@ func _q_rebuild_here() -> void:
 	go_level("quarters", "keep")
 
 
+## Apart places (Luz: the other player is asked): a night passes for the whole world, so for both of you. While you
+## are in different places a bed has the other player asked first (main.night_ask()); with their yes the game begins
+## the night itself (`_night_ok`). True: no night now (the other is being asked, or a word why not).
+var _night_ok := false
+
+
+func _no_night(kind: String) -> bool:
+	if _night_ok:
+		_night_ok = false
+		return false
+	var mn = get_tree().current_scene if is_inside_tree() else null
+	if mn == null or not mn.has_method("night_ask") or not mn.apart():
+		return false
+	var word: String = mn.night_ask(owner_seat, kind)
+	if word != "":
+		_say_toast(word, 4.0)
+	return true
+
+
+## The second player's own view: what runs after an `await` is outside their frame, so not in their name. Round what
+## reads the pilot, the purse or the rooms there: _mine(true) … _mine(false), in pairs, never across an await.
+func _mine(on: bool) -> void:
+	if owner_seat != 1:
+		return
+	var mn = get_tree().current_scene if is_inside_tree() else null
+	if mn == null or not mn.has_method("scope_in"):
+		return
+	if on:
+		mn.scope_in(1)
+	else:
+		mn.scope_out()
+
+
 ## A night in your bed: lying down (you in the bed, the light low), black, "Some hours later…", awake, up.
 func _q_sleep_begin() -> void:
-	if _sleeping or talk != null:
+	if _sleeping or talk != null or _no_night("bed"):
 		return
 	_sleeping = true
 	input_enabled = false
@@ -3722,33 +3809,41 @@ func _q_sleep_begin() -> void:
 	Audio.play("ui_click", "quarters: lie down", -6.0)
 	if mn != null and mn.has_method("fade"):
 		await mn.fade(Color(0, 0, 0, 1), 0.7).finished
+	_mine(true)
 	_q_sleep = 1
 	go_level("quarters", "bed")
 	pilot.visible = false
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 0.9)
 	_say_toast("You lie down. The station hums somewhere far below, and your eyes close…", 3.0)
+	_mine(false)
 	await get_tree().create_timer(2.8).timeout
 	if mn != null and mn.has_method("fade"):
 		await mn.fade(Color(0, 0, 0, 1), 1.0).finished
+	_mine(true)
 	Commands.execute({"type": "room_sleep"})
+	_mine(false)
 	var card := _night_card("Some hours later…")
 	await get_tree().create_timer(2.2).timeout
 	card.queue_free()
+	_mine(true)
 	_q_sleep = 2
 	go_level("quarters", "bed")
 	pilot.visible = false
+	_mine(false)
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 1.0)
 	await get_tree().create_timer(1.8).timeout
 	if mn != null and mn.has_method("fade"):
 		await mn.fade(Color(0, 0, 0, 1), 0.4).finished
+	_mine(true)
 	_q_sleep = 0
 	go_level("quarters", "bed")
 	pilot.visible = true
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 0.5)
 	_say_toast("Rested. Outside the planets have moved on, the stations have new work and the bars new faces.", 4.0)
+	_mine(false)
 	input_enabled = true
 	_sleeping = false
 
@@ -3762,7 +3857,7 @@ func _stair_step(delta: float) -> void:
 	var d: Vector2 = to - pilot.pos
 	_stair["t"] = float(_stair["t"]) + delta
 	# (Luz: the scene was skipped. The press that opened the door still counted as a press here: only after a moment)
-	var skip: bool = float(_stair["t"]) > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel"))
+	var skip: bool = float(_stair["t"]) > 0.6 and _skip_now()
 	if d.length() < 3.0 or float(_stair["t"]) > 8.0 or skip:
 		_stair["done"] = true
 		pilot.moving = false
@@ -3795,7 +3890,7 @@ func _room_watch_end() -> void:
 
 ## A night on the mattress: as in the quarters (the picture goes dark, you lie there, hours pass, you wake).
 func _room_sleep_begin() -> void:
-	if _sleeping or talk != null:
+	if _sleeping or talk != null or _no_night("room"):
 		return
 	_sleeping = true
 	input_enabled = false
@@ -3804,33 +3899,41 @@ func _room_sleep_begin() -> void:
 	Audio.play("ui_click", "the room: lie down", -6.0)
 	if mn != null and mn.has_method("fade"):
 		await mn.fade(Color(0, 0, 0, 1), 0.7).finished
+	_mine(true)
 	_room_sleep = 1
 	go_level("zroom", "bed")
 	pilot.visible = false
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 0.9)
 	_say_toast("You lie down. The bass comes up through the floor, the rain runs down the glass, and your eyes close…", 3.0)
+	_mine(false)
 	await get_tree().create_timer(2.8).timeout
 	if mn != null and mn.has_method("fade"):
 		await mn.fade(Color(0, 0, 0, 1), 1.0).finished
+	_mine(true)
 	Commands.execute({"type": "luz_sleep"})
+	_mine(false)
 	var card := _night_card("Some hours later…")
 	await get_tree().create_timer(2.2).timeout
 	card.queue_free()
+	_mine(true)
 	_room_sleep = 2
 	go_level("zroom", "bed")
 	pilot.visible = false
+	_mine(false)
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 1.0)
 	await get_tree().create_timer(1.8).timeout
 	if mn != null and mn.has_method("fade"):
 		await mn.fade(Color(0, 0, 0, 1), 0.4).finished
+	_mine(true)
 	_room_sleep = 0
 	go_level("zroom", "bed")
 	pilot.visible = true
 	if mn != null and mn.has_method("fade"):
 		mn.fade(Color(0, 0, 0, 0), 0.5)
 	_say_toast("Rested. The heater ticks. Somewhere below, somebody is already tuning a guitar.", 4.0)
+	_mine(false)
 	input_enabled = true
 	_sleeping = false
 
@@ -4482,7 +4585,27 @@ func _open_game(g: Control) -> void:
 	_game_layer.layer = 70
 	add_child(_game_layer)
 	minigame = g
-	_game_layer.add_child(g)
+	var vs := get_viewport().get_visible_rect().size
+	if vs.x < GAME_MIN_W:                                # apart places: this view stands in a half: the window as on a whole picture, shown smaller
+		var k := vs.x / GAME_MIN_W
+		var box := SubViewportContainer.new()
+		box.stretch = false
+		box.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		var sv := SubViewport.new()
+		sv.size = Vector2i(int(GAME_MIN_W), int(ceilf(vs.y / k)))
+		sv.transparent_bg = true
+		sv.handle_input_locally = true
+		sv.gui_embed_subwindows = true
+		sv.canvas_item_default_texture_filter = get_viewport().canvas_item_default_texture_filter
+		if get_viewport().has_meta("win_seat"):
+			sv.set_meta("win_seat", get_viewport().get_meta("win_seat"))
+		box.add_child(sv)
+		box.size = Vector2(sv.size)
+		box.scale = Vector2(k, k)
+		_game_layer.add_child(box)
+		sv.add_child(g)
+	else:
+		_game_layer.add_child(g)
 	pilot.moving = false
 
 
@@ -5447,7 +5570,7 @@ func _scan_start(n: int) -> bool:
 func _scan_step(delta: float) -> void:
 	if _scan.is_empty():
 		return
-	var held := Input.is_action_pressed("foot_belt_%d" % (int(_scan["key"]) + 1))
+	var held := _holds("foot_belt_%d" % (int(_scan["key"]) + 1))
 	if not held or pilot.pos.distance_to(_scan["at"]) > 3.0:
 		_say_toast("Scan broken off: hold the key and stand still.", 2.0)
 		_scan = {}
@@ -5555,6 +5678,11 @@ func use(instant: bool = false) -> bool:
 		_stand_up()
 		return true
 	if zone.is_empty() or String(zone.get("closed", "")) != "":
+		return false
+	if String(zone["kind"]) in TWO_WAYS:
+		_own_way_t = 30.0                                 # (apart places: a way you take yourself: the other player stays where they are)
+	if owner_seat == 1 and String(zone["kind"]) == "story":
+		_say_toast("The story's scenes play where the first player is: talk to them when you stand in the same place.", 4.0)
 		return false
 	match String(zone["kind"]):
 		"seat":
@@ -6198,7 +6326,7 @@ func _clift_step(delta: float) -> void:
 				Audio.play("dock_clamp", "casino: the capsule arrives", -4.0)
 				_clift["phase"] = 4
 				_clift["t"] = 0.0
-			elif t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel")):
+			elif t > 0.6 and _skip_now():
 				rd2.skip()
 		_:
 			if t > 0.5:
@@ -6250,6 +6378,7 @@ func _col_register() -> void:
 	# talk has closed, the game goes on: the way to play, through the gate, the fighters' room
 	GameState.story.flags.erase("col_go")
 	_col_wait = true
+	# (the second player's own view: the talk is theirs, it stands over their half and listens to their device)
 	GameState.story.show.emit("dialogue", {"id": "col_marshal_back" if GameState.col_registered else "col_marshal", "mission": ""})
 
 
@@ -6272,8 +6401,14 @@ func _col_after_talk() -> void:
 ## for the second player's device and pilot first and is a split screen for the Colosseum alone.
 func _col_play_open() -> void:
 	var pl = ColosseumUI.Play.new()
+	pl.seat = owner_seat
 	pl.setup({})
-	pl.finished.connect(func(ok: bool): _close_game(); _col_go(ok))
+	pl.finished.connect(func(ok: bool):
+		if pl.waiting:
+			get_tree().current_scene.invite_end(false)     # (you step back from the counter: the question is off)
+		_close_game()
+		_col_go(ok))
+	pl.wants_invite.connect(func(): get_tree().current_scene.invite(owner_seat))
 	pl.wants_setup.connect(func():
 		var su = ColosseumUI.SplitSetup.new()
 		su.setup({})
@@ -6325,7 +6460,7 @@ func _col_walk_step(delta: float) -> void:
 	var pts: Array = _col_walk["pts"]
 	var i := int(_col_walk["i"])
 	_col_walk["t"] = float(_col_walk["t"]) + delta
-	if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel"):
+	if _skip_now():
 		i = pts.size()
 	if i < pts.size():
 		var to: Vector2 = (pts[i] as Vector2) - pilot.pos
@@ -6410,7 +6545,7 @@ func _col_intro_step(delta: float) -> void:
 	var ac: Vector2 = ColosseumGen.A_C * tl
 	var north := Vector2(ColosseumGen.A_C.x, ColosseumGen.A_C.y - ColosseumGen.A_R.y + 1.6) * tl
 	if bool(cst.get("seen", false)):
-		if Input.is_action_pressed("ui_cancel") or Input.is_joy_button_pressed(0, JOY_BUTTON_START):
+		if _skip_held():
 			_col_intro["hold"] = float(_col_intro["hold"]) + delta
 			if float(_col_intro["hold"]) >= 0.6:
 				_col_enter()
@@ -6663,7 +6798,7 @@ func _col_fight_step(delta: float) -> void:
 				story_cam = (up[0]["w"] as Walker).pos            # the picture stays with your team
 				if partner_up():
 					pass                                         # (split screen: the second player plays it out)
-				elif t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_accept")):
+				elif t > 0.6 and (_skip_now() or (not Players.split and Input.is_action_just_pressed("ui_accept"))):
 					_col_fight_sim()
 		"over":
 			if t > 1.8 and not bool(_col_fight.get("shown", false)):
@@ -6807,6 +6942,9 @@ func p2_may_act() -> bool:
 		return false
 	if two_busy or _two_busy_t > 0.0:
 		return false
+	var mn0 = get_tree().current_scene if is_inside_tree() else null
+	if mn0 != null and mn0.has_method("invited") and int(mn0.invited()) == 1:
+		return false                                      # (they are asked whether they join the Colosseum: their keys answer)
 	if not _col_fight.is_empty():
 		return String(_col_fight.get("state", "")) in ["fight", "watch"]
 	return wants_two() and not _two_scene()
@@ -6814,8 +6952,88 @@ func p2_may_act() -> bool:
 
 # ---------------------------------------------------------------- split screen, stage 3: two on the ground everywhere
 
+## Apart places: can the second player be left in this place, or leave it alone? (A split screen, your own view, a
+## place that can be built again round them.)
+func can_part() -> bool:
+	return owner_seat == 0 and Players.split and GameState.has_pilot2() and not (String(level) in NO_STAY)
+
+
+## Which place this is (or would be at another level): two views with the same key are in the same place.
+func place_key(lv: String = "") -> String:
+	if lv == "":
+		lv = String(level)
+	var k := lv
+	if lv == "dungeon":
+		k += "|%d" % depth
+	if lv in ["alley", "dungeon", "minehead", "plaza"]:
+		k += "|" + String(_town_kind) + "|" + String(_site.get("id", ""))
+	if lv == "office":
+		k += "|" + office_faction
+	if lv.begins_with("z"):
+		k += "|%d" % ctr_stop
+	return k
+
+
+## Where the second player stands in this view, for a view of their own at the same spot.
+func two_spot() -> Dictionary:
+	var s := own_spot()
+	if two != null and is_instance_valid(two):
+		s["pos"] = two.pos
+	return s
+
+
+## Where this view's own pilot stands, to come back to (restore_spot(), twin()).
+func own_spot() -> Dictionary:
+	return {"level": String(level), "pos": pilot.pos, "ctr_stop": ctr_stop, "town_kind": String(_town_kind), "key": place_key(),
+		"ctx": {"depth": depth, "_site": _site, "_city_site": _city_site, "office_faction": office_faction}}
+
+
+## The second player's figure leaves this view (they have one of their own now).
+func two_drop() -> void:
+	if two != null and is_instance_valid(two):
+		if not two_seat.is_empty():
+			_two_stand_up()
+		if two_acting:
+			_two_done()
+		if combat != null and combat.two_in:
+			combat.two_leave()
+		two.queue_free()
+	two = null
+	two_zone = {}
+	two_seat = {}
+	_split_close()
+
+
+## This view is the second player's own: the same place as the first player's view, and they stand at the spot they
+## stood at in it (main.part_two() makes it, in their name).
+func twin(src: GroundView, spot: Dictionary) -> void:
+	for k in ["station", "_avail", "_crew", "_sys", "_body", "_lander"]:
+		set(k, src.get(k))
+	# the world is one (rule 4): a site's maps, with their doors opened, boxes emptied and foes fallen, are the very
+	# same for both views (a map is data; each view draws it for itself and has its own people in it)
+	_poi_caches = src._poi_caches
+	_poi_cache = src._poi_cache
+	var ctx: Dictionary = spot.get("ctx", {})
+	for k2 in ctx:
+		set(k2, ctx[k2])
+	restore_spot(spot)
+	_arrive = 0.0
+
+
+## Nothing going on that a change of views would cut off: no window, no ride, no scene.
+func idle() -> bool:
+	return input_enabled and pilot != null and map != null and minigame == null and talk == null and talk_menu == null and _lift_menu == null and _ride.is_empty() \
+		and _stair.is_empty() and _clift.is_empty() and _sink.is_empty() and _col_walk.is_empty() and _col_scene.is_empty() and _col_intro.is_empty() and _col_fight.is_empty() \
+		and _arrive <= 0.0 and _touch < 0.0 and not _collapsed and not _sleeping and not col_down and not _col_wait and story_cam == Vector2.INF
+
+
 ## Is the second player with you in this place? (Survivor has its own second figure in one picture.)
 func wants_two() -> bool:
+	if owner_seat == 1:
+		return false                                      # (the second player's own view: nobody second in it)
+	var mn = get_tree().current_scene if is_inside_tree() else null
+	if mn != null and mn.has_method("apart") and (mn.apart() or mn.parting()):
+		return false                                      # (you are in different places: they have a view of their own)
 	if String(level) == "zcolvr" and not GameState.col_two():
 		return false                                      # (a match one of you plays alone: "Singleplayer" picked at the counter)
 	return Players.split and GameState.has_pilot2() and String(level) != "zcolsv" and pilot != null and map != null
@@ -6856,8 +7074,16 @@ func two_use() -> bool:
 		two.moving = false
 		return true
 	if kind == "story":
-		two_say("The story's talks are the first player's for now.")
-		return false
+		# (rule 7: who begins a talk of the story has it over their half; what it moves on counts for both. Beside you
+		# the second player may begin one: the story's scene is the place you both stand in)
+		var mn_t = get_tree().current_scene
+		if mn_t != null and "story_ui" in mn_t and mn_t.story_ui != null:
+			mn_t.story_ui.next_talk_seat(1)
+		story_talk.emit(String(z["id"]))
+		return true
+	if (kind in TWO_WAYS or kind == "col_register") and can_part():      # (apart places: a way out they take alone, in a view of their own; and the Colosseum's counter: everybody signs up for themselves)
+		get_tree().current_scene.part_two(two_spot(), true)
+		return true
 	var own: bool = kind in TWO_OWN
 	if own:
 		GameState.act_as(1)
@@ -6982,6 +7208,9 @@ func _two_keep(delta: float) -> void:
 			if map.free_at(pilot.pos + off, 4.0):
 				at = pilot.pos + off
 				break
+		if two_at != Vector2.INF and map.free_at(two_at, 4.0):
+			at = two_at                                     # (back from a place of their own: where they came in)
+		two_at = Vector2.INF
 		two = Walker.new()
 		two.setup(map, _two_look(), at if map.free_at(at, 4.0) else pilot.pos, true)
 		two.stays = true
@@ -7559,7 +7788,7 @@ func _col_scene_step(delta: float) -> void:
 	var t := float(_col_scene["t"]) + delta
 	_col_scene["t"] = t
 	var then := bool(_col_scene.get("then", false))
-	if Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_cancel"):
+	if _skip_now():
 		t = maxf(t, 6.6)
 	if not bool(_col_scene["done"]):
 		story_cam = map.get_meta("col_area", pilot.pos)
@@ -8417,7 +8646,12 @@ func log_event(text: String, col: Color = Color(0.85, 0.9, 1.0)) -> void:
 		return
 	var tm := Time.get_time_string_from_system().substr(0, 5)
 	var line := "[color=#8090a0]%s[/color] [color=#%s]%s[/color]\n" % [tm, col.to_html(false), text]
-	if GameState.acting == 1 and GameState.has_pilot2():      # (split screen: what happens to the second player stands in their own list)
+	var theirs: bool = GameState.acting == 1 and GameState.has_pilot2()
+	if owner_seat == 1:                                   # (the second player's own view: its list is theirs alone)
+		if theirs:
+			_log.append_text(line)
+		return
+	if theirs:                                            # (split screen: what happens to the second player stands in their own list)
 		_log2_add(line)
 		return
 	_log.append_text(line)

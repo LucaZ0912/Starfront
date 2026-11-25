@@ -63,6 +63,13 @@ var col_registered := false             # package 62a, part 2: signed up at the 
 var col: Dictionary = {}                # … part 3: your gear points, your record, your fit, the way to play and the mode (data/colosseum.gd)
 var col_own_gear2 = null                # … and the second player's (split screen: they wear the house's gear in a fit of their own)
 var col_own_gear = null                 # … part 4: your own gear, put by while you fight with the house's (null: you wear your own)
+## Split screen, the Colosseum for each of you (Luz, rule 9: everybody signs up for themselves): the second player's
+## own sign-up and their own state (rank, runs, gear points, fit, Survivor's record), swapped with the acting player
+## as their purse is. A run the two of you play together ("Split screen" at the counter) is the first player's run,
+## with the second player's fit for it in "fit2".
+var col2: Dictionary = {}
+var col_registered2 := false
+var col_gear_both := false              # both of you wear the house's gear (a fight for two)
 var race_shift := 0.0                   # package 62b: what you have waited in The Track's cinema (moves the races' clock on)
 var race_bets: Array = []               # … your tickets: {n, kind, a, b, stake, odds, seat}
 var fleet: Array = []            # all owned ships (ShipFitting)
@@ -196,6 +203,8 @@ var rep2 = ReputationScript.new()
 var law2 = LawScript.new()
 var collection2 := {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}
 var stats2 := {}
+var fall_offer2 := {}               # … and their own open buy-back offer after a fall on foot, as `fall_offer` is yours
+var lodging2 := {}                  # … and the rooms they have rented (station id -> room), as `lodging` is yours
 ## Contracts one player offers the other (journal, Transactions): {"m": the contract, "to": the seat it is offered to}.
 ## Taken, it is one contract held by both: what happens counts for both, and handed in it pays each of them.
 var shares: Array = []
@@ -563,19 +572,63 @@ func col_gear_on() -> void:
 	if col_own_gear == null:
 		col_own_gear = gear
 	set("gear", load("res://data/colosseum.gd").gear_of(col_state()["fit"]))      # (by name: the gear keeps its type for everybody else)
-	if has_pilot2() and acting == 0:                    # split screen: the second player wears the house's gear too, in their own fit
+	if col_two() and acting == 0:                       # a fight for two: the second player wears the house's gear too, in their own fit
 		if col_own_gear2 == null:
 			col_own_gear2 = gear2
 		set("gear2", load("res://data/colosseum.gd").gear_of(col_state()["fit2"]))
+		col_gear_both = true
 
 
+## … and back into your own. Only who put theirs by gets it back: one of you may be in a game of their own while
+## the other walks out of theirs.
 func col_gear_off() -> void:
 	if col_own_gear != null:
 		set("gear", col_own_gear)
 	col_own_gear = null
-	if col_own_gear2 != null:
-		set("gear2", col_own_gear2)
-	col_own_gear2 = null
+	if col_gear_both:
+		if col_own_gear2 != null:
+			set("gear2", col_own_gear2)
+		col_own_gear2 = null
+		col_gear_both = false
+
+
+## The second player's Colosseum for the save: without Survivor's record, which is one for both and lies in the first
+## player's state.
+func _col2_saved() -> Dictionary:
+	var out: Dictionary = (col2 if acting == 0 else col).duplicate(false)
+	out.erase("sv")
+	return out.duplicate(true)
+
+
+## A run for two is over: what it gave in rank points counts for the other player's own rank too (Luz: each player
+## has their own rank at the matches), and the fight goes into their record. The run itself (its round, its gear
+## points, its fits) is the run of who signed it up. A word for them if their rank rose.
+func col_rank_other(xp: int, fight: bool, won: bool) -> void:
+	if not has_pilot2():
+		return
+	var CD = load("res://data/colosseum.gd")
+	var oth: Dictionary = col_other()
+	var before: int = CD.rank(oth)
+	oth["xp"] = int(oth.get("xp", 0)) + xp
+	if fight:
+		oth["fights"] = int(oth.get("fights", 0)) + 1
+		if won:
+			oth["wins"] = int(oth.get("wins", 0)) + 1
+	if xp > 0:
+		var seat := 1 - acting
+		var up: bool = CD.rank(oth) > before
+		with_seat(seat, func():
+			log_msg("The Colosseum: %d rank points for your own rank." % xp, COL_GOOD)
+			if up:
+				log_msg("The Colosseum: a new rank: %s." % String(CD.RANKS[CD.rank(col_state())]["name"]), COL_GOOD))
+
+
+## The waiting player's Colosseum state (made if they have none yet).
+func col_other() -> Dictionary:
+	var CD = load("res://data/colosseum.gd")
+	if col2.is_empty():
+		col2 = CD.fresh()
+	return col2
 
 
 ## Package 62a, part 10c (Luz): everything the Survivor console sells is yours: the Colosseum gives you the Champion's
@@ -586,7 +639,8 @@ func sv_give_suit() -> bool:
 	var SV = load("res://data/survivor.gd")
 	var st := col_state()
 	var rec: Dictionary = SV.record(st)
-	if bool(rec.get("suit", false)) or float(SV.progress(st)) < 0.999:
+	var suit_key := "suit2" if (acting == 1 and has_pilot2()) else "suit"      # (the record is one for both players; the Regalia is given to each)
+	if bool(rec.get(suit_key, false)) or float(SV.progress(st)) < 0.999:
 		return false
 	var mine = col_own_gear if col_own_gear != null else gear        # (your own gear, also while you wear the house's)
 	var where := "it is in your pockets"
@@ -597,7 +651,7 @@ func sv_give_suit() -> bool:
 	if left > 0:
 		log_msg("Survivor: everything at the console is yours. The Colosseum keeps the Champion's Regalia for you until you have room: come back to the console.", COL_WARN)
 		return false
-	rec["suit"] = true
+	rec[suit_key] = true
 	log_msg("Survivor: everything at the console is yours. The Colosseum gives you the Champion's Regalia: %s." % where, COL_GOOD)
 	return true
 
@@ -612,6 +666,17 @@ func col_state() -> Dictionary:
 			col[k] = CD.fresh()[k]
 	col["fit"] = CD.fitted(col["fit"])
 	col["fit2"] = CD.fitted(col["fit2"]) if col.has("fit2") else CD.default_fit()      # split screen: the second player's fit
+	if has_pilot2():
+		# (Luz, 25 Nov 2026) each player has their own rank at the matches; Survivor's meta progression (cores, what
+		# the console sold, the stages opened, the records, the collection) is one for both: the very same record in
+		# both players' states
+		if col2.is_empty():
+			col2 = CD.fresh()
+		if col2.has("sv") and not col.has("sv"):
+			col["sv"] = col2["sv"]
+		var rec_sv: Dictionary = load("res://data/survivor.gd").record(col)
+		if not col2.has("sv") or not is_same(col2["sv"], rec_sv):
+			col2["sv"] = rec_sv
 	return col
 
 
@@ -782,12 +847,31 @@ func act_as(seat: int, quiet: bool = false) -> void:
 	var my_stats: Dictionary = stats
 	stats = stats2
 	stats2 = my_stats
+	var my_lodging: Dictionary = lodging
+	lodging = lodging2
+	lodging2 = my_lodging
+	var my_fall: Dictionary = fall_offer
+	fall_offer = fall_offer2
+	fall_offer2 = my_fall
+	var my_col: Dictionary = col
+	col = col2
+	col2 = my_col
+	var my_reg := col_registered
+	col_registered = col_registered2
+	col_registered2 = my_reg
+	var my_own = col_own_gear
+	col_own_gear = col_own_gear2
+	col_own_gear2 = my_own
 	var ship_now := active()
 	if seat == 1 and ship_was != null and ship_now != null and not quiet:
 		ship_now.system_id = ship_was.system_id
 		ship_now.docked_at = ship_was.docked_at
 		ship_now.position = ship_was.position
 	pilot_name = String(pilot.get("name", pilot_name))
+	for pv in _page_vars:                               # … and the pages their windows remember (a shop's filter, its pick)
+		var cur = (pv[0] as Script).get(String(pv[1]))
+		(pv[0] as Script).set(String(pv[1]), _pages2.get(pv[2], _page_def[pv[2]]))
+		_pages2[pv[2]] = cur
 	acting = seat
 	if not quiet:                                       # (quiet: for a moment inside one frame, as the fight on foot does for each pilot's own step)
 		credits_changed.emit(credits)
@@ -820,6 +904,30 @@ func with_seat(seat: int, f: Callable) -> Variant:
 	return r
 
 
+## Split screen: what a window remembers between two looks at it (a shop's page, its filter, the thing picked) is
+## kept in its script's own static vars, once for the whole game. With two players each needs their own, or one
+## player's shop would turn the other's pages: the vars registered here are swapped with the acting player, as their
+## purse is. `list`: [[script path, var name], …].
+var _page_vars: Array = []          # [script, name, key]
+var _page_def: Dictionary = {}      # key -> the value a new player begins with
+var _pages2: Dictionary = {}        # key -> the waiting player's value
+
+
+func pages_register(list: Array) -> void:
+	for e in list:
+		var key := "%s:%s" % [String(e[0]), String(e[1])]
+		if _page_def.has(key):
+			continue
+		var sc: Script = load(String(e[0]))
+		_page_def[key] = sc.get(String(e[1]))
+		_page_vars.append([sc, String(e[1]), key])
+
+
+## The open buy-back offer of one of the two ({}: none).
+func fall_offer_of(seat: int) -> Dictionary:
+	return fall_offer if (seat == acting or not has_pilot2()) else fall_offer2
+
+
 ## The ships of one of the two.
 func fleet_of(seat: int) -> Array:
 	return fleet if (seat == acting or not has_pilot2()) else fleet2
@@ -845,6 +953,10 @@ func _own2_reset() -> void:
 		"warps": 0, "systems": [], "refined_station": 0, "markets": [], "turnover": 0, "bounty_jobs": 0, "jobs_covenant": 0,
 		"jobs_assembly": 0, "passengers": 0, "exotic": 0, "scans": 0, "bounties": 0}
 	shares = []
+	lodging2 = {}
+	fall_offer2 = {}
+	col2 = {}
+	col_registered2 = false
 
 
 func new_pilot2(data: Dictionary) -> void:
@@ -884,6 +996,7 @@ func pilot_title() -> String:
 ## (Luz, 24 Nov 2026) Where you stood on foot when the game was saved (GroundView.save_spot; main.prepare_save
 ## fills it): a load puts you back onto the very spot. {} when you were not on foot.
 var on_foot: Dictionary = {}
+var on_foot2: Dictionary = {}       # … and where the second player stood, if you were in different places (rule 8: the save keeps both)
 
 
 func to_dict() -> Dictionary:
@@ -908,17 +1021,18 @@ func to_dict() -> Dictionary:
 		"last_station": last_station.duplicate(), "pods": pods.duplicate(true), "loss_offer": loss_offer.duplicate(true), "fall_offer": fall_offer.duplicate(true),
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true), "gear": (col_own_gear if col_own_gear != null else gear).to_dict(),
-		"on_foot": on_foot.duplicate(),
+		"on_foot": on_foot.duplicate(), "on_foot2": on_foot2.duplicate(),
 		"pilot2": pilot2.duplicate(true), "gear2": (col_own_gear2 if col_own_gear2 != null else gear2).to_dict() if not pilot2.is_empty() else {},
 		"fleet2": fleet2.map(func(f2): return f2.to_dict()), "active_uid2": active_uid2, "storage2": storage2.duplicate(true),
 		"missions2": missions2.duplicate(true), "bonds2": bonds2.duplicate(true), "reputation2": rep2.to_dict(), "wanted2": law2.to_dict(),
-		"collection2": collection2.duplicate(true), "stats2": stats2.duplicate(true),
+		"collection2": collection2.duplicate(true), "stats2": stats2.duplicate(true), "lodging2": lodging2.duplicate(true), "fall_offer2": fall_offer2.duplicate(true), "col2": _col2_saved(), "col_registered2": col_registered2,
 		"shares": shares.map(func(sh): return {"id": String(sh["m"]["id"]), "to": int(sh["to"])}),
 	}
 
 
 func from_dict(d: Dictionary) -> void:
 	on_foot = (d.get("on_foot", {}) as Dictionary).duplicate()
+	on_foot2 = (d.get("on_foot2", {}) as Dictionary).duplicate()
 	misjumps.clear()                             # review 6 K1
 	pending_arrival = {}
 	debug_misjump = false
@@ -956,6 +1070,7 @@ func from_dict(d: Dictionary) -> void:
 	col = (d.get("col", {}) as Dictionary).duplicate(true)
 	col_own_gear = null
 	col_own_gear2 = null
+	col_gear_both = false
 	race_bets = (d.get("race_bets", []) as Array).duplicate(true)
 	fleet.clear()
 	for sd in d["fleet"]:
@@ -1045,6 +1160,10 @@ func from_dict(d: Dictionary) -> void:
 		for ck2 in (d.get("collection2", {}) as Dictionary):
 			collection2[ck2] = (d["collection2"][ck2] as Array).duplicate(true)
 		stats2.merge(d.get("stats2", {}), true)
+		lodging2 = (d.get("lodging2", {}) as Dictionary).duplicate(true)
+		fall_offer2 = (d.get("fall_offer2", {}) as Dictionary).duplicate(true)
+		col2 = (d.get("col2", {}) as Dictionary).duplicate(true)
+		col_registered2 = bool(d.get("col_registered2", false))
 		for sh in d.get("shares", []):
 			for mh in (missions if int(sh["to"]) == 1 else missions2):
 				if String(mh["id"]) == String(sh["id"]):

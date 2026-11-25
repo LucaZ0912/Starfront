@@ -95,7 +95,7 @@ func _pilot_card(w: Dictionary, idx: int, he: String) -> Control:
 	v.add_child(UI.label("Share of your income: %d %%" % int(round(float(WingData.SHARE[String(w["level"])]) * (1.0 - GameState.wing_leadership()) * 100.0)), 12, UI.TEXT_DIM))
 	# the ship and its loadout
 	var sv := UI.vbox(2)
-	sv.custom_minimum_size = Vector2(300, 0)
+	sv.custom_minimum_size = Vector2(240 if UI.narrow(self) else 300, 0)
 	row.add_child(sv)
 	var sd: Dictionary = w["ship"]
 	var sr := UI.hbox(8)

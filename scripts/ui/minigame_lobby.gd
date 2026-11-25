@@ -98,10 +98,13 @@ func _build() -> void:
 			row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			v.add_child(row)
 		# split screen: the second player sits down at the table (billiards and darts; no stake between the two of you)
-		var two_ok: bool = Players.split and GameState.has_pilot2() and game in ["billiards", "darts"]
+		var mn = (Engine.get_main_loop() as SceneTree).current_scene      # (the lobby is built before it stands in the tree)
+		var away: bool = mn != null and mn.has_method("apart") and mn.apart()      # (apart places: the other player is not at this table)
+		var two_ok: bool = Players.split and GameState.has_pilot2() and game in ["billiards", "darts"] and not away
 		var p2on := not opponent.is_empty() and String(opponent.get("kind", "")) == "p2"
 		var coop := UI.button(("%sPlayer 2: %s   (their own device, no stake)" % ["▶ " if p2on else "", String(GameState.pilot2.get("name", ""))]) if two_ok
-			else ("Player 2: not at this game yet" if Players.split else "Player 2: start with Split Screen in the main menu"), func():
+			else (("%s is somewhere else: a game for two when you are in the same place" % String(GameState.pilot2.get("name", "The other player"))) if away
+			else ("Player 2: not at this game yet" if Players.split else "Player 2: start with Split Screen in the main menu")), func():
 			opponent = _two_seat()
 			stake = 0
 			_build())

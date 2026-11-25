@@ -14,5 +14,9 @@ func build() -> void:
 	creator = CharacterCreatorScript.new()
 	creator.setup("look", GameState.pilot.get("look", {}), {}, GameState.pilot_name, Commands.look_price())
 	creator.done.connect(func(d: Dictionary): run({"type": "pilot_look", "look": d["look"]}))
-	creator.cancelled.connect(func(): ui.show_concourse(true))
+	creator.cancelled.connect(func():
+		if ui.on_foot:
+			ui.close()                                   # (from the deck there is no concourse to go back to)
+		else:
+			ui.show_concourse(true))
 	add_child(creator)

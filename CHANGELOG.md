@@ -3,6 +3,304 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.32 – 2026-11-25
+
+**Package 75, split screen: apart places, stage E (rules 6 to 8: lift-off, the story's talks, the save).**
+- **A talk of the story in the half of who began it (rule 7):** while the picture is in two halves the talk's window
+  stands over its player's half and their own device answers.
+  - **In different places** the game is paused for who talks, as it always was (the story's scenes stand still),
+    and the other player's view, their half and their windows go on: they walk, shop and fight meanwhile.
+  - **Beside you** the second player may begin a talk at one of the story's people (it was refused): the talk is
+    theirs, over their half. The game stands for both of you, because the story's scene is the place you both
+    stand in.
+  - The Marshal's talk at the Colosseum's counter is such a talk: in the second player's own view it stands over
+    their half now (it was over the whole picture and held you too).
+  - What a talk moves on counts for both, as before. "You" in a talk is the pilot who talks.
+- **The save keeps both places (rule 8):** saved while you are in different places, a loaded game puts you where
+  you stood and, once the split picture is up, the second player back where they stood, with a word in their list.
+  As for you, not every place is gone back to: out of a game of the Colosseum they stand in its lobby, out of a
+  train at its station; a site to explore, a room of their own, the clinic or an office are not kept: there they
+  stand beside you again and read why.
+- **Lift-off (rule 6):** when you leave by ship while the second player is somewhere else, they are fetched aboard
+  and the game says so. (It happened without a word.)
+- **The talk window in a narrow picture:** a smaller portrait and smaller margins, so that the words and the answers
+  keep their room in a half of 1920 x 1080 (it is the bartender's and the crew's window too).
+- Found on the way: a menu of the first player's in their half (their pilot's window, a shop, a talk) held the second
+  player's figure in their own view: they could look round but not walk. Only a menu that is your own holds you now.
+- **Not built, said outright:** alone in a place of their own the second player cannot begin a talk of the story:
+  the story's scenes are played in the first player's place (it walks them, turns their camera). The word they
+  read there says to talk when you stand in the same place. A radio call and a tip are over the whole picture as before.
+- **Known:** fetched aboard, the second player loses what they were in the middle of (a run in the Colosseum, a
+  shop's window). On a station's deck a loaded game opens the station's window, as before, for both.
+- **Not tried:** a save written to the disk and read again (the test fills the save's data and runs the way back
+  onto the ground); one of the story's own talks with its scene (the test uses the Marshal's talk); two real
+  controllers.
+- Smoke test group `split22` (5 checks). With it run: `split8` to `split10`, `split12`, `split13`, `split15` to
+  `split21`, `room64e`, `q58`, `colprep62a`, `w58a`. No full run.
+
+## alpha 0.8.75.31 – 2026-11-25
+
+**Package 75, split screen, the Colosseum: each player's own rank at the matches, Survivor's meta progression shared
+(Luz: "jeder Spieler hat einen eigenen Rang bei den Matches aber die Metaprogression beim Survivor ist geteilt").**
+- **Your own rank:** the rank points of a fight won count for the rank of each player who fought. In a run for two
+  that is both of you: the second player gets the same rank points for their own rank and the fight goes into their
+  own record, with a word in their list (and one more when their rank rises). The same for the rank points of a
+  Survivor run for two. (In 0.8.75.30 a run for two counted for the first player alone.)
+- **Survivor's meta progression is one for both:** the cores, what the console sold (the rig, the tuning, rerolls,
+  the last chance), the stages opened, the bosses put out, the records and the collection of kinds are the very
+  same for both players, whoever played the run, alone or together. Kept once in the save.
+- **My readings, said outright:**
+  - The run for two itself (its round, its wins in a row, its gear points and both fits) stays the run of the first
+    player; the second player's own runs are those they play on their own.
+  - The Champion's Regalia (the suit the console gives when everything is bought) is handed to each player once,
+    though the record is one.
+  - The weapon a run begins with and the stage picked at the console are part of the shared record: one pick for
+    both.
+- Smoke test group `split21`: a seventh check (a run for two: the rank points to both, the run to who signed it up),
+  and its Survivor check says the record is one. With it run: `split1` to `split5`, `split15`, `split17`,
+  `colprep62a`, `colsurv62a`, `coltakeb62a`, `colfight62a`, `colrig62a`. No full run.
+
+## alpha 0.8.75.30 – 2026-11-25
+
+**Package 75, split screen: apart places, stage D (the Colosseum for each player in their own half; Luz, rule 9:
+"Jeder meldet sich selbst an. Singleplayer spielt in der eigenen Hälfte, der andere spielt weiter").**
+- **Everybody signs up for themselves:** the second player has their own sign-up and their own Colosseum (rank, the
+  runs of each mode, gear points, fit, Survivor's record and rig), kept in the save. At the counter beside you they
+  get a view of their own: the Marshal talks to them, they sign up under their own name, the way to play comes up
+  in their half. Your sign-up and your state are not touched.
+- **"Singleplayer" for the second player** (it said "not yet"): Survivor and the matches in the hologram play in
+  their half, by their own device, in the house's gear, and what a run pays and its record are theirs. You walk on
+  in the lobby meanwhile, or play a game of your own: two games at once, each in its half.
+- **Nobody is put into the other's game:** in the arena, a match or Survivor you stay in your own view even when
+  both of you are in the same kind of game. Back in the lobby you stand in one place again.
+- **Survivor's display in a half:** the level bar stands under the place's title and the health above the weapons
+  and the list of what happens. Before, in a half they ran into the title and into the list. The dodge key named
+  there is the player's own.
+- Found on the way:
+  - With "Singleplayer" picked in a split screen, the second player was put into the house's gear too while they
+    walked the lobby (since 0.8.75.24). Only who plays wears it now, and only who put their own gear by gets it back.
+  - What the second player's own view asked of the game by a command (the sign-up, the Colosseum's and the casino's
+    counters) looked at the first player's place. It looks at theirs now.
+  - A scene that plays by itself (the walk to the gate, a ride, the entrance before a fight) was skipped by any
+    device's key. In a split screen only the key of the player whose scene it is skips it.
+  - The second view shut again in the moment the Marshal's talk opened in it.
+- **My readings, said outright:** a run the two of you play together ("Split screen" at the counter) is the first
+  player's run: its rank points, its record and its gear points go to the first player's Colosseum, the second
+  player's fit for it is kept there, and what it pays in Coins goes to each. The second player's own Colosseum grows
+  from what they play on their own. Who says yes to the invitation and is not signed up yet is signed up with it.
+  (Changed in 0.8.75.31 by Luz's word: the rank is each player's own, also from a run for two, and Survivor's meta
+  progression is shared.)
+- **Known:** the Marshal's talk is a talk of the story: over the whole picture, and the game stands for both while
+  it is up (stage E). The rooms before a game (the fighters' room, Survivor's room, the choice) and Survivor's cards
+  are laid out as on a whole picture and shown smaller in a half, as a table's window is.
+- **Not tried:** those rooms and cards looked at in a half of 1920 x 1080; Team Deathmatch on their own with the
+  house's mates; the entrance before a fight and a fight's own end and result in the second view (the test starts
+  the fight and walks out); the arcade of two games ending in the same frame; two real controllers.
+- Smoke test group `split21` (6 checks). With it run: `split1` to `split5`, `split9`, `split10`, `split15` to
+  `split17`, `colprep62a`, `colsurv62a`, `coltakeb62a`, `colfight62a`, `colrig62a`. No full run.
+
+## alpha 0.8.75.29 – 2026-11-25
+
+**Package 75, split screen: a shop's window and the buy-back window in the half of the player whose they are, and a
+narrow layout for both (Luz: "Läden je Hälfte und auch den Rückkaufbildschirm darauf anpassen. Für beides dann auch
+eine schmale Version für kleinere Bildschirme").**
+- **A shop in your own half:** a counter's window (market, outfitter, gear, shipyard, clinic, bar and the rest: all 21
+  services) stands over the half of the player who opened it. The other plays on, or has a window of their own open
+  at the same time. It is so beside each other and in different places. Each window is its player's: their purse in
+  its head, their ship, their pockets, their own back key shuts it, the second player's controller walks it as it
+  does their other windows. (Before, a shop was over the whole picture: the other player stood, and since 0.8.75.28
+  their place stood still.)
+- **A shop remembers its page for each player apart** (its filter, the thing picked, its tab). The panels keep that
+  once for the whole game; with two windows open, one player's shop would have turned the other's pages.
+- **The buy-back window in your own half:** after a fall it opens over the half of who fell, with their suit and
+  their purse, and the other plays on. Each player has their own open offer, kept in the save; the second player's
+  opens again as soon as the picture is in two.
+- **The narrow layout of the buy-back window:** the four tiles two by two, the costs under them, the two decisions
+  side by side, smaller margins. It is used below 1420 pixels of width: in a half of 1920 x 1080 and on the Steam
+  Deck's own screen (1280 x 800), where the window ran out of the picture before (it needs 1400).
+- **The narrow layout of the station window's services** (a half of 1920 x 1080): the same pages and parts, adapted.
+  The big picture stands above its values instead of beside them; the market's list shows stock, buy and sell (hold
+  and volume stand in the card beside it), so that the names stay readable; in the gear shop the kinds stand two in a
+  row and a piece's qualities in a line of their own under it; the Image Studio's columns are narrower; the
+  outfitter's picked module wraps its lines; long lines of the news and the offices wrap.
+- **Checked with the window look tool:** at 958 x 1080 every one of the 21 services, the pages behind them (the gear
+  shop's kinds, lists and selling; the outfitter's slot, picked module and storage; the tabs of manufacturing,
+  refinery and bulletin board) and the buy-back window (on foot, its last question, a ship lost) fits; each picture
+  looked at once. At 1280 x 800 the station pages and the buy-back window fit as well (two pages did not: the gear
+  shop's list and the outfitter's picked module now use their narrow form there).
+- Taken back from 0.8.75.28: a place no longer stands still while the other player's window is up (there is no
+  window over the whole picture on foot any more); it still does for a night's rest.
+- Found on the way: the Image Studio's "Back", opened from the deck, showed an empty concourse (it closes now); the
+  buy-back window's "Are you sure?" stayed standing over the window at the next fall (cleared now).
+- The window look tool (`winlook`) knows the station window's services, the pages behind them and the buy-back
+  window; `WINLOOK_ONLY` looks at some pages only.
+- **Known:** a key named inside a shop's text (the gear shop's "Pilot window, Gear tab [U]") is the first player's
+  key in the second player's window too. The station's front page with all its tiles (the concourse) is not shown on
+  foot and has no narrow layout. Half of a Steam Deck picture (638 x 800) stays undecided, as for the other windows.
+  At 1280 x 800 the pilot window's pages named in 0.8.75.21 still run out.
+- **Not tried:** two real controllers; the second player's controller on every button of every service (it walks
+  them by the menus' own means, tried at a lift's menu and their other windows); a save with the second player's
+  open offer loaded again; a talk with one of your crew as the second player beside you.
+- Smoke test group `split20` (5 checks); `split9`, `split17` and `split19` say what is so now. With them run:
+  `split8`, `split12`, `split13`, `split16`, `split18`, `stationwin`, `w58a`, `winlook` at two sizes. No full run.
+
+## alpha 0.8.75.28 – 2026-11-25
+
+**Package 75, split screen: apart places, stage C (the fight alone).**
+- **The fight alone:** in a view of their own the second player is the fight's one pilot. The foes there shoot at
+  them and their suit takes it, their own device locks, fires, dodges, their own ground team stands beside them, the
+  fight's display is over their half. (The fight's code was written for either pilot already; what was missing: a
+  place's dangers looked for the first player only, so a turret, a trip wire or a searchlight found nobody in the
+  second view.)
+- **Down alone is the clinic, as for a single player (rule 5).** What was carried is theirs who fell, and the
+  buy-back window opens in their name, with their suit and their purse. Where the other player ends up:
+  - **In a city or station with a clinic** (the maintenance tunnels under a city): only who fell wakes in the clinic,
+    in their own half. The other plays on where they are and reads a word about it.
+  - **At a landing site** (a ruin, a wreck, an arena): the ship is taken to the clinic's city, as for a single
+    player, and both of you with it, because one ship flies until the second player flies. Who fell stands by the
+    bed, the other beside, with a word why. The same when there is no clinic in the system.
+  - Before this the second player, down alone in their own view, lay there for good: nothing answered their fall.
+- **A site is one for both (rule 4):** a ruin's doors opened, boxes emptied and foes fallen are the same in both
+  views now. Each view had its own copy of a site's maps, so a gate one of you opened was shut for the other, and
+  foes one of you had brought down stood again when the other came in.
+- **Nobody is held in a fight:** nobody is asked anything in the middle of a fight (the night's question says to
+  ask again, the Colosseum's counter says the other is in a fight). While a window over the whole picture is one
+  player's (a shop, the buy-back), the other player's place stands still, so nothing there reaches somebody who
+  cannot act. Before this their place went on while their keys were held.
+- Found on the way: what the second player's own view itself holds (a fall, a scene) stays held; the game gave
+  their keys back every frame.
+- **My readings, said outright:** at a landing site a fall takes both of you along (above). A place stands still
+  while the other player's whole-picture window is up: you cannot play on while the other shops. Shop windows in
+  one half would end that; they are not built.
+- **Known:** a fight one of you leaves through a door begins anew for the one who stays (the place is built again
+  round them: the fallen stay fallen, the living stand at their posts again). Coming into a place where the other
+  fights, you get that place as it was when they came in but for the fallen: who they brought down stays down.
+- **Not tried:** you going down alone at a landing site (the single player's own path, plus a word for the other);
+  no clinic in the system; the second player's controller on the grenade, the drones, the cloak and the tactical
+  view in their own view (the same code as beside you, where they are tried); trip wires, cameras, searchlights,
+  conduits, gas and glyphs in the second view (they find a pilot by the same list as the turret, which is tried).
+- Smoke test group `split19` (7 checks). With it run: `split9` to `split13`, `split16` to `split18`, `foot_combat`,
+  `debug_ground`, `colfight62a`, `colsurv62a`. The group `clinic` cannot be run alone (it needs the full run's
+  set-up). No full run; nothing tried with two real controllers.
+
+## alpha 0.8.75.27 – 2026-11-25
+
+**Package 75, split screen: a night's sleep while you are apart asks the other player (Luz: "Anderen fragen").**
+- **The question:** who lies down in a bed while the two of you are in different places has the other asked first,
+  as the Colosseum does: a plate in the other player's half ("… wants to sleep. A night passes for the whole world,
+  so for you too …"), their use key lets the night pass, their dodge key says not now, thirty seconds without an
+  answer are a no. Who asked waits at the bed, sees that the other is being asked and can take the question back
+  with their dodge key.
+- **Yes:** the night passes in the sleeper's name (their room is the one given back, their list gets the lines), the
+  scene plays in their half. The other player rests where they are: their half lies under a dark veil ("A night
+  passes…"), their place stands still until the sleeper is up, then a word that it is some hours later. The black
+  of lying down and waking is over the whole picture, as it always was.
+- **No, or taken back:** no night; a word for who asked.
+- **Not asked at all:** while the other player is in the middle of something (a talk, a window, a ride, a scene):
+  the bed says to ask again in a moment.
+- The second player sleeps in a room of their own this way (it was refused before); both beds: the quarters' and
+  the room above the Static Feedback.
+- Found on the way: a word the game says to the second player in their own view (as "you are back where you were"
+  after the Colosseum) was shown but did not get into their list since 0.8.75.26. It does now.
+- **My readings, said outright:** the other player does not sleep, they rest: nothing of theirs changes but the
+  hour. Together in one place nobody is asked (the first player's bed works as before).
+- **Not tried:** the room above the Static Feedback for the second player alone (same code path as the quarters'
+  bed, which is tried); a night while the other player is in a fight (their place stands still, the fight goes on
+  afterwards).
+- Smoke test group `split18` has a fifth check. With it run: `split15`, `split16`, `split17`, `q58`, `room64e`. No
+  full run; nothing tried with two real controllers.
+
+## alpha 0.8.75.26 – 2026-11-25
+
+**Package 75, split screen: apart places, the rest of stage B (the second player alone on foot).**
+- **The bar:** alone in a view of their own the second player sits down at the bar, the bartender talks to them in
+  their half, and the drink comes out of their own purse.
+- **A table:** billiards, darts, the arcade cabinet open their window in the second player's half, laid out as on
+  a whole picture and shown smaller. While you are in different places the lobby does not offer the other player
+  as an opponent: it says they are somewhere else (it offered them before, in both players' lobbies).
+- **A room is theirs who rented it:** each player has their own rooms in the quarters, kept in the save.
+- **The list of what happens** in each half is that player's own while you are apart (the second player's began
+  empty and then filled with the first player's lines).
+- **Not for one of you alone, each with a word why:**
+  - **A night's sleep while you are apart.** A night passes for the whole world (new contracts, new faces in the
+    bars, the planets move on), so for both of you: a bed says to sleep when you are in the same place. This is my
+    reading: tell me if a night should pass anyway, or ask the other player first as the Colosseum does.
+  - **A talk of the story.** The story's scenes are staged in the first player's place (it walks them, turns their
+    camera); a talk begun elsewhere would play there. It stays the first player's until the story knows about two
+    places (stage E).
+  - **The way up to the ship** stays the first player's until the second player flies (stage 4 of the split
+    screen).
+- **Not tried:** a whole game at a table played through by the second player alone; the casino's counters and the
+  Museum in a view of their own (they run by the same means as the bar and the table).
+- Smoke test group `split18` (4 checks). With it run: `split6`, `split8`, `split9`, `split12` to `split17`. No full
+  run; nothing tried with two real controllers.
+
+## alpha 0.8.75.25 – 2026-11-25
+
+**Package 75, split screen: the Colosseum's invitation, and the first part of stage B of the apart places (Luz
+confirmed the rules for apart places and changed the ninth).**
+- **The Colosseum asks the other player** (Luz): one of you picks "Split screen" at the counter, and the other,
+  wherever they are, gets the question "Do you want to take part?" in their half, answered with their use key
+  (yes) or their dodge key (not now); it goes away by itself after thirty seconds. They stand while it is up.
+  - **Yes:** they are there at once, and the two of you go on to the fighters' gate.
+  - **Not now:** the way to play stays open, with a word that they do not take part.
+  - **At the end** (the games over, you back in the lobby) who came on the invitation stands at their own place
+    again, at the spot they stood at.
+  - It works both ways: the second player can stand at the counter in a view of their own, talk to the Marshal and
+    ask you. "Singleplayer" for the second player alone is not built yet and says so (stage D).
+- **Apart, stage B, what the second player can do alone now:**
+  - **Menus of their own view by their controller:** a lift's menu, a talk's window. Their back button shuts it;
+    with none up their Options pauses for both, held it opens their window wheel (pilot window, ship's menu, map).
+  - **A shop's or a service's door** opens its window in their name, with their credits and gear. It is over the
+    whole picture, as at a counter of their own, and you wait until it shuts.
+  - **A game's window in a half** (the way to play, a table's lobby) is laid out as on a whole picture and shown
+    smaller, so nothing runs out of the half.
+  - A window of their own over their half, or the question above, and they stand, in their own view too.
+- **Not built yet, said outright:** the story's talks are still the first player's; the way up to the ship is the
+  first player's; a fight alone, the clinic alone, the Colosseum alone for the second player (stages C and D);
+  saving while apart, lift-off, the story (stage E). A talk with a bartender or a table's game in their own view
+  should work by the same means but is not tried. With both of you on controllers a window over the whole picture
+  that is the second player's (a shop) takes the first player's buttons too while it is up.
+- **Seen in a picture, not changed:** Survivor in a half of the picture (you alone, the other walking on in the
+  lobby): it plays, but its health bar at the foot reaches into the list of what happens, and its level bar at
+  the top into the title's plate.
+- Smoke test group `split17` (6 checks); `split15` answers the question now. With them run: `split1` to `split5`,
+  `split8` to `split16`, `colprep62a`. No full run; nothing tried with two real controllers.
+
+## alpha 0.8.75.24 – 2026-11-25
+
+**Package 75, split screen: the two of you in different places, the groundwork (stage A of five; Luz: "apart
+places").**
+- **Each of you goes through a lift or a door alone.** The second player presses their use key at a lift, a way
+  into the Museum, a train's door: they go, you stay. You take a way out: you go, they stay where they stand.
+  (Until now the second player was always taken along.)
+- **Each half shows its own player's place**, with the whole display a single player has: title, the keys in their
+  own words, the suit's bars, the belt, the prompt.
+- **In the same place again you are together as before:** who comes to the place the other is in stands in it with
+  them, the second player where they stood, and everything for two is there again (the fight for two, bringing
+  each other back, the tables).
+- **How it is built:** in the same place there is one ground view with both figures, as in stage 3. Apart, the
+  second player has a ground view of their own in their half: the same class and the same code as the first
+  player's, and everything in it runs in their name (their pilot, gear, purse, device). The first player always
+  keeps theirs.
+- **What follows from that:** a place the second player is left in is built again round them: the same place, the
+  same state of its boxes and foes, but the passers-by stand anew.
+- **Not built yet, said outright (the next stages):**
+  - Places that cannot be built again round someone (a site to explore, a room of your own, the clinic, a train,
+    the Colosseum's games) you still enter and leave together.
+  - In a view of their own the second player can walk, ride lifts and trains and use doors. A shop's or a service's
+    window, the way up to the ship, their own pilot window and the pause on their controller, a fight alone, the
+    Colosseum's sign-up for themselves: not yet. A talk or a table may work but is not tried.
+  - The second place makes no music of its own (the first player's is the one heard); the list of what happens
+    in their half starts empty.
+  - Saving while apart keeps the first player's place only; lift-off while apart closes the second place.
+  - With "Singleplayer" picked at the Colosseum in a split screen the second player now walks on in the lobby
+    in their own half while the first plays (they waited before); signing up for themselves comes with stage D.
+- **How I read the rules** (in the Steckbrief, to be confirmed): the world is one for both; alone and down means
+  the clinic; a story's talk runs in the half of who began it; at lift-off the second player is fetched aboard.
+- Smoke test group `split16` (6 checks). With it run: `split1` to `split5`, `split8` to `split15`. No full run;
+  nothing tried with two real controllers.
+
 ## alpha 0.8.75.23 – 2026-11-25
 
 **Package 75, split screen: the Colosseum after Luz played Survivor for two (four points from that evening).**

@@ -32,13 +32,19 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(dim)
+	# (a narrow picture, a half of a split screen at 1920 x 1080: a smaller portrait and smaller margins, so that the
+	# words keep their room)
+	var slim := UI.narrow(self)
+	var mg := 14.0 if slim else 40.0
+	var pw := 200.0 if slim else 300.0
+	var ph := 220.0 if slim else 330.0
 	# the one you talk to: a big framed portrait, bottom left
 	var frame := UI.neon_panel(Color(col, 0.9), Color(0.03, 0.03, 0.06, 0.97), 3)
 	frame.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	frame.offset_left = 40
-	frame.offset_right = 40 + 300
-	frame.offset_top = -40 - 330
-	frame.offset_bottom = -40
+	frame.offset_left = mg
+	frame.offset_right = mg + pw
+	frame.offset_top = -mg - ph
+	frame.offset_bottom = -mg
 	add_child(frame)
 	_frame = frame
 	var por := TextureRect.new()
@@ -47,15 +53,15 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	por.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	por.custom_minimum_size = Vector2(290, 320)
+	por.custom_minimum_size = Vector2(pw - 10.0, ph - 10.0)
 	frame.add_child(por)
 	# what they say: the box along the bottom
 	var box := UI.neon_panel(Color(0.85, 0.88, 0.95, 0.7), Color(0.02, 0.02, 0.04, 0.95), 2)
 	box.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	box.offset_left = 360
-	box.offset_right = -40
-	box.offset_top = -40 - 170
-	box.offset_bottom = -40
+	box.offset_left = mg + pw + 20.0
+	box.offset_right = -mg
+	box.offset_top = -mg - 170
+	box.offset_bottom = -mg
 	add_child(box)
 	var bv := UI.vbox(6)
 	box.add_child(bv)
@@ -69,7 +75,7 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.add_theme_font_size_override("font_size", 18)
 	_text.add_theme_color_override("font_color", Color(0.94, 0.95, 1.0))
-	_text.custom_minimum_size = Vector2(600, 90)
+	_text.custom_minimum_size = Vector2(300 if slim else 600, 90)
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bv.add_child(_text)
 	_hint = UI.label("", 11, UI.TEXT_DIM)
@@ -79,10 +85,10 @@ func open(look: Dictionary, who: String, sub: String, col: Color) -> void:
 	_choice_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_choice_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_choice_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_choice_panel.offset_right = -40
-	_choice_panel.offset_bottom = -40 - 170 - 14
-	_choice_panel.offset_left = -40 - 340
-	_choice_panel.offset_top = -40 - 170 - 14 - 60
+	_choice_panel.offset_right = -mg
+	_choice_panel.offset_bottom = -mg - 170 - 14
+	_choice_panel.offset_left = -mg - 340
+	_choice_panel.offset_top = -mg - 170 - 14 - 60
 	add_child(_choice_panel)
 	_choices = UI.vbox(4)
 	_choices.custom_minimum_size = Vector2(320, 0)

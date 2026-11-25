@@ -927,8 +927,8 @@ func step(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			view.pilot.modulate = Color.WHITE
-	if view.input_enabled and Input.is_action_just_pressed("foot_dodge"):
-		dash(Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down"))
+	if view.input_enabled and view._dodge_now():
+		dash(Players.move(view.owner_seat) if Players.split else Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down"))
 	if float(run["hp"]) > 0.0 and float(mods["regen"]) > 0.0:
 		run["hp"] = minf(SD.HEALTH + float(mods["hp"]), float(run["hp"]) + float(mods["regen"]) * delta)      # (the Nanite Weave: health comes back slowly)
 	if not frozen:

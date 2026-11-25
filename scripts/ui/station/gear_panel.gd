@@ -32,6 +32,7 @@ const CATS := {
 }
 const ORDER := ["suit", "weapon", "feature", "belt"]
 
+const LIST_W := 1340.0                  # the list's rows in one line need a picture this wide (the Steam Deck's own 1280 is not)
 static var view := ""                   # "" the front, a category, "sell"
 static var group := ""                  # the kind picked within the category ("" = its kinds as tiles)
 
@@ -153,14 +154,20 @@ func _cat_tile(cat: String, o: Dictionary, size: Vector2) -> Control:
 
 func _kinds(o: Dictionary) -> void:
 	add_child(UI.label(String(CATS[view][1]), 13, UI.TEXT_DIM))
-	var flow := UI.hbox(10)
+	var narrow := UI.narrow(self)                         # (a narrow picture: the kinds two in a row)
+	var flow: Container = UI.hbox(10)
+	if narrow:
+		flow = GridContainer.new()
+		(flow as GridContainer).columns = 2
+		flow.add_theme_constant_override("h_separation", 10)
+		flow.add_theme_constant_override("v_separation", 10)
 	add_child(flow)
 	for gr in CATS[view][2]:
 		var here := _here(o, gr[3])
 		var art := ShopArt.new()
 		art.kind = "group"
 		art.col = corp_color()
-		art.custom_minimum_size = Vector2(312, 300)
+		art.custom_minimum_size = Vector2(0, 250) if narrow else Vector2(312, 300)
 		art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		art.title = String(gr[1])
 		art.line = "%s   •   Available: %d" % [String(gr[2]), here.size()]
@@ -193,8 +200,9 @@ func _list(o: Dictionary) -> void:
 		var hl := UI.label(String(h[0]).to_upper(), 12, corp_color())
 		hl.custom_minimum_size = Vector2(float(h[1]), 0)
 		hr.add_child(hl)
-	hr.add_child(UI.spacer())
-	hr.add_child(UI.label("QUALITY  F – A", 12, corp_color()))
+	if not (is_inside_tree() and get_viewport().get_visible_rect().size.x < LIST_W):
+		hr.add_child(UI.spacer())
+		hr.add_child(UI.label("QUALITY  F – A", 12, corp_color()))
 	var any := false
 	for f in gr[3]:
 		if not o.has(f):
@@ -212,7 +220,13 @@ func _row(f: String, qs: Array, heads: Array) -> Control:
 	st.set_border_width_all(1)
 	p.add_theme_stylebox_override("panel", st)
 	var r := UI.hbox(8)
-	p.add_child(r)
+	var slim := is_inside_tree() and get_viewport().get_visible_rect().size.x < LIST_W      # (a narrow picture: the qualities in a line of their own under the piece)
+	var rv := UI.vbox(4)
+	if slim:
+		p.add_child(rv)
+		rv.add_child(r)
+	else:
+		p.add_child(r)
 	var ib := PanelContainer.new()
 	ib.add_theme_stylebox_override("panel", UI.panel_style(Color(0.08, 0.1, 0.14), Color(0.3, 0.33, 0.4)))
 	ib.add_child(UI.icon(GearIcons.icon(f), 48))
@@ -230,10 +244,13 @@ func _row(f: String, qs: Array, heads: Array) -> Control:
 		vl.custom_minimum_size = Vector2(float(h[1]), 0)
 		vl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		r.add_child(vl)
-	r.add_child(UI.spacer())
 	var qrow := UI.hbox(4)
 	qrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	r.add_child(qrow)
+	if slim:
+		rv.add_child(qrow)
+	else:
+		r.add_child(UI.spacer())
+		r.add_child(qrow)
 	if qs.size() == 1 and String(qs[0]) == "":
 		var id0 := GearShop.id_of(f, "")
 		var pr0 := buy_price(GearData.price(id0))
@@ -244,7 +261,9 @@ func _row(f: String, qs: Array, heads: Array) -> Control:
 	else:
 		for q in GearData.QUALITIES:
 			var qb := Button.new()
-			qb.custom_minimum_size = Vector2(70, 44)
+			qb.custom_minimum_size = Vector2(70, 40 if slim else 44)
+			if slim:
+				qb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			qb.focus_mode = Control.FOCUS_NONE
 			var qc := GameData.quality_color(String(q))
 			if not qs.has(q):

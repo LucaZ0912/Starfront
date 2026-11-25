@@ -31,6 +31,7 @@ var seed_text := ""
 var _portrait: TextureRect
 var _sprite: TextureRect
 var _values := {}                       # option key -> Label
+var _slim := false                      # the image studio in a narrow picture: narrower columns, the same options
 var _attr_labels := {}
 var _points: Label
 var _go: Button
@@ -503,11 +504,12 @@ func _kit_row(parent: Control, key: String) -> void:
 		var row := UI.hbox(4)
 		parent.add_child(row)
 		var l := UI.label(String(o[1]), 12, UI.TEXT_DIM)
-		l.custom_minimum_size = Vector2(108, 0)
+		l.custom_minimum_size = Vector2(84 if _slim else 108, 0)
 		row.add_child(l)
 		row.add_child(UI.button("‹", func(): _step(key, -1)))
 		var val := UI.label("", 12)
-		val.custom_minimum_size = Vector2(150, 0)
+		val.custom_minimum_size = Vector2(98 if _slim else 150, 0)
+		val.clip_text = _slim
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(val)
 		_values[key] = val
@@ -622,18 +624,20 @@ func _build_restyle() -> void:
 	var pink := Color(1.0, 0.55, 0.85)
 	# window rework (Luz, 18 Nov 2026): the columns share the width, the portrait and the hologram follow the height
 	var sh := get_viewport().get_visible_rect().size.y
-	var holo_h := clampf(sh - 330.0, 300.0, 600.0)
+	_slim = UI.narrow(self)
+	var holo_h := clampf(sh - 330.0, 300.0, 440.0 if _slim else 600.0)
+	var col_w := 250.0 if _slim else 340.0
 	custom_minimum_size = Vector2(0, 0)
 	var sb := UI.panel_style(Color(0.04, 0.02, 0.06, 0.99), Color(pink, 0.6))
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(0)
-	sb.set_content_margin_all(16)
+	sb.set_content_margin_all(8 if _slim else 16)
 	add_theme_stylebox_override("panel", sb)
 	var v := UI.vbox(8)
 	add_child(v)
 	var head := UI.hbox(14)
 	v.add_child(head)
-	head.add_child(UI.label("VISAGE CLINICS", 24, pink))
+	head.add_child(UI.label("VISAGE CLINICS", 20 if _slim else 24, pink))
 	head.add_child(UI.label("·  RESTYLE  ·  what is under the skin stays yours", 14, UI.TEXT_DIM))
 	head.add_child(UI.spacer())
 	head.add_child(UI.label(GameData.fmt_credits(price), 18, UI.GOLD))
@@ -641,11 +645,11 @@ func _build_restyle() -> void:
 	line.color = Color(pink, 0.4)
 	line.custom_minimum_size = Vector2(0, 1)
 	v.add_child(line)
-	var cols := UI.hbox(maxi(22, int((get_viewport().get_visible_rect().size.x - 1300.0) * 0.2)))
+	var cols := UI.hbox(10 if _slim else maxi(22, int((get_viewport().get_visible_rect().size.x - 1300.0) * 0.2)))
 	cols.alignment = BoxContainer.ALIGNMENT_CENTER                  # the three columns stay together, centred
 	v.add_child(cols)
 	var left := UI.vbox(2)
-	left.custom_minimum_size = Vector2(340, 0)
+	left.custom_minimum_size = Vector2(col_w, 0)
 	cols.add_child(left)
 	var fr := PanelContainer.new()
 	fr.add_theme_stylebox_override("panel", _flat(Color(0.06, 0.03, 0.08), Color(pink, 0.7)))
@@ -672,11 +676,11 @@ func _build_restyle() -> void:
 	_bed = ScanBed.new()
 	_bed.CY = pink
 	_bed.projection = true
-	_bed.custom_minimum_size = Vector2(holo_h * 0.58, holo_h)
+	_bed.custom_minimum_size = Vector2(minf(holo_h * 0.58, 280.0) if _slim else holo_h * 0.58, holo_h)
 	_bed.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	cols.add_child(_bed)
 	var right := UI.vbox(2)
-	right.custom_minimum_size = Vector2(340, 0)
+	right.custom_minimum_size = Vector2(col_w, 0)
 	cols.add_child(right)
 	for g in [GROUPS[0], GROUPS[3], MAKEUP_GROUP]:
 		right.add_child(UI.label(String(g[0]), 12, Color(pink, 0.8)))
@@ -687,6 +691,8 @@ func _build_restyle() -> void:
 	right.add_child(fill)
 	_err = UI.label("", 13, UI.BAD)
 	right.add_child(_err)
-	_go = UI.menu_button("RESTYLE  ·  %s  ▸" % GameData.fmt_credits(price), _finish, pink, 340)
+	_go = UI.menu_button("RESTYLE  ·  %s  ▸" % GameData.fmt_credits(price), _finish, pink, col_w)
+	if _slim:
+		_go.add_theme_font_size_override("font_size", 15)
 	right.add_child(_go)
 	right.add_child(UI.button("Back", func(): cancelled.emit()))

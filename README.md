@@ -467,6 +467,73 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.32 (apart places, stage E): `StoryUI._dlg_seat` / `_dlg_half`: a dialogue's seat is who asked for it
+  (`GameState.acting`, or `next_talk_seat(1)` from `GroundView.two_use()`); while `main.halves_on()` its layer goes
+  into `halves[seat]` (`main.talk_begin()`, `talk_end()`), the tree is paused as always and, while apart, the other
+  player's `ghalves`, their window half and the seat menu run on (`PROCESS_MODE_ALWAYS`); `main.talk_tick()` does
+  main's per-frame split work from the story's window during the pause. No meeting, no fall and no invitation while
+  `talk_seat() >= 0`. `GameState.on_foot2`, `main._resume2_step()` (`RESUME2_NOT`: levels not gone back to).
+  `close_deck()` says that the second player is fetched aboard. `GroundView.background_locked()` asks for a menu of
+  the view's own player. `DialogueView`: narrow layout by `UI.narrow()`.
+- 0.8.75.31 (own rank, shared Survivor record): `GameState.col_state()` puts the very same `"sv"` dictionary into
+  both players' states (`is_same`); `_col2_saved()` writes the second player's state without it;
+  `col_rank_other(xp, fight, won)` books a run for two for the other player's own rank (`col_fight_end`, `sv_end`);
+  `sv_give_suit()` keeps "suit" / "suit2" per player in the shared record.
+- 0.8.75.30 (apart places, stage D: the Colosseum per half): `GameState.col2`, `col_registered2`, swapped in
+  `act_as()` with `col_own_gear` / `col_own_gear2`; `col_other()`; `col_gear_both` (a fight for two put both
+  players' own gear by); `Commands._ground()` is the acting player's view while apart; `col_play` keeps "split"
+  the same for both players; `GroundView._skip_now()`, `_skip_held()`, `_dodge_now()` ask the device of the player
+  whose view it is; `idle()` is false while the Marshal talks (`_col_wait`); `two_use()` parts at the counter
+  (`col_register`); no meeting while either view is `in_colosseum()`; `survivor_ui.gd` `Hud`: `slim_top` /
+  `slim_foot` by what the bars would run into.
+- 0.8.75.29 (a shop's window and the buy-back window per half, narrow layouts): `StationUI.seat` and
+  `loss_window.gd` `seat`: whose window it is; `main.station_panel2` / `loss_window2` are the second player's own,
+  made on demand in `halves[1]` (`_station_win(seat)`, `_loss_win(seat)`); the first player's stand in `halves[0]`
+  while `halves_on()` (`relayout()` when the picture changes round an open window); `main._open_service(seat, z)`
+  is the one way a counter opens; `GameState.fall_offer2` (swapped in `act_as()`, `fall_offer_of(seat)`);
+  `main._two_win` and the standing still for windows are gone. A window function called from outside its player's
+  key press puts itself into their name (`if GameState.acting != seat: GameState.with_seat(seat, …)`).
+  `GameState.pages_register()`: static vars that hold a window's page (`StationUI.PAGES`) are swapped with the
+  acting player: a new static page var in a service panel belongs into that list. Narrow layouts: `svc_kit.gd`
+  `narrow()`, `detail()` stacks; the buy-back window `NEEDS_W`; `gear_panel.gd` `LIST_W`, `outfitter_panel.gd`
+  `DETAIL_W`; `StationUI.look_all` is the look tool's (every service opens).
+- 0.8.75.28 (apart places, stage C: the fight alone): `GroundCombat.seats()` is `[seat]` for one pilot alone (the
+  view's own, 1 in the second view); `main._fallen(reason, seat)` with three ways out (a clinic in the place you
+  both walk in: only who fell goes there; else the ship and both of you go); a fall while apart is asked for
+  (`_fall_ask`) and done in `_fall_step()` at the start of the next frame; the second player's buy-back window
+  waits in `_fall2` until you stand in the clinic and opens in their name (`GroundView.two_acting` beside you,
+  `main._two_win` in their own view); `main._stand_still(seat, on)` stops a view's processing (a night's rest, the
+  other player's whole-picture window); `main.in_fight(seat)`; `GroundView.twin()` shares `_poi_caches` with the
+  first view (a site's maps are one), `main.site_sync()` writes the other view's fallen to them before a level
+  change; the second view's `input_enabled` is forced only while the game holds it.
+- 0.8.75.27 (a night while apart: the other player is asked): `main.invite(from, what, arg)` is the one question for
+  both uses (`what`: "col" or "night"); `main.night_ask()`, `_night_answer()`, `_night_step()`, `_night_end()`,
+  `night_on()`, `toast_to(seat, text)`; the resting player's view gets `process_mode = DISABLED` for the night and
+  a veil on layer 39. `GroundView._no_night(kind)` asks through main and lets a night begin only with
+  `_night_ok`; `GroundView._mine(true/false)` puts what follows an `await` in the second player's own view into
+  their name (pairs, never across an await): use it for any coroutine there that reads GameState.
+- 0.8.75.26 (apart places, the rest of stage B): `GameState.lodging2` (swapped in `act_as()`, in the save);
+  `GroundView.log_event()` writes a view's own player's lines only; `GroundView._no_night()` (no sleep while
+  apart); `minigame_lobby.gd` hides the second player's row while `main.apart()`. A window opened in the second
+  view (a talk, a table's lobby) runs in their name because its input and its `_process` come through the half;
+  code after an `await` or a timer does not: wrap it in `main.scope_in(1)` / `scope_out()` if it reads GameState.
+- 0.8.75.25 (the Colosseum's invitation; apart places, stage B begun): `main.invite(from)`, `invited()`,
+  `invite_end(yes)`, `_invite_step()`, `col_back` (who came, from which `own_spot()`) and `_col_back_step()`;
+  `ColosseumUI.Play.seat`, `waiting`, `wants_invite`. `main.ground_of(seat)`, `half_rect(seat)`, `say_to(seat, …)`,
+  `_on_deck_use2()` with `_two_win` (a shop's window in the second player's name; `scope_out()` leaves them the
+  pilot while it is up). A ground half's viewport carries `win_seat`, so a menu of the view is its player's
+  (`MenuNav`, `seat_menu.gd`); `main.win_back(1)` shuts a menu of the second view first. `GroundView._open_game()`
+  puts a game's window into a SubViewport `GAME_MIN_W` wide, scaled down, when the view's picture is narrower.
+  `main._apart_step()` sets `ground2.input_enabled` each frame and keeps the second player's ship docked alongside.
+- 0.8.75.24 (apart places, the groundwork): `main.ground2` (the second player's own `GroundView`, `owner_seat = 1`,
+  `seat_now = 1`, nobody second in it) and `main.ghalves` (`scripts/ground/ground_half.gd`: a view in a
+  SubViewport over a half, its `_process`, its end-of-frame queue and its input inside `main.scope_in(1)` /
+  `scope_out()`; the second player's controller as `InputEventAction`s). `main.part_two(spot, use_now)` (asked,
+  done in `_apart_step()` at the start of the next frame), `apart()`, `parting()`, `_apart_end()`; together again
+  when `place_key()` is the same and both views are `idle()`. `GroundView`: `can_part()`, `NO_STAY`, `TWO_WAYS`,
+  `_own_way_t` (set by `use()` on a way out; `go_level()` then leaves the second player behind), `two_spot()`,
+  `two_drop()`, `twin()`, `two_at`. `main.ground` is always the first player's view. Never change the views inside
+  a view's own frame: ask main.
 - 0.8.75.23 (split screen at the Colosseum's counter): `GameState.col_two()` (split screen **and** "split" picked as
   the way to play): what was `Players.split and has_pilot2()` in the Colosseum asks this now (the fighters' room,
   the pay, Survivor's `two_join()`, `GroundView.wants_two()` for the hologram). `Players.guest` (a split screen

@@ -6,8 +6,16 @@ extends RefCounted
 ## Sizes follow the screen, so the windows fit from 1280×720 up.
 
 
+## The narrow layout (Luz, 25 Nov 2026: a half of a split picture at 1920 x 1080, a small screen): the same parts,
+## the picture above its values instead of beside them, rows that wrap.
+static func narrow(node: Node) -> bool:
+	return UI.narrow(node)
+
+
 ## How tall the big picture may be on this screen.
 static func pic_height(node: Control) -> float:
+	if narrow(node):
+		return clampf(node.get_viewport().get_visible_rect().size.y * 0.24, 150.0, 280.0)
 	return clampf(node.get_viewport().get_visible_rect().size.y * 0.40, 190.0, 470.0)
 
 
@@ -64,9 +72,11 @@ static func picture(tex: Texture2D, col: Color, h: float, note_l: String = "", n
 
 ## The top area: the picture and an info column; returns the info column.
 static func detail(parent: Control, pic: Control) -> VBoxContainer:
-	var row := UI.hbox(14)
+	var row: BoxContainer = UI.vbox(10) if narrow(parent) else UI.hbox(14)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(row)
+	if narrow(parent):
+		pic.custom_minimum_size.x = 0.0                  # (as wide as the window, above its values)
 	row.add_child(pic)
 	var info := UI.vbox(8)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL

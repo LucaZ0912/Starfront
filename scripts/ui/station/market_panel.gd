@@ -8,6 +8,12 @@ extends StationServicePanel
 ## selling with a slider and a number instead of +1 / +10 / +100.
 
 const COL_W := [86, 76, 76, 70, 62]          # stock, buy, sell, in hold, volume
+
+
+## How many of the value columns the list shows: all five; in a narrow picture stock, buy and sell (what is in your
+## hold and a unit's volume stand in the card beside the list), so that the names stay readable.
+func _cols() -> int:
+	return 3 if UI.narrow(self) else 5
 const NAME_ROLE := {"produce": "made here", "consume": "wanted"}
 
 static var FILTERS: Array = _make_filters()
@@ -167,7 +173,7 @@ func _list(parent: Control, goods: Array, f: ShipFitting, col: Color, h: float) 
 	hn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hdr.add_child(hn)
 	var ht := ["Stock", "Buy", "Sell", "In hold", "m³"]
-	for i in ht.size():
+	for i in _cols():
 		var l := UI.label(ht[i], 12, col)
 		l.custom_minimum_size.x = COL_W[i]
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -246,7 +252,7 @@ func _row(cid: String, f: ShipFitting, col: Color) -> Button:
 		[GameData.fmt_credits(sell), UI.GOOD],
 		["%.0f" % have if have >= 1.0 or have == 0.0 else "%.1f" % have, Color(0.9, 0.93, 1.0) if have > 0.0 else UI.TEXT_DIM],
 		["%.1f" % float(c["volume"]), UI.TEXT_DIM]]
-	for i in vals.size():
+	for i in _cols():
 		var l := UI.label(String(vals[i][0]), 13, vals[i][1])
 		l.custom_minimum_size.x = COL_W[i]
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

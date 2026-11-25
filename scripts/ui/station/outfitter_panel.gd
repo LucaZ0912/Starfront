@@ -25,6 +25,7 @@ const VALUES := [
 	["Sensors", "sensor_range", true, "%.0f km"], ["Signature", "signature", false, "%.0f"],
 ]
 
+const DETAIL_W := 1560.0              # the picked module's block with its long lines needs a picture this wide
 static var cat := "weapon"
 var slot := ""
 var fam := ""
@@ -120,7 +121,7 @@ func _cat_types() -> Array:
 # ---- the ship's slots of this category
 
 func _slot_list(parent: Control, f: ShipFitting) -> void:
-	var box := _frame(parent, 300, false)
+	var box := _frame(parent, 240 if UI.narrow(self) else 300, false)
 	box.add_child(UI.label("EQUIPPED – %s" % String(_cat_name()).to_upper(), 15, corp_color()))
 	box.add_child(UI.label(f.ship_name, 12, UI.TEXT_DIM))
 	var any := false
@@ -322,6 +323,7 @@ func _set_pick(mid: String, from_store: bool) -> void:
 ## The pick: description, values, how the ship changes, and the buttons.
 func _detail(parent: Control, f: ShipFitting) -> void:
 	var m: Dictionary = GameData.modules[pick]
+	var slim := is_inside_tree() and get_viewport().get_visible_rect().size.x < DETAIL_W      # (a narrow picture: its lines wrap to the column, the note under the buttons)
 	var box := UI.neon_panel(Color(GameData.quality_color(String(m["quality"])), 0.6), Color(0.04, 0.03, 0.09, 0.97), 1)
 	parent.add_child(box)
 	var v := UI.vbox(4)
@@ -333,10 +335,10 @@ func _detail(parent: Control, f: ShipFitting) -> void:
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(tv)
 	tv.add_child(UI.label(GameData.module_name(pick), 16, GameData.quality_color(String(m["quality"]))))
-	tv.add_child(UI.wrap_label(ModuleDesc.of(String(m["family"])), 13, Color(0.9, 0.92, 1.0), 560))
+	tv.add_child(UI.wrap_label(ModuleDesc.of(String(m["family"])), 13, Color(0.9, 0.92, 1.0), 240 if slim else 560))
 	# the module's values in one compact block (the first line repeats the name)
 	var lines: Array = GameData.module_summary_lines(pick).slice(2 if ModuleDesc.of(String(m["family"])) != "" else 1)
-	v.add_child(UI.wrap_label("   •   ".join(PackedStringArray(lines)), 11, UI.TEXT_DIM, 980))
+	v.add_child(UI.wrap_label("   •   ".join(PackedStringArray(lines)), 11, UI.TEXT_DIM, 300 if slim else 980))
 	# what changes on the ship
 	var after := _preview(f)
 	var s0 := f.stats()
@@ -368,7 +370,11 @@ func _detail(parent: Control, f: ShipFitting) -> void:
 		bs.disabled = GameState.credits < price
 		btns.add_child(bs)
 	if f.get_module(slot) != "":
-		btns.add_child(UI.label("The fitted %s goes into storage here." % GameData.module_name(f.get_module(slot)), 11, UI.TEXT_DIM))
+		var note := UI.wrap_label("The fitted %s goes into storage here." % GameData.module_name(f.get_module(slot)), 11, UI.TEXT_DIM, 300) if slim 			else UI.label("The fitted %s goes into storage here." % GameData.module_name(f.get_module(slot)), 11, UI.TEXT_DIM)
+		if slim:
+			v.add_child(note)
+		else:
+			btns.add_child(note)
 
 
 ## The docked ship as it would be with the pick in the chosen slot.

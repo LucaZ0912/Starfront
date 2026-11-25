@@ -3044,7 +3044,7 @@ func two_leave() -> void:
 
 ## The pilots of this fight, by their seats.
 func seats() -> Array:
-	return [0, 1] if two_in else [0]
+	return [0, 1] if two_in else [seat]               # (alone in a view of their own the second player is its one pilot)
 
 
 ## Runs f in the turn of pilot s: for its length "the pilot" is that player (their figure, their gear, their locks,

@@ -18,6 +18,9 @@ const SplitSetup = preload("res://scripts/ground/split_setup.gd")
 class Play extends Control:
 	signal finished(won: bool)
 	signal wants_setup                                # "Split screen" picked with nobody beside you yet: the second player's device and pilot first
+	signal wants_invite                               # "Split screen" picked in a split screen: the other player is asked whether they take part (Luz)
+	var seat := 0                                     # whose window this is (1: the second player's, in their own view)
+	var waiting := false                              # the other player is being asked
 	var sel := 0
 	var msg := "How do you want to play?"
 	var _t := 0.0
@@ -40,7 +43,16 @@ class Play extends Control:
 
 	## You pick a way to play (0 … 3). The ones that are not open yet only say so.
 	func pick(i: int) -> void:
+		if waiting:
+			return
 		sel = clampi(i, 0, CD.PLAY.size() - 1)
+		# (stage D: the second player signs up and plays on their own in their half, as the first does)
+		if String(CD.PLAY[sel][0]) == "split" and Players.split and GameState.has_pilot2() and not Players.guest:
+			waiting = true                                  # (Luz, 25 Nov 2026: the other player, wherever they are, is asked first)
+			msg = "Asking %s whether they take part …" % String(GameState.pilot_of(1 - seat).get("name", "the other player"))
+			Audio.play("ui_open", "colosseum: the other player is asked")
+			wants_invite.emit()
+			return
 		if String(CD.PLAY[sel][0]) == "split" and not (Players.split and GameState.has_pilot2()):
 			Audio.play("ui_open", "colosseum: split screen, the second player")
 			wants_setup.emit()                              # (Luz: from single player a split screen for the Colosseum alone)
@@ -125,9 +137,9 @@ class Play extends Control:
 			var with_two: bool = Players.split and GameState.has_pilot2()
 			var note := ""
 			if String(p[0]) == "split":                         # (Luz, 25 Nov 2026: who plays is chosen here)
-				note = ("You and %s, side by side." % String(GameState.pilot_of(1).get("name", "Player 2"))) if with_two else "A second player joins you, for the Colosseum only."
+				note = ("With %s, if they take part." % String(GameState.pilot_of(1 - seat).get("name", "Player 2"))) if with_two else "A second player joins you, for the Colosseum only."
 			elif String(p[0]) == "single" and with_two:
-				note = "You alone: %s sits this one out." % String(GameState.pilot_of(1).get("name", "Player 2"))
+				note = "You alone: %s plays on elsewhere." % String(GameState.pilot_of(1 - seat).get("name", "Player 2"))
 			if note != "" and open:
 				draw_string(font, Vector2(r.position.x + 16.0, r.position.y + 304.0), note, HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 32.0, 14, Color(1.0, 0.85, 0.4))
 			if not open:                                        # the band across it

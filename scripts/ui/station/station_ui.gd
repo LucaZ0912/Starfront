@@ -14,6 +14,23 @@ const FactionData = preload("res://data/factions.gd")
 
 signal walk_requested                 # package 49: get out and walk the station's deck
 var on_foot := false                  # 0.7.49.13: opened from the deck – only the service, closing goes back on foot
+var look_all := false                 # the window look tool: every service opens, offered here or not
+## Split screen (Luz, 25 Nov 2026): whose window this is. 0: the first player's, the one there always was. 1: the
+## second player's own, standing in their half (main._station_win()). What it shows and changes is that player's:
+## the functions that are called from outside a key press of theirs put themselves into their name first.
+var seat := 0
+## The pages the service panels remember in static vars: each player has their own (GameState.pages_register()).
+const PAGES := [
+	["res://scripts/ui/station/bulletin_panel.gd", "tab"], ["res://scripts/ui/station/drone_panel.gd", "pick"],
+	["res://scripts/ui/station/gear_panel.gd", "view"], ["res://scripts/ui/station/gear_panel.gd", "group"],
+	["res://scripts/ui/station/hangar_panel.gd", "pick_uid"], ["res://scripts/ui/station/manufacturing_panel.gd", "tab"],
+	["res://scripts/ui/station/manufacturing_panel.gd", "pick_comp"], ["res://scripts/ui/station/manufacturing_panel.gd", "pick_mod"],
+	["res://scripts/ui/station/manufacturing_panel.gd", "family"], ["res://scripts/ui/station/market_panel.gd", "filter"],
+	["res://scripts/ui/station/market_panel.gd", "pick"], ["res://scripts/ui/station/munitions_panel.gd", "pick"],
+	["res://scripts/ui/station/news_panel.gd", "filter"], ["res://scripts/ui/station/outfitter_panel.gd", "cat"],
+	["res://scripts/ui/station/refinery_panel.gd", "tab"], ["res://scripts/ui/station/refinery_panel.gd", "pick"],
+	["res://scripts/ui/station/service_panel.gd", "pick_uid"], ["res://scripts/ui/station/shipyard_panel.gd", "size_f"],
+	["res://scripts/ui/station/shipyard_panel.gd", "role_f"], ["res://scripts/ui/station/shipyard_panel.gd", "pick"]]
 var _head_btns: Array = []
 
 var station: Dictionary = {}
@@ -34,6 +51,7 @@ var _tile_tweens: Array = []
 
 
 func _ready() -> void:
+	GameState.pages_register(PAGES)
 	add_to_group("kbd_menu")              # 0.5.28.2: keyboard control
 	layer = 20
 	visible = false
@@ -81,7 +99,7 @@ func _ready() -> void:
 	_head_btns.append(UI.button("Undock", undock))
 	for hb in _head_btns:
 		head.add_child(hb)
-	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("menu_back"), close))
+	head.add_child(UI.button("Close [%s]" % Players.win_key(seat, "menu_back"), close))
 	var line := ColorRect.new()
 	line.color = Color(UI.NEON_PINK, 0.6)
 	line.custom_minimum_size = Vector2(0, 2)
@@ -127,10 +145,21 @@ func tame(n: Node, lim: float = -1.0) -> void:
 
 func _settle() -> void:
 	tame(body)
+	if UI.narrow(win):
+		UI.wrap_long(body, 420.0, 200.0)                 # (a narrow picture: a line held wide wraps as the rest does)
 	fit_window()
 
 
+## The picture this window stands in has changed (a split picture opened or closed round it): laid out anew.
+func relayout() -> void:
+	fit_window()
+	rebuild()
+
+
 func open(p_station: Dictionary, p_view: SystemView) -> void:
+	if GameState.acting != seat and GameState.has_pilot2():
+		GameState.with_seat(seat, open.bind(p_station, p_view))
+		return
 	station = p_station
 	view = p_view
 	visible = true
@@ -192,6 +221,9 @@ func station_type() -> Dictionary:
 func _update_header() -> void:
 	if credits_label == null or station.is_empty():
 		return
+	if GameState.acting != seat and GameState.has_pilot2():
+		GameState.with_seat(seat, _update_header)
+		return
 	credits_label.text = GameData.fmt_credits(GameState.credits)
 	title_label.text = station["name"]
 	var sf := String(station.get("faction", ""))
@@ -209,6 +241,9 @@ func _update_header() -> void:
 ## Rebuild whatever is currently shown (after a transaction etc.).
 func rebuild() -> void:
 	if not visible:
+		return
+	if GameState.acting != seat and GameState.has_pilot2():
+		GameState.with_seat(seat, rebuild)
 		return
 	_update_header()
 	if current_service == "":
@@ -230,6 +265,8 @@ func _report_turn_ins() -> void:
 # ---------------------------------------------------------------- Concourse
 
 func service_available(svc: Dictionary) -> String:
+	if look_all:
+		return ""
 	if GameState.stations.is_down(String(station.get("id", ""))):
 		return "Offline after the pirate raid"
 	var only: Array = station_type().get("services", [])
@@ -729,6 +766,9 @@ func _kill_tile_tweens() -> void:
 # ---------------------------------------------------------------- Service view
 
 func open_service(svc_id: String) -> void:
+	if GameState.acting != seat and GameState.has_pilot2():
+		GameState.with_seat(seat, open_service.bind(svc_id))
+		return
 	var svc: Dictionary = {}
 	for s in GameData.services:
 		if s["id"] == svc_id:

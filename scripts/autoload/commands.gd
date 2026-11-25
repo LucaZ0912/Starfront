@@ -1152,6 +1152,13 @@ func _c_col_play(c: Dictionary) -> String:
 			if String(p[0]) == "split" and not (Players.split and GameState.has_pilot2()):
 				return "Split screen needs a second player: their device and their pilot first."
 			GameState.col_state()["play"] = String(p[0])
+			if GameState.has_pilot2():
+				# "Split screen" is always both players' way to play; picking another way for yourself ends it for both
+				var oth: Dictionary = GameState.col_other()
+				if String(p[0]) == "split":
+					oth["play"] = "split"
+				elif String(oth.get("play", "")) == "split":
+					oth["play"] = "single"
 			if String(p[0]) != "split" and Players.guest:          # (a split screen asked for here, and now you play alone: it is over)
 				Players.stop_split()
 			return ""
@@ -1216,6 +1223,7 @@ func _c_col_fight_end(c: Dictionary) -> String:
 	GameState.coins += int(res["coins"])
 	if GameState.col_two():
 		GameState.add_coins(1, int(res["coins"]))             # (split screen: the second player fought too: the same Coins into their own purse)
+		GameState.col_rank_other(int(res["xp"]), true, bool(res["won"]))      # (… and the rank points for their own rank)
 	st["last"] = res
 	if bool(res["won"]):
 		GameState.log_msg("The Colosseum: round %d won. %d Coins, %d gear points, %d rank points." % [int(res["round"]), int(res["coins"]), int(res["points"]), int(res["xp"])], GameState.COL_GOOD)
@@ -1326,6 +1334,7 @@ func _c_sv_end(_c: Dictionary) -> String:
 	GameState.coins += int(res["coins"])
 	if GameState.col_two():
 		GameState.add_coins(1, int(res["coins"]))             # (split screen: the same Coins into the second player's own purse)
+		GameState.col_rank_other(int(res["xp"]), false, false)      # (… and the rank points for their own rank)
 	st["sv_last"] = res
 	GameState.log_msg("Survivor: %s on %s. %d Coins, %d rank points, %d cores." % [SV.time_text(float(res["time"])), String(SV.stage(String(res["stage"]))["name"]), int(res["coins"]),
 		int(res["xp"]), int(res["cores"])], GameState.COL_GOOD)
@@ -3786,6 +3795,8 @@ func _main():
 
 func _ground():
 	var m = _main()
+	if m != null and GameState.acting == 1 and m.has_method("apart") and m.apart():
+		return m.ground2                                 # (split screen, in different places: the second player's own view)
 	if m == null or m.ground == null or not is_instance_valid(m.ground):
 		return null
 	return m.ground
