@@ -203,6 +203,9 @@ var rep2 = ReputationScript.new()
 var law2 = LawScript.new()
 var collection2 := {"perks": [], "notorious": [], "stars": [], "planets": [], "special": []}
 var stats2 := {}
+var p2_placed := false              # the second player's ship has been put beside the first player's once (a split screen began): from then on it is where they flew it, also after loading
+var last_station2 := {}             # … the station they docked at last (where they come back to), as `last_station` is yours
+var loss_offer2 := {}               # … and their own open offer to buy back a ship shot down, as `loss_offer` is yours (stage 4C)
 var fall_offer2 := {}               # … and their own open buy-back offer after a fall on foot, as `fall_offer` is yours
 var lodging2 := {}                  # … and the rooms they have rented (station id -> room), as `lodging` is yours
 ## Contracts one player offers the other (journal, Transactions): {"m": the contract, "to": the seat it is offered to}.
@@ -817,8 +820,7 @@ func act_as(seat: int, quiet: bool = false) -> void:
 	var my_gear = gear
 	gear = gear2
 	gear2 = my_gear
-	# their ships and their storage; the ship they fly stands where the other one's stands
-	var ship_was := active()
+	# their ships and their storage (the ship they fly is where they flew it: stage 4D)
 	var my_fleet: Array = fleet
 	fleet = fleet2
 	fleet2 = my_fleet
@@ -853,6 +855,9 @@ func act_as(seat: int, quiet: bool = false) -> void:
 	var my_fall: Dictionary = fall_offer
 	fall_offer = fall_offer2
 	fall_offer2 = my_fall
+	var my_loss: Dictionary = loss_offer
+	loss_offer = loss_offer2
+	loss_offer2 = my_loss
 	var my_col: Dictionary = col
 	col = col2
 	col2 = my_col
@@ -862,11 +867,9 @@ func act_as(seat: int, quiet: bool = false) -> void:
 	var my_own = col_own_gear
 	col_own_gear = col_own_gear2
 	col_own_gear2 = my_own
-	var ship_now := active()
-	if seat == 1 and ship_was != null and ship_now != null and not quiet:
-		ship_now.system_id = ship_was.system_id
-		ship_now.docked_at = ship_was.docked_at
-		ship_now.position = ship_was.position
+	var my_last: Dictionary = last_station               # (the station to come back to is the one each docked at last)
+	last_station = last_station2
+	last_station2 = my_last
 	pilot_name = String(pilot.get("name", pilot_name))
 	for pv in _page_vars:                               # … and the pages their windows remember (a shop's filter, its pick)
 		var cur = (pv[0] as Script).get(String(pv[1]))
@@ -877,19 +880,43 @@ func act_as(seat: int, quiet: bool = false) -> void:
 		credits_changed.emit(credits)
 
 
-## Split screen, until the second player flies themselves: the ship they fly stands where the first player's stands
-## (the same system, the same hangar). Asked for before a window of theirs shows it.
-func ship_along() -> void:
-	if not has_pilot2() or acting != 0:
-		return
-	var mine := active()
-	if mine == null:
-		return
+## The ship a player flies (their active one), whoever's turn it is.
+func active_of(seat: int) -> ShipFitting:
+	if seat == acting or not has_pilot2():
+		return active()
 	for f in fleet2:
 		if f.uid == active_uid2:
-			f.system_id = mine.system_id
-			f.docked_at = mine.docked_at
-			f.position = mine.position
+			return f
+	return null
+
+
+## Split screen, stage 4D (Luz: each flies their own ship; docking, undocking and landing each for themselves). The
+## second player's ship is where they flew it. It is put where the first player's is (the same system, the same
+## hangar, or out in space beside it) only when the split screen begins, and wherever the second player cannot
+## go for themselves yet and is taken along: a jump to another system, the way up from a planet (ship_join()).
+## A ship moved like this is marked, so that the space view puts its picture in anew.
+func ship_join() -> void:
+	if not has_pilot2():
+		return
+	var mine := active_of(0)
+	var theirs := active_of(1)
+	if mine == null or theirs == null:
+		return
+	theirs.system_id = mine.system_id
+	theirs.docked_at = mine.docked_at
+	theirs.position = mine.position + (Vector2.ZERO if mine.docked_at != "" else Vector2(260.0, 120.0))
+	theirs.set_meta("joined", true)
+
+
+## … and the least of it, asked for here and there since the stages before: their ship is never left in another
+## system than yours (until each jumps for themselves, stage 4E).
+func ship_along() -> void:
+	if not has_pilot2():
+		return
+	var mine := active_of(0)
+	var theirs := active_of(1)
+	if mine != null and theirs != null and theirs.system_id != mine.system_id:
+		ship_join()
 
 
 ## Runs f with one of the two as the pilot (their gear, purse, ships), then it is who it was again. For a piece of
@@ -924,6 +951,10 @@ func pages_register(list: Array) -> void:
 
 
 ## The open buy-back offer of one of the two ({}: none).
+func loss_offer_of(seat: int) -> Dictionary:
+	return loss_offer if (seat == acting or not has_pilot2()) else loss_offer2
+
+
 func fall_offer_of(seat: int) -> Dictionary:
 	return fall_offer if (seat == acting or not has_pilot2()) else fall_offer2
 
@@ -955,6 +986,9 @@ func _own2_reset() -> void:
 	shares = []
 	lodging2 = {}
 	fall_offer2 = {}
+	loss_offer2 = {}
+	last_station2 = {}
+	p2_placed = false
 	col2 = {}
 	col_registered2 = false
 
@@ -1025,7 +1059,7 @@ func to_dict() -> Dictionary:
 		"pilot2": pilot2.duplicate(true), "gear2": (col_own_gear2 if col_own_gear2 != null else gear2).to_dict() if not pilot2.is_empty() else {},
 		"fleet2": fleet2.map(func(f2): return f2.to_dict()), "active_uid2": active_uid2, "storage2": storage2.duplicate(true),
 		"missions2": missions2.duplicate(true), "bonds2": bonds2.duplicate(true), "reputation2": rep2.to_dict(), "wanted2": law2.to_dict(),
-		"collection2": collection2.duplicate(true), "stats2": stats2.duplicate(true), "lodging2": lodging2.duplicate(true), "fall_offer2": fall_offer2.duplicate(true), "col2": _col2_saved(), "col_registered2": col_registered2,
+		"collection2": collection2.duplicate(true), "stats2": stats2.duplicate(true), "lodging2": lodging2.duplicate(true), "fall_offer2": fall_offer2.duplicate(true), "loss_offer2": loss_offer2.duplicate(true), "last_station2": last_station2.duplicate(), "p2_placed": p2_placed, "col2": _col2_saved(), "col_registered2": col_registered2,
 		"shares": shares.map(func(sh): return {"id": String(sh["m"]["id"]), "to": int(sh["to"])}),
 	}
 
@@ -1162,6 +1196,9 @@ func from_dict(d: Dictionary) -> void:
 		stats2.merge(d.get("stats2", {}), true)
 		lodging2 = (d.get("lodging2", {}) as Dictionary).duplicate(true)
 		fall_offer2 = (d.get("fall_offer2", {}) as Dictionary).duplicate(true)
+		loss_offer2 = (d.get("loss_offer2", {}) as Dictionary).duplicate(true)
+		last_station2 = (d.get("last_station2", {}) as Dictionary).duplicate()
+		p2_placed = bool(d.get("p2_placed", false))
 		col2 = (d.get("col2", {}) as Dictionary).duplicate(true)
 		col_registered2 = bool(d.get("col_registered2", false))
 		for sh in d.get("shares", []):
@@ -1502,7 +1539,8 @@ func _lose_active(f: ShipFitting) -> void:
 		"insured": insured, "cargo_value": cargo_value(f), "alive": alive.map(func(e): return e["m"]["name"]), "dead": dead.map(func(e): return e["name"]),
 		"system": f.system_id, "where": f.location_text()}
 	# back at the last station, for now in a beginner ship – and you wake in its clinic (0.7.51.4)
-	wake_pending = true
+	if acting == 0:
+		wake_pending = true                  # (the first player wakes in the clinic; the second player's way onto the ground is not built yet: stage 4D)
 	gear.aboard()
 	gear.health = 70.0
 	var next := _beginner_ship()

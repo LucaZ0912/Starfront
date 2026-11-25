@@ -25,6 +25,10 @@ func _process(delta: float) -> void:
 		_drop()
 		return
 	var menu: Node = MenuNav.active_menu(SEAT)
+	if menu == null and main.has_method("in_space") and main.in_space(SEAT):
+		_drop()                                          # (in space, with no window of theirs up, their controller is read by the controller code itself: Pad.seat_step)
+		_btn_was = {}
+		return
 	# Options: a tap pauses (in a window: closes it), held: the window wheel
 	if Players.just_pressed(SEAT, "pad_options", "ground"):
 		_opt_t = 0.0

@@ -1803,7 +1803,7 @@ const MAX_ALLY_TILES := 8
 
 
 func _update_allies() -> void:
-	var ships: Array = view.player_group() if view != null else []
+	var ships: Array = view.allies_shown() if view != null else []
 	if ships.size() > MAX_ALLY_TILES:
 		ships = ships.slice(0, MAX_ALLY_TILES)
 	ally_bar.visible = not ships.is_empty() and not survey_panel.visible

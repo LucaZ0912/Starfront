@@ -12,10 +12,12 @@ extends SubViewportContainer
 ## Hidden while no window of the half is up: then it takes no input and draws nothing.
 
 var seat := 0
+var main = null                      # (in space with two looks the half's player is taken by their look: SystemView.eye_as)
 var vp: SubViewport
 var _in: Node
 var _out: Node
 var _keep := -1
+var _eyed := false
 
 
 class Gate extends Node:
@@ -67,6 +69,14 @@ func holds(w: Node) -> bool:
 ## The first gate takes the half's player as the pilot for everything of the half that runs in this frame's
 ## _process, the last one gives it back.
 func _gate(into: bool) -> void:
+	if into and visible and seat == 1 and _space() and int(main.view.eye) == 0:
+		_eyed = true
+		main.view.eye_as(1)                              # (their look as the view's too: a window of theirs asks the view for their ship)
+		return
+	if not into and _eyed:
+		_eyed = false
+		main.view.eye_as(0)
+		return
 	if into:
 		if visible and GameState.has_pilot2() and GameState.acting != seat:
 			_keep = GameState.acting
@@ -78,8 +88,15 @@ func _gate(into: bool) -> void:
 
 ## An event into this half, in its player's name. True if something in the half took it.
 func push(event: InputEvent, local: bool = false) -> bool:
-	GameState.with_seat(seat, vp.push_input.bind(event, local))
+	if _space():
+		main.view.in_eye(seat, vp.push_input.bind(event, local))
+	else:
+		GameState.with_seat(seat, vp.push_input.bind(event, local))
 	return vp.is_input_handled()
+
+
+func _space() -> bool:
+	return main != null and main.has_method("space_two") and main.space_two()
 
 
 func _propagate_input_event(_event: InputEvent) -> bool:

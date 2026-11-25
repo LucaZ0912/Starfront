@@ -117,6 +117,7 @@ const EYE_VARS := ["player", "camera", "background", "sky", "body_layer", "bodie
 	"_zoom", "_min_zoom", "level", "follow", "selected_id", "hovered", "input_enabled", "_warp_auto", "_warp_saved_zoom",
 	"_left_down", "_panning", "_pan_dist", "_last_hover", "_hover_t", "_hover_mouse", "_map_to", "_shake_t", "_shake_amp",
 	"_key_flying", "_pad_latch", "_radar_cands", "_radar_t", "_radar_r", "_radar_c", "_emergency_until",
+	"_descent", "hazard_here", "_hz_inside", "_bh_warned", "_haven_warned", "_zone_warned",
 	"eye_size", "eye_origin", "eye_rect", "eye_zoom"]
 const SpaceHalf = preload("res://scripts/world/space_half.gd")
 const EYE_BIT := [2, 4]              # visibility layers: what only the first / only the second look shows
@@ -179,6 +180,61 @@ func eye_put(seat: int, key: String, value) -> void:
 func player_of(seat: int) -> Ship:
 	var p = eye_get(seat, "player")
 	return p if p != null and is_instance_valid(p) else null
+
+
+## Whose this ship is: the seat of the player who flies it, or whose drone it is (-1: nobody's, a ship of the
+## world). With one look the pilot's own ship is seat 0's. Stage 4C: what the world does to "the player's ship" it
+## does to either player's, and tells the player whose it is (in_eye(pilot_seat(ship), …)).
+func pilot_seat(n) -> int:
+	if n == null or not is_instance_valid(n):
+		return -1
+	if n is Ship and n.is_drone:
+		var c = n.get("carrier")
+		if c != null and is_instance_valid(c):
+			n = c
+	if n == player:
+		return eye
+	if eyes_two and n == _eye_other.get("player"):
+		return 1 - eye
+	return -1
+
+
+## The ships the players fly (those out in space).
+func pilots() -> Array:
+	var out: Array = []
+	for s in (2 if eyes_two else 1):
+		var p = player_of(s) if eyes_two else (player if player != null and is_instance_valid(player) else null)
+		if p != null:
+			out.append(p)
+	return out
+
+
+## The player's ship nearest to a place (null: none is out).
+func near_pilot(at: Vector2):
+	var best = null
+	for p in pilots():
+		if best == null or at.distance_squared_to(p.position) < at.distance_squared_to(best.position):
+			best = p
+	return best
+
+
+## Split screen, stage 4E (rule 7 of space): a player's ship stands at a gate, about to spool its drive. "yes": jump;
+## "wait": the other player is being asked; anything else: they said no. Alone: "yes".
+func jump_consent(ship, to_id: int) -> String:
+	var m := get_tree().current_scene
+	if not Players.split or not GameState.has_pilot2() or m == null or not m.has_method("jump_consent"):
+		return "yes"
+	return String(m.jump_consent(maxi(0, pilot_seat(ship)), to_id))
+
+
+## … and the drive has spooled: in a split screen the two of you jump together (main sees to it). False: one pilot,
+## the ship jumps as it always did.
+func jump_as_two(ship, to_id: int) -> bool:
+	var m := get_tree().current_scene
+	if not Players.split or not GameState.has_pilot2() or m == null or not m.has_method("jump_both"):
+		return false
+	m.jump_both(maxi(0, pilot_seat(ship)), to_id)
+	return true
 
 
 ## Which player flies this ship (-1: neither, or there is one look and nothing to tell apart).
@@ -266,8 +322,8 @@ func _eye_camera() -> Camera2D:
 ## Each frame: two looks while the game is a split screen in space and you fly (main says so with `two_wanted`), one
 ## otherwise; the halves at their places; the second player's ship beside yours when it is not out yet.
 func _eyes_sync() -> void:
-	var want: bool = two_wanted and Players.split and GameState.has_pilot2() and GameState.acting == 0 and eye == 0 \
-		and player != null and is_instance_valid(player) and not player.is_docked() and not player.dying and _descent.is_empty()
+	# (stage 4D: main says when there are two looks: a split screen with at least one of you not on foot)
+	var want: bool = two_wanted and Players.split and GameState.has_pilot2() and GameState.acting == 0 and eye == 0
 	if want and not eyes_two:
 		_eyes_begin()
 	elif not want and eyes_two:
@@ -275,7 +331,6 @@ func _eyes_sync() -> void:
 	if not eyes_two:
 		return
 	_eyes_place()
-	eye_put(1, "input_enabled", input_enabled)           # (a window over the whole picture holds both, until each has their own in space: stage 4B)
 	_other_ship()
 
 
@@ -350,6 +405,7 @@ func _eyes_begin() -> void:
 		"_left_down": false, "_panning": false, "_pan_dist": 0.0, "_last_hover": "", "_hover_t": 0.0, "_hover_mouse": Vector2(-1, -1),
 		"_map_to": Vector2.INF, "_shake_t": 0.0, "_shake_amp": 0.0, "_key_flying": false, "_pad_latch": false,
 		"_radar_cands": no_cands, "_radar_t": -10.0, "_radar_r": 0.0, "_radar_c": Vector2.INF, "_emergency_until": -1.0,
+		"_descent": {}, "hazard_here": "", "_hz_inside": {}, "_bh_warned": false, "_haven_warned": 0.0, "_zone_warned": 0.0,
 		"eye_size": Vector2.ZERO, "eye_origin": Vector2.ZERO, "eye_rect": Rect2(), "eye_zoom": 1.0}
 	for k in EYE_VARS:
 		assert(_eye_other.has(k), "a look's field without a value: %s" % k)
@@ -375,6 +431,9 @@ func _eyes_end() -> void:
 	eye_as(0)
 	if eyes_hook.is_valid():
 		eyes_hook.call(false)                            # (the HUDs leave the halves before these go)
+	var d2: Dictionary = _eye_other.get("_descent", {})
+	if not d2.is_empty() and d2.get("fx") != null and is_instance_valid(d2["fx"]):
+		d2["fx"].queue_free()                            # (their way down or up, cut short: the picture is one)
 	var p2 = _eye_other.get("player")
 	if p2 != null and is_instance_valid(p2):
 		p2.fit.position = p2.position
@@ -423,29 +482,40 @@ func _eyes_place() -> void:
 		eye_put(s, "_min_zoom", minf(hw, vs.y) / (Universe.SYSTEM_RADIUS * 2.3))
 
 
-## The second player's ship: the one they fly, out in space beside yours once you are out. Until each undocks, docks
-## and jumps for themselves (stages 4D and 4E) it comes out with yours and goes in with yours. Until they have their
-## own HUD and weapons (4B) and the world's rules count for two (4C), nothing can target or harm it: said in the
-## changelog, and taken back with those stages.
+## The second player's ship: the one they fly, where they flew it (stage 4D: each docks and undocks for themselves).
+## Its picture is in this view while it is in this system, docked or out, as the first player's is. While their
+## buy-back offer is open they have none. A ship that was put somewhere (GameState.ship_join(): the split screen
+## begins, a jump or a planet takes them along) gets its picture anew.
 func _other_ship() -> void:
-	if player_of(1) != null or GameState.acting != 0 or eye != 0:
+	if GameState.acting != 0 or eye != 0:
 		return
-	var f2: ShipFitting = null
-	for f in GameState.fleet_of(1):
-		if f.uid == GameState.active_uid2:
-			f2 = f
-	if f2 == null or player == null or not is_instance_valid(player):
+	var p2 := player_of(1)
+	if not GameState.loss_offer_of(1).is_empty():
+		if p2 != null and not p2.dying:
+			p2.queue_free()
+			eye_put(1, "player", null)
 		return
-	f2.system_id = system_id
-	f2.docked_at = ""
-	f2.position = player.position + EYE_SHIP_OFF.rotated(player.heading)
-	f2.rotation = player.heading
+	var f2 := GameState.active_of(1)
+	if f2 == null:
+		return
+	GameState.ship_along()                               # (never left in another system: until each jumps for themselves)
+	if f2.has_meta("joined"):
+		var how = f2.get_meta("joined")                  # (true: beside your ship; "placed": where it was put)
+		f2.remove_meta("joined")
+		if typeof(how) == TYPE_BOOL and f2.docked_at == "" and player != null and is_instance_valid(player) and not player.is_docked():
+			f2.position = player.position + EYE_SHIP_OFF.rotated(player.heading)      # (beside your ship as it flies now)
+			f2.rotation = player.heading
+		if p2 != null:
+			p2.queue_free()
+			eye_put(1, "player", null)
+			p2 = null
+	if p2 != null and p2.fit == f2:
+		return
 	in_eye(1, func():
 		sync_player()
 		if player != null and is_instance_valid(player):
-			player.untargetable = true
-			player.no_harm = true
-			camera.position = player.position)
+			camera.position = player.position
+			follow = true)
 
 
 func _setup_background(bg: SpaceBackground) -> void:
@@ -626,6 +696,10 @@ func start_cme(at_once: bool = false) -> void:
 
 
 func _cme_hit(ship: Ship, d: float, star_r: float) -> void:
+	var ps := pilot_seat(ship)
+	if ps >= 0 and ps != eye:
+		in_eye(ps, _cme_hit.bind(ship, d, star_r))       # (the other player's ship: it is told to them)
+		return
 	# 0.6.37.2: drones are knocked out for a few seconds (white lightning); a ship in warp drops out; cloaks fail
 	if ship.is_drone:
 		ship.set("stunned_t", maxf(float(ship.get("stunned_t")), 6.0))
@@ -727,6 +801,10 @@ var _bh_warned := false
 
 
 func apply_gravity(ship: Ship, delta: float) -> void:
+	var ps := pilot_seat(ship)
+	if ps >= 0 and ps != eye:
+		in_eye(ps, apply_gravity.bind(ship, delta))
+		return
 	if String(layout["star"].get("kind", "")) != "blackhole" or ship.dying or ship.is_docked() or ship.in_warp():
 		return
 	var R := float(layout["star"]["radius"])
@@ -1802,6 +1880,8 @@ func _process(delta: float) -> void:
 	_eyes_sync()
 	if not _descent.is_empty():
 		_update_descent(delta)
+	if eyes_two and not (_eye_other.get("_descent", {}) as Dictionary).is_empty():
+		in_eye(1, _update_descent.bind(delta))             # (the second player's own way down or up)
 	_update_audio()
 	_veil_tick(delta)                        # package 40c
 	_jam_tick -= delta
@@ -1833,7 +1913,8 @@ func _process(delta: float) -> void:
 	if _respawn_timer <= 0.0:
 		_respawn_timer = 120.0
 		for spot in _spots:
-			if player == null or player.position.distance_to(spot["pos"]) > 150000.0:
+			var np = near_pilot(spot["pos"])
+			if np == null or np.position.distance_to(spot["pos"]) > 150000.0:
 				_fill_spot(spot, false)
 	_look_zoom(delta)
 	if eyes_two:
@@ -2129,9 +2210,14 @@ func _seat_cam_stick() -> Vector2:
 	return Pad.camera()                         # (the controller code is this look's player's: main's eye_scope)
 
 
+## Is a menu up that holds this look's player (two looks: one of their own, or one over the whole picture)?
+func _menu_up() -> bool:
+	return (MenuNav.active_menu(eye) != null) if eyes_two else MenuNav.menu_open()
+
+
 func key_direction() -> Vector2:
 	var d := Vector2.ZERO
-	if MenuNav.menu_open():
+	if _menu_up():
 		_pad_latch = true
 		return d                                # 0.5.28.2: the keys belong to the open menu
 	if is_map():
@@ -2176,7 +2262,7 @@ func key_direction() -> Vector2:
 
 func _key_flight() -> void:
 	steer(key_direction())
-	if is_map() and not MenuNav.menu_open() and _seat_keys():
+	if is_map() and not _menu_up() and _seat_keys():
 		for spec in [["ship_up", Vector2.UP], ["ship_down", Vector2.DOWN], ["ship_left", Vector2.LEFT], ["ship_right", Vector2.RIGHT]]:
 			if Input.is_action_just_pressed(String(spec[0])):
 				map_flick(spec[1])                    # the keys pick the next object that way
@@ -2983,6 +3069,18 @@ func announce_lead(ship: Ship, kind: String, where: String) -> void:
 
 ## Allied ships travelling with the pilot: convoys and patrols under the pilot's protection (marked
 ## green), the ship the pilot follows and anyone following the pilot. Lead ships first.
+## The ships a player's HUD lists as their own side: their group, and (rule 4 of space: the two of you are allies)
+## the other player's ship first.
+func allies_shown() -> Array:
+	var out: Array = []
+	if eyes_two:
+		var o = _eye_other.get("player")
+		if o != null and is_instance_valid(o) and not o.dying and not o.is_docked():
+			out.append(o)
+	out.append_array(player_group())
+	return out
+
+
 func player_group() -> Array:
 	var out: Array = []
 	if player == null or not is_instance_valid(player):
@@ -4485,7 +4583,7 @@ func clear_of_zones(p: Vector2) -> Vector2:
 ## Opening fire inside a no-fire zone (shooter or target inside) makes the shooter an aggressor –
 ## unless the target is an aggressor itself (self-defence is allowed).
 func _check_zone_fire(shooter: Ship, target: Ship) -> void:
-	if shooter.faction == "patrol" and (target.faction == "pirate" or (target == player and target.faction == "player" and shooter.hostile_to_player())):
+	if shooter.faction == "patrol" and (target.faction == "pirate" or (pilot_seat(target) >= 0 and target.faction == "player" and shooter.hostile_to(target))):
 		return                   # law enforcement
 	var st = zone_station(shooter.position)
 	if st == null:
@@ -4598,6 +4696,8 @@ func _garrison_lost(ship: Ship, killer) -> void:
 ## lightning; the pilot is told on entering.
 func _hazard_tick(dt: float) -> void:
 	hazard_here = ""
+	if eyes_two:
+		eye_put(1 - eye, "hazard_here", "")
 	if hazard_nodes.is_empty():
 		return
 	var ships: Array = []
@@ -4610,18 +4710,19 @@ func _hazard_tick(dt: float) -> void:
 		var hz: Dictionary = hn.data
 		var r := float(hz["radius"])
 		var k := String(hz["kind"])
-		var player_in := false
+		var in_seats := {}                           # the players whose own ship is inside
 		for s in ships:
 			if s.position.distance_to(hn.position) > r:
 				continue
-			if s == player:
-				player_in = true
+			var s_seat := pilot_seat(s) if not s.is_drone else -1
+			if s_seat >= 0:
+				in_seats[s_seat] = true
 			match k:
 				"radiation":
 					var st: Dictionary = s.fit.stats()
 					var str_k := float(hz.get("strength", 1.0)) * (1.0 - float(st.get("rad_ward", 0.0)))     # 0.6.40.9
-					if s == player:
-						GameState.count_stat("rad_time", dt)
+					if s_seat >= 0:
+						in_eye(s_seat, GameState.count_stat.bind("rad_time", dt))
 					s.fit.shield = maxf(0.0, s.fit.shield - float(st["shield_max"]) * 0.06 * str_k * dt)
 					if s.fit.shield <= 0.5:
 						s.take_damage(float(st["structure_max"]) * 0.006 * str_k * dt, "optical", null)
@@ -4632,23 +4733,40 @@ func _hazard_tick(dt: float) -> void:
 					if randf() < 0.08 * (1.0 - iw):
 						s.apply_emp(1.5 * (1.0 - iw * 0.5), null)
 						s.take_damage((8.0 + s.radius * 0.1) * (1.0 - iw), "optical", null)
-						if s == player:
-							GameState.count_stat("ion_hits")
+						if s_seat >= 0:
+							in_eye(s_seat, GameState.count_stat.bind("ion_hits"))
 						var top: Vector2 = s.position + Vector2(randf_range(-1, 1), -1.0).normalized() * randf_range(1500.0, 3000.0)
 						var bf := Fx.beam(top, s.position, Color(0.75, 0.9, 1.0), 8.0)
 						bf.life = 0.25
 						bf.max_life = 0.25
 						spawn_fx(bf)
 						spawn_fx(Fx.flash(s.position, Color(0.6, 0.85, 1.0), s.radius * 2.0))
-		if player_in:
-			hazard_here = k
-			if not _hz_inside.get(hz["id"], false):
-				var msg := {"radiation": "RADIATION ZONE: your shields are draining; once they are gone the hull burns.",
-					"ion_storm": "ION STORM: radar jammed, lightning strikes knock out your systems.",
-					"minefield": "OLD MINEFIELD: mines of a forgotten war, armed against anyone. Fly with care or clear a path."}
-				GameState.log_msg(String(msg[k]), GameState.COL_BAD)
-				GameState.codex.event({"radiation": "hz_radiation", "ion_storm": "hz_ion", "minefield": "hz_mines"}[k])
-		_hz_inside[hz["id"]] = player_in
+		for seat_h in (2 if eyes_two else 1):
+			in_eye(seat_h if eyes_two else eye, _hazard_mine.bind(hz, k, in_seats.has(seat_h if eyes_two else eye)))
+
+
+## (asked inside in_eye(): "the pilot's" standing is looked up when it is their turn, not before)
+func _pirates_hostile(hf: String) -> bool:
+	return GameState.rep.pirates_hostile(hf)
+
+
+func _haven_warn(hv) -> void:
+	if _t - _haven_warned > 20.0:
+		_haven_warned = _t
+		GameState.log_msg("%s: the pirate guns are firing at you. Keep %s away!" % [hv.title(), fmt_dist(HAVEN_RANGE)], GameState.COL_BAD)
+
+
+## A player's own part of a hazard: the banner, the word on flying into it (for the look whose turn it is).
+func _hazard_mine(hz: Dictionary, k: String, player_in: bool) -> void:
+	if player_in:
+		hazard_here = k
+		if not _hz_inside.get(hz["id"], false):
+			var msg := {"radiation": "RADIATION ZONE: your shields are draining; once they are gone the hull burns.",
+				"ion_storm": "ION STORM: radar jammed, lightning strikes knock out your systems.",
+				"minefield": "OLD MINEFIELD: mines of a forgotten war, armed against anyone. Fly with care or clear a path."}
+			GameState.log_msg(String(msg[k]), GameState.COL_BAD)
+			GameState.codex.event({"radiation": "hz_radiation", "ion_storm": "hz_ion", "minefield": "hz_mines"}[k])
+	_hz_inside[hz["id"]] = player_in
 
 
 ## The HUD's banner while the pilot is in a radiation zone or an ion storm ({} otherwise).
@@ -4690,15 +4808,16 @@ func _update_defence(delta: float) -> void:
 		var hf := String(hv.data.get("faction", ""))
 		for n in ship_layer.get_children():
 			if n is Ship and n.faction != "pirate" and n.is_targetable() and n.position.distance_to(hv.position) < bd:
-				if n == player and not GameState.rep.pirates_hostile(hf):
-					continue          # friends of the haven's faction are left alone (package 12)
+				var n_seat := pilot_seat(n) if not n.is_drone else -1
+				if n_seat >= 0 and not bool(in_eye(n_seat, _pirates_hostile.bind(hf))):
+					continue          # friends of the haven's faction are left alone (package 12; each player by their own standing)
 				bd = n.position.distance_to(hv.position)
 				tgt = n
 		if tgt == null:
 			continue
-		if tgt == player and _t - _haven_warned > 20.0:
-			_haven_warned = _t
-			GameState.log_msg("%s: the pirate guns are firing at you. Keep %s away!" % [hv.title(), fmt_dist(HAVEN_RANGE)], GameState.COL_BAD)
+		var t_seat := pilot_seat(tgt) if not tgt.is_drone else -1
+		if t_seat >= 0:
+			in_eye(t_seat, _haven_warn.bind(hv))
 		_turrets_fire(hv, tgt, (18.0 + 10.0 * float(hv.data.get("tier", 2))) * (2.2 if fort else 1.0), Color(1.0, 0.35, 0.3), delta, 2.0 if fort else 2.6)
 
 
@@ -4887,6 +5006,10 @@ func npc_jump(ship: Ship, next: int) -> void:
 func on_ship_destroyed(ship: Ship, _killer) -> void:
 	if _killer != null and not is_instance_valid(_killer):
 		_killer = null                       # 0.6.75.3: a killer already freed (its shot was still flying)
+	var k_seat := pilot_seat(_killer)
+	if eyes_two and k_seat >= 0 and k_seat != eye and pilot_seat(ship) < 0:
+		in_eye(k_seat, on_ship_destroyed.bind(ship, _killer))      # (the other player's kill, or their drone's: it is theirs)
+		return
 	if ship.has_meta("garrison"):
 		_garrison_lost(ship, _killer)        # package 40d
 	Audio.play_at("explosion_large" if int(ship.fit.hull().get("size", 1)) >= 2 else "explosion_small", ship.position, "ship destroyed")
@@ -4897,7 +5020,7 @@ func on_ship_destroyed(ship: Ship, _killer) -> void:
 		GameState.on_player_ship_lost(ship.fit)
 		return
 	if eyes_two and ship == _eye_other.get("player"):
-		_eye_other["player"] = null
+		in_eye(1 - eye, on_ship_destroyed.bind(ship, _killer))     # (the other player's own ship: its end is theirs)
 		return
 	if ship.wingman_id >= 0:                     # package 33: a wingman died
 		wing_nodes.erase(ship.wingman_id)

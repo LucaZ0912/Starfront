@@ -332,10 +332,18 @@ func radio_held(d: Dictionary) -> bool:
 var radio_top := 72.0
 
 
+## Split screen: the story is the first player's (Luz). What it shows over the game (a radio call, a tip, the marks
+## at its goals) stands in their half while the picture is in two.
+func _area() -> Rect2:
+	if main != null and is_instance_valid(main) and main.has_method("halves_on") and main.halves_on():
+		return main.half_rect(0)
+	return Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size)
+
+
 func _place_radio() -> void:
 	if _radio == null:
 		return
-	var vs := get_viewport().get_visible_rect().size
+	var vs := _area().size
 	var sz := _radio.get_combined_minimum_size() * _radio.scale
 	var low := false
 	var m := get_tree().current_scene
@@ -373,7 +381,7 @@ func _show_tip(id: String) -> void:
 	var t: Dictionary = Data.TIPS[id]
 	_tip = UI.neon_panel(Color(0.4, 0.8, 1.0), Color(0.02, 0.05, 0.1, 0.95), 2)
 	_tip.custom_minimum_size = Vector2(480, 0)
-	_tip.position = Vector2(get_viewport().get_visible_rect().size.x * 0.5 - 240, get_viewport().get_visible_rect().size.y - 300)
+	_tip.position = _area().position + Vector2(_area().size.x * 0.5 - 240, _area().size.y - 300)
 	add_child(_tip)
 	var v := UI.vbox(4)
 	_tip.add_child(v)
@@ -457,7 +465,9 @@ func _draw_marker() -> void:
 		return
 	var v = main.view
 	var font := ThemeDB.fallback_font
-	var vs := get_viewport().get_visible_rect().size
+	var vs := _area().size
+	# (two halves: the world's own transform is the whole picture's; in your half the same view is centred on the half)
+	var shift: Vector2 = _area().get_center() - get_viewport().get_visible_rect().size * 0.5
 	for t in marker_targets():
 		var n = v.find_object(t)
 		var p := Vector2.ZERO
@@ -468,12 +478,12 @@ func _draw_marker() -> void:
 			var fd: Dictionary = Universe.warp_target(int(v.system_id), String(t))
 			if fd.is_empty():
 				continue
-			p = v.get_global_transform_with_canvas() * (fd["pos"] as Vector2)
+			p = v.get_global_transform_with_canvas() * (fd["pos"] as Vector2) + shift
 			if v.player != null and is_instance_valid(v.player):
 				dkm = (fd["pos"] as Vector2).distance_to(v.player.position)
 			nm = String(fd.get("name", t))
 		else:
-			p = (n as CanvasItem).get_global_transform_with_canvas().origin
+			p = (n as CanvasItem).get_global_transform_with_canvas().origin + shift
 			if v.player != null and is_instance_valid(v.player):
 				dkm = (n as Node2D).position.distance_to(v.player.position)
 			nm = String(n.data.get("name", t)) if "data" in n and n.data is Dictionary else t

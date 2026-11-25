@@ -192,7 +192,28 @@ var bh_out := -1.0               # time since it went out (the closing flash); -
 var bh_cloaked := false          # went out for the cloak: ignites again quickly once the ship shows (0.4.25.39)
 
 
+## Split screen in space, stage 4C (Luz: the second player gets exactly what the first one has; the world is one for
+## both). A ship a player flies does its own work as that player: its frame, its physics step, a hit it takes and
+## its end run with that player's look as the view's (SystemView.in_eye), so `view.player == self` holds in here and
+## "the pilot" (GameState: skills, perks, standing, the purse, the numbers), the HUD and the controller are theirs.
+## Outside of that it is the first player's turn, as always; so only the second player's ship ever needs the switch.
+## The seat whose turn it has to become (-1: it is right as it is).
+func _own_turn() -> int:
+	if not manual or faction != "player" or view == null or not ("eyes_two" in view) or not view.eyes_two:
+		return -1
+	var s: int = view.seat_of(self)
+	return s if s >= 0 and s != int(view.eye) else -1
+
+
 func _process(delta: float) -> void:
+	var s := _own_turn()
+	if s >= 0:
+		view.in_eye(s, _process_own.bind(delta))
+	else:
+		_process_own(delta)
+
+
+func _process_own(delta: float) -> void:
 	if fit == null or not fit.hull().has("black_hole"):
 		set_process(false)
 		return
@@ -342,14 +363,24 @@ func hostile_to_player() -> bool:
 	return false
 
 
+## Hostile to this ship of a player's (theirs, or a drone of theirs)? Two players: each has their own standing, so
+## it is asked as the player who flies it.
+func hostile_to(p) -> bool:
+	if view != null and "eyes_two" in view and view.eyes_two:
+		var s: int = view.pilot_seat(p)
+		if s >= 0 and s != int(view.eye):
+			return bool(view.in_eye(s, hostile_to_player))
+	return hostile_to_player()
+
+
 ## Hostility between two ship nodes (role rules between NPCs, standing towards the pilot).
 static func hostile(a, b) -> bool:
 	if a == null or b == null or a == b:
 		return false
 	if a.faction == "player" and b.faction != "player":
-		return b.hostile_to_player()
+		return b.hostile_to(a)
 	if b.faction == "player" and a.faction != "player":
-		return a.hostile_to_player()
+		return a.hostile_to(b)
 	return are_hostile(a.faction, b.faction)
 
 
@@ -707,7 +738,7 @@ func _lod_skip(delta: float) -> float:
 		var d0 := _lod_acc + delta
 		_lod_acc = 0.0
 		return d0
-	var pl = view.player
+	var pl = view.near_pilot(position) if view.has_method("near_pilot") else view.player      # (two players: the nearer one's ship)
 	if pl == null or not is_instance_valid(pl) or position.distance_squared_to(pl.position) < LOD_DIST * LOD_DIST:
 		var d1 := _lod_acc + delta
 		_lod_acc = 0.0
@@ -722,6 +753,14 @@ func _lod_skip(delta: float) -> float:
 
 
 func _physics_process(delta0: float) -> void:
+	var s := _own_turn()
+	if s >= 0:
+		view.in_eye(s, _physics_own.bind(delta0))
+	else:
+		_physics_own(delta0)
+
+
+func _physics_own(delta0: float) -> void:
 	if dying:
 		return
 	var delta := _lod_skip(delta0)
@@ -1052,6 +1091,16 @@ const PATROL_SCAN_RANGE := 15000.0
 
 ## Patrols of a faction that considers the pilot Neutral scan the ship once in a while.
 func _scan_player() -> void:
+	# (two players: each ship of a player's is scanned by that player's own standing, and they read it in their own list)
+	if view != null and view.has_method("pilots") and view.eyes_two:
+		for p in view.pilots():
+			if not scanned_player:
+				view.in_eye(view.pilot_seat(p), _scan_one)
+		return
+	_scan_one()
+
+
+func _scan_one() -> void:
 	var pl = view.player if view != null else null
 	if pl == null or not is_instance_valid(pl) or not pl.is_targetable() or fit.gov == "":
 		return
@@ -1580,6 +1629,18 @@ func _travel(delta: float, s: Dictionary):
 			fit.route.clear()
 			order = {"type": "idle"}
 			return null
+		if view.player == self and view.has_method("jump_consent"):
+			# split screen, stage 4E (Luz, rule 7 of space): the game shows one system, so who is at the gate asks
+			# the other player first: with their yes both jump, with their no nobody does
+			var ans: String = view.jump_consent(self, next)
+			if ans == "wait":
+				activity = "At the gate: waiting for the other player's answer"
+				velocity = velocity.move_toward(Vector2.ZERO, 400.0 * delta)
+				return position
+			if ans != "yes":
+				fit.route.clear()
+				order = {"type": "idle"}
+				return null
 		spool = 0.0
 		if view.player == self:
 			Audio.play("gate_activate", "jump spool")       # package 28a
@@ -1598,7 +1659,8 @@ func _travel(delta: float, s: Dictionary):
 			view.stow_all_drones(self, true)   # drones come along and fly out again after the jump
 		if view.player == self:
 			Audio.play("jump_hyperspace", "jump")           # package 28a
-		GameState.begin_jump(fit, next)
+		if not (view.player == self and view.has_method("jump_as_two") and view.jump_as_two(self, next)):
+			GameState.begin_jump(fit, next)
 	return position
 
 
@@ -2072,6 +2134,14 @@ func _deep_drill(delta: float, t: Dictionary, node) -> bool:
 func take_damage(amount: float, dtype: String, attacker) -> void:
 	if attacker != null and not is_instance_valid(attacker):
 		attacker = null                  # 0.6.75.3: the shooter may already be gone (freed) – then nobody did it
+	var s := _own_turn()
+	if s >= 0:
+		view.in_eye(s, _take_damage_own.bind(amount, dtype, attacker))
+	else:
+		_take_damage_own(amount, dtype, attacker)
+
+
+func _take_damage_own(amount: float, dtype: String, attacker) -> void:
 	if dying or is_docked() or in_station() or no_harm:
 		return
 	if module_on.get("builtin_cloak", false):
@@ -2191,6 +2261,14 @@ func _show_damage(shield_dmg: float, hull_dmg: float) -> void:
 
 
 func _die(killer) -> void:
+	var s := _own_turn()
+	if s >= 0:
+		view.in_eye(s, _die_own.bind(killer))
+	else:
+		_die_own(killer)
+
+
+func _die_own(killer) -> void:
 	if dying:
 		return
 	dying = true

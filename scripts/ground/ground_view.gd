@@ -1282,14 +1282,14 @@ func _env_step(delta: float) -> void:
 
 
 ## The body gives out: dark, and someone finds you (0.7.51.4: the clinic).
-func _collapse(reason: String = "") -> void:
+func _collapse(reason: String = "", both: bool = false) -> void:
 	if _collapsed:
 		return
 	_collapsed = true
 	input_enabled = false
 	pilot.moving = false
 	pilot.aim = Vector2.INF
-	used.emit({"kind": "collapse", "rect": Rect2(), "reason": reason})      # package 52: "fight" – shot down
+	used.emit({"kind": "collapse", "rect": Rect2(), "reason": reason, "both": both})      # package 52: "fight" – shot down; both: the two of you together
 
 
 ## Package 52: left click on a foe – lock it and make it the active target; right click – let it go.
@@ -7037,6 +7037,8 @@ func wants_two() -> bool:
 	var mn = get_tree().current_scene if is_inside_tree() else null
 	if mn != null and mn.has_method("apart") and (mn.apart() or mn.parting()):
 		return false                                      # (you are in different places: they have a view of their own)
+	if mn != null and "p2_with" in mn and not mn.p2_with:
+		return false                                      # (stage 4D: they are not with you: flying, or docked somewhere else)
 	if String(level) == "zcolvr" and not GameState.col_two():
 		return false                                      # (a match one of you plays alone: "Singleplayer" picked at the counter)
 	return Players.split and GameState.has_pilot2() and String(level) != "zcolsv" and pilot != null and map != null
@@ -7080,7 +7082,7 @@ func two_use() -> bool:
 		# (Luz, 25 Nov 2026: the story's things happen with the first player only)
 		two_say(STORY_FIRST)
 		return false
-	if (kind in TWO_WAYS or kind == "col_register") and can_part():      # (apart places: a way out they take alone, in a view of their own; and the Colosseum's counter: everybody signs up for themselves)
+	if (kind in TWO_WAYS or kind == "col_register" or kind == "exit") and can_part():      # (apart places: a way out they take alone, in a view of their own; the Colosseum's counter: everybody signs up for themselves; the way up to their own ship, stage 4D)
 		get_tree().current_scene.part_two(two_spot(), true)
 		return true
 	var own: bool = kind in TWO_OWN
@@ -7401,7 +7403,7 @@ func _both_down() -> void:
 	if two != null and is_instance_valid(two):
 		two.down = false
 	GameState.gear_of(1).fall()                           # (their body as the clinic leaves yours)
-	_collapse("fight")
+	_collapse("fight", true)
 
 
 ## You are down in the hologram and the second player still stands: you lie there until they bring you back.

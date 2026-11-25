@@ -53,6 +53,9 @@ func _command_sound(t: String, err: String) -> void:
 		Audio.play("sell", t)
 
 
+const DEBUG_MOVES := ["debug_land", "debug_poi", "debug_capital", "debug_landfall", "debug_special", "debug_teleport", "debug_vault"]
+
+
 func execute(cmd: Dictionary) -> String:
 	var t: String = cmd.get("type", "")
 	var handler := "_c_" + t
@@ -63,6 +66,12 @@ func execute(cmd: Dictionary) -> String:
 		err = "Debug commands are disabled."
 	else:
 		err = call(handler, cmd)
+	if err == "" and t in DEBUG_MOVES and Players.split and GameState.has_pilot2() and GameState.acting == 0:
+		# (a debug move puts you somewhere at once: the second player and their ship come with you, as when the split
+		# screen begins; by their own flying they would not be there)
+		var mj := get_tree().current_scene
+		if mj != null and mj.has_method("p2_join_now"):
+			mj.p2_join_now()
 	_command_sound(t, err)
 	history.append(cmd)
 	if history.size() > 50:
@@ -237,7 +246,7 @@ func _c_jump(c: Dictionary) -> String:
 	var n = world.find_object(String(c["id"]))
 	if n == null or n is Ship or n.kind != "gate":
 		return "That is not a gate."
-	return world.order_goto(String(c["id"]))
+	return world.order_goto(String(c["id"]))             # (stage 4E: who is at the gate asks the other player)
 
 
 ## {"type":"lock", "id": <object id>} – start locking a target (ships, asteroids, wrecks, anomalies).

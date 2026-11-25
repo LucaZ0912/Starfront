@@ -194,8 +194,8 @@ func other_get(key: String):
 ## The second player's controller for one frame (main calls it while it is their turn, in space, with nothing up
 ## that is the first player's over the whole picture).
 func seat_step(delta: float) -> void:
-	if seat != 1 or MenuNav.menu_open():
-		return
+	if seat != 1 or MenuNav.active_menu(1) != null:
+		return                                           # (a window of theirs is up: their menu driver walks it, seat_menu.gd)
 	_process(delta)
 
 
@@ -209,8 +209,8 @@ func _kind_of(dev: int) -> String:
 ## The half of the picture this player's wheel, hints and list are in (null: there is one picture).
 func _half():
 	var m := _main()
-	if m != null and m.view != null and is_instance_valid(m.view) and "eyes_two" in m.view and m.view.eyes_two:
-		return m.view.eye_half(seat)
+	if m != null and m.view != null and is_instance_valid(m.view) and "eyes_two" in m.view and m.view.eyes_two and m.in_space(seat):
+		return m.view.eye_half(seat)                     # (while this player flies: on foot their wheel is where their windows are)
 	return null
 
 
@@ -405,8 +405,13 @@ func _main() -> Node:
 	return m if m != null and "ground" in m and "view" in m else null
 
 
+## Is a menu up that is this controller's player's to walk?
+func _menu_up() -> bool:
+	return (MenuNav.active_menu(1) != null) if seat == 1 else MenuNav.menu_open()
+
+
 func context() -> String:
-	if MenuNav.menu_open():
+	if _menu_up():
 		return "menu"
 	var m := _main()
 	if m == null:
@@ -949,7 +954,7 @@ func _open_wheel(which: String, btn: String) -> void:
 	if which == "drones":
 		wheel.title = glyph(btn) + " drones"
 	var mw := _main()
-	if mw != null and mw.has_method("halves_on") and mw.halves_on():
+	if mw != null and mw.has_method("halves_on") and mw.halves_on() and _half() == null:
 		mw.win_show(0, wheel)                            # split screen: the wheel is in your half, as your windows are
 	else:
 		_wheel_layer.add_child(wheel)

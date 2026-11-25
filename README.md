@@ -467,6 +467,54 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.40 (a fall is the faller's alone): main `_fallen(reason, seat, both)`: in a split screen `_fall_alone(seat,
+  how, who)` brings only who fell, with `GameState.active_of(seat)`, to `_fall_place(seat)` (the nearest clinic
+  city of this system, else a station of this system); seat 0: `close_deck(false, true)` leaves a guest behind,
+  seat 1: their view ends and `_open_ground2_at()` opens a new one at the bed. With no place in this system
+  `_fall_aboard()`: back at their own ship's landing field (`land_at(body, site, false, seat)`).
+  `GroundView._collapse(reason, both)`: `_both_down()` says `both`, and then both are brought as before.
+  `_wake_at(st, own)`: the fade in your own half.
+- 0.8.75.39 (stage 4E): `Ship` at a gate asks `SystemView.jump_consent(ship, to)` before its drive spools and calls
+  `jump_as_two(ship, to)` when it has; main: `jump_consent(seat, to)` ("yes" / "wait" / "no"), `_jump_ask()` (the
+  question in the other's half, `_jump_q`), `_jump_step()`, `jump_both()` / `_jump_go()`: the other goes aboard,
+  `GameState.begin_jump()` runs for the first player's ship, the second player's pays its fuel and follows through
+  `ship_along()` on arrival. `GameState.p2_placed` (saved): `ship_join()` only the first time a split screen
+  begins. `GalaxyMap` lets seat 1 set a course. `StoryUI._area()`: radio call, tip and goal marks in the first
+  player's half.
+- 0.8.75.38 (stage 4D, planets): main's landing chain takes a `seat`: `_on_descended(body, seat)`, `fly_down_to`,
+  `land_at`, `_city_hatch`, `_cloud_climb`, `enter_city`, `leave_city`, `take_off`, `drone_up`; a seat's scenes are
+  `planet_map` / `flight` / `hatch` or `planet_map2` / `flight2` / `hatch2` (`_scene()`, `_scene_put()`), added by
+  `_scene_add()` into the seat's window half while `halves_on()`; `_whole_scene()` is true only for a scene begun
+  with one picture; `on_the_way(seat)`. `_as(seat, f)`: as that player (their look in space, else `with_seat`).
+  `fade_for(seat, …)` / `fade_put()`: a fade over a half. `_ground2_new(setup)` makes the second player's own
+  ground view (deck, city, field, settlement), `_resume_ground2()` puts them back at the place their ship stands
+  at. `take_off(dest, 1)` waits in `_lift2` until their look at space is there (`_lift2_step()`).
+  `SystemView._descent` is a look's own (EYE_VARS). `close_deck()` no longer ends the second player's own view;
+  with `leave` a guest stays behind (parted, or dropped to the entrance by `_deck2_step()`).
+- 0.8.75.37 (stage 4D, stations): where the second player is: `main.p2_with` (a guest in the first player's ground
+  view; `GroundView.wants_two()` asks it), `ground2` (a ground view of their own, now also while the first player
+  has none: `_open_ground2_at(station)`), or in their ship. `main.on_foot(seat)`, `in_space(seat)`.
+  `_deck2_step()` each frame: the split screen's start (`GameState.ship_join()`), a deck of their own where their
+  ship is docked, shut when the ship has left; `_undock2()`. `_ground_place()` / `_ghalves_make()` /
+  `_ghalves_drop()`: a ground view stands in its player's half (`ghalves`) whenever the other player is not in it.
+  `close_deck(open_window, leave)`: `leave` (the stairs, an undocked ship) keeps the second player in the station.
+  `SystemView.two_wanted` = a split screen with at least one of the two not on foot; the look of who is on foot is
+  not drawn. `GameState.active_of(seat)`, `ship_join()` (marks the fit "joined": `SystemView._other_ship()` puts
+  its picture in anew), `ship_along()` only brings a ship out of another system; `last_station2`. `_services_for(st,
+  seat)` no longer shuts the first player's station window for the second player's deck.
+- 0.8.75.36 (stage 4C, the world for two in space): `Ship._own_turn()`: a ship a player flies runs `_process`,
+  `_physics_process`, `take_damage` and `_die` inside `SystemView.in_eye(seat)` (`_process_own` and so on), so
+  `view.player == self` and GameState are its player's there. `SystemView.pilot_seat(ship)` (also a drone's
+  carrier's), `pilots()`, `near_pilot(pos)`: what the world does to "the player's ship" it does to either and tells
+  the player whose it is (`_cme_hit`, `apply_gravity`, `_hazard_tick` / `_hazard_mine`, `_update_defence` /
+  `_haven_warn`, `_check_zone_fire`); `on_ship_destroyed` runs for the killer's player. `Ship.hostile_to(pilot
+  ship)` asks standing as that player. EYE_VARS also hold `hazard_here`, `_hz_inside` and the warned flags.
+  Never bind a method of a swapped object before `in_eye()` (`GameState.rep.x.bind()` binds the first player's
+  `rep`): bind a method of the view that looks it up inside. `GameState.loss_offer2` / `loss_offer_of(seat)`;
+  `main._fall_step()` opens the second player's buy-back window for it. `main.halves_on()` is true in space with
+  two looks (`space_two()`): the window halves stand at `view.eye_frame(seat)`, `win_half.gd` takes its player by
+  their look there, `seat_menu.gd` leaves the second player's controller to `Pad.seat_step()` while no window of
+  theirs is up. `SystemView.allies_shown()` for the HUD's group list.
 - 0.8.75.35 (stage 4B, a HUD and a controller per player in space): `scripts/world/space_half.gd` (no class_name)
   is each look's half: its SubViewport shows the world and holds the look's sky, its `HUD`, the controller's wheel
   and hints; for seat 1 two gates make everything of the half run inside `SystemView.eye_as(1)`; the mouse of the

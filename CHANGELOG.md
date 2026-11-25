@@ -3,6 +3,227 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.40 – 2026-11-25
+
+**Package 75, split screen: only who goes down is brought to the clinic (Luz: "only the one who dies should go to
+the clinic").**
+- **Who goes down on foot alone** is found and brought to the clinic, with their own ship, and wakes there with
+  their own buy-back window in their half. **The other player is not touched:** they stay where they are (on foot,
+  on a way down to a planet or in their ship), their ship stays where it stands, their suit and their purse are
+  theirs. They read one line ("... went down and was brought to ...").
+  - It was: with no clinic in the very place, the ship was taken to the clinic's city and both of you with it.
+  - **The second player goes down** (in a place of their own): their place ends, their ship is taken to the clinic's
+    city, and a view of their own opens at the bed.
+  - **You go down while they walk beside you:** you are brought, they stay, in a place of their own there (where a
+    place cannot be left to them as it is, they stand at its entrance).
+  - You come out of black in your own half; the other's half stays as it is.
+- **Both down together in a fight** (side by side, nobody left to bring the other back): both died, both are brought,
+  each with their ship, as before.
+- **Where to, when the system has no city with a clinic** (my readings, said outright: a single player is flown to
+  their last station, wherever it is; in a split screen that can be another system, the game shows one system, and
+  the other shall not be moved):
+  - **A station in this system:** who fell is flown there with their ship: the station they come back to if it is
+    here, else the nearest their ship may dock at.
+  - **No station either (an uninhabited system):** who fell is carried back to their own ship and wakes at its
+    landing field, with their buy-back window. Nobody leaves the system. Once the game shows two systems (stage 5),
+    who fell can be flown to their last station alone, as a single player is.
+- **Known:** a second player walking beside you does not go down alone outside a fight (their suit holds at the
+  last point, as since stage 3); in a fight they lie there until you bring them back.
+- **Not tried:** a fall while the other flies in space or is on a way down to a planet; a fall on a station's deck;
+  two real controllers.
+- **Seen twice, cause not found:** two of sixteen runs of `split19` stopped with a script error in its older part
+  (the fight alone: the fight's object was gone while the test waited), before anything of this update runs, and
+  took the groups after it along. The test says so now instead of stopping (it prints what it finds and fails its
+  check); in the seven runs since it did not happen again.
+- Smoke test group `split19`: its last check written anew and four added (11 checks), with the pictures
+  `split19_klinik_nur_wer_faellt.png` and `split19_einer_bleibt.png`.
+
+## alpha 0.8.75.39 – 2026-11-25
+
+**Package 75, split screen, stage 4E: the jump for two, a course of their own, the save, the story in space (Luz's
+rules 7, 8, 10 and 11 of space). With this the five steps of stage 4 are built.**
+- **A jump asks the other player (rule 7).** The game shows one system, so who stands at a gate with their drive
+  about to spool asks the other, wherever they are: "Do you want to jump along?", in their half, answered with
+  their use key (yes) or their dodge key (no); it goes away by itself after thirty seconds. Who asked sees that
+  the other is being asked and may take it back.
+  - **Yes:** both jump. Who was on foot (a station's deck, a city, a way down to a planet) has gone aboard for it,
+    and both ships come out of the gate in the next system, the second beside the first. Each pays their own fuel.
+  - **No, no answer, taken back:** nobody jumps; the course of who asked is cleared, and they read why.
+  - **The other cannot jump** (no drive, not enough fuel, no way in): nobody jumps, and who asked reads why.
+  - It works both ways: the second player flies to a gate and asks you. A course of several jumps asks at each gate.
+- **A course of their own (rule 11):** the second player sets a course on their own galaxy map, and their ship flies
+  it (it was refused: "when you fly yourself").
+- **The save (rule 10)** keeps where each of the two ships is, docked or out in space. The second player's ship is
+  put beside yours only the first time a split screen begins; begun again later (a game loaded), it is where they
+  flew it.
+- **The story in space (rule 8)** is the first player's: its talks are over the whole picture and hold both ships
+  (as before); its radio calls, its tips and the marks at its goals stand in the first player's half now (they were
+  laid out over the whole picture).
+- **Known:**
+  - The jump itself (the tunnel, the arrival) is one picture for both. The game's jump is the first player's
+    ship's: when the second player asked, your ship is put at their gate and theirs comes through with it. A
+    misjump flings both out together.
+  - The wormhole jump (Axiom Threshold) and looking into another system on the map stay the first player's until
+    the game shows two systems (stage 5).
+  - A loaded game puts the second player at the entrance of the place their ship stands at (the hangar, the
+    landing field); the very spot only where 0.8.75.32 already kept it.
+- **Not tried:** a save written to the disk and read again (the test fills the save's data and begins the split
+  screen anew); a course of several jumps for the second player; two real controllers.
+- **Still open in stage 4** (said with their stages): a station's own window with its list of services and the help
+  for the second player; what traffic does around "the player's ship" (convoys, a patrol that stops you), the
+  interdictor's game, the market ship, escape pods, wingmen and the platform ship for the second player.
+- Smoke test group `split28` (6 checks, with the picture `split28_frage.png` at 1920 x 1080); `split13` expects
+  that a course is the second player's to set. With it run, in parts, none failed and no group stopped at a script
+  error: every split screen group (`split0` to `split28`), `pad80`, `controls`, `firegroups79`, `multifocus`,
+  `wingmen`, `gear`, `landing`, `gates40`, `stationwin`, `debug_ground`, `mining41`, `jump_warning`, `intro56`,
+  `hackpad`, `review6`, `platform`, `gameover`, `crew`, `cam58`, `story55`, `w58a`, `q58`, `room64e`, `warp36`,
+  `boost`, `rocks`, `scale`, `moons`, `stars`, `hazards40d`. No full run.
+
+## alpha 0.8.75.38 – 2026-11-25
+
+**Package 75, split screen, stage 4D, the planets: landing and lifting off each for themselves (Luz's rule 1 of
+space; this takes back what 0.8.75.37 said the second player could not do on planets).**
+- **The second player goes down to a planet by their own ship.** The descent, the planet's map with its places, the
+  flight down through the air and a city's hatch are theirs and stand over their half; you fly on, or walk, in
+  yours.
+- **They stand there in a view of their own:** in a city's hangar (with the city's counters, lifts and street), on a
+  landing field, in a settlement.
+- **They lift off again for themselves:** the way up to their ship takes them out: through the city's hatch, or
+  from the landing field, and up to orbit, where their half is space again.
+- **Your own way down and up stands over your half** while the picture is in two (it was over the whole picture and
+  hid the second player's half): they fly on meanwhile. The flashes and fades of a way down or up lie over the half
+  of whose way it is.
+- **Nobody is fetched aboard anywhere (rule 9):** you leave a city or a landing field by your ship and the second
+  player stays where they are, their ship beside the place yours stood at. If they were your guest in a room of
+  the place that cannot be kept for one of you (the quarters, a ruin's depths), they stand at the place's entrance
+  again, in a view of their own. (0.8.75.37 still took them aboard on planets.)
+- **Together again** in the same place of the same city, field or station, when both ships stand there.
+- **As before, and my reading from stage C:** who goes down on foot where there is no clinic is brought to one, and
+  the other player with them, now each with their ship. With a ship for each it could also be only the one who
+  fell: tell me if it should.
+- **Not for the second player themselves yet:** jumping (stage 4E: your jump takes them along), a station's own
+  window with its list of services, a question (the Colosseum, a night's sleep) while they are in their ship.
+- **Not tried** (built by the same code as what the test walks): a cloud city (no hatch: the flight through its
+  gate), a settlement, the landing drone's way up, the planet's map as the way from one place to the next, meeting
+  again on a planet, a save while the second player is on a planet of their own; two real controllers.
+- **A debug move takes the second player along:** landing somewhere, a place to explore, a teleport from the debug
+  menu put you there at once, and the second player and their ship with you (by their own flying they would not be
+  there).
+- Smoke test group `split27` (5 checks, with pictures `split27_karte.png`, `split27_flug.png`, `split27_stadt.png`,
+  `split27_landeplatz.png` at 1920 x 1080). Changed to the new rules: `split16` and `split22` expect that the second
+  player stays in their place when you leave yours; `split18` no longer expects the way up to the ship to be
+  refused to them.
+- With it run, in parts, none failed and no group stopped at a script error (the counts of passed checks are
+  the groups' own): every split screen group (`split0` to `split27`), `pad80`, `controls`, `firegroups79`,
+  `multifocus`, `wingmen`, `gear`, `landing`, `gates40`, `stationwin`, `debug_ground`, `mining41`, `intro56`,
+  `hackpad`, `review6`, `platform`, `gameover`, `crew`, `cam58`, `colsurv62a`, `coltakeb62a`, `colfight62a`,
+  `colprep62a`, `room64e`, `q58`, `w58a`, `foot_combat`, `casino62`, `minigames54b`, `env`, `warp36`, `boost`,
+  `rocks`, `scale`, `moons`, `stars`, `hazards40d`. No full run.
+- **Seen on the way:** a test group that stops at a script error still ends with "failures: 0" (its remaining checks
+  are simply not made). I compare the count of passed checks with the number a group has since then.
+
+## alpha 0.8.75.37 – 2026-11-25
+
+**Package 75, split screen, stage 4D, the stations: docking and undocking each for themselves (Luz's rules 1 and 9
+of space: each flies their own ship; one of you can be on foot in a station while the other flies; nobody is
+fetched aboard).**
+- **The second player docks for themselves.** They fly their ship into a station and stand on its deck, in their
+  half, with everything a deck has for them (the counters with their own windows and purse, the lifts, the bar);
+  you fly on in yours.
+- **… and undocks for themselves:** the stairs to their ship take them out through a hangar bay. As your guest on
+  a deck they take the stairs alone.
+- **You dock while they fly:** your station window and your deck stand in your half, and they fly on.
+- **One half ground, one half space:** whoever is on foot has their ground view over their half, whoever flies has
+  their look at space with their HUD.
+- **Together again:** docked at the same station and standing in the same place of it, you are in one picture as
+  before.
+- **Nobody is fetched aboard at a station (rule 9):** you leave the deck and undock, and the second player stays
+  where they are, their ship in its hangar.
+- **The second player's ship is where they flew it.** It no longer stands where yours stands: it is put where yours
+  is only when the split screen begins (docked beside yours, or out beside it), and where they cannot go for
+  themselves yet (below).
+- **Shot down** (stage 4C): each comes back to the station they themselves docked at last. The second player then
+  stands on its deck; you are at yours while they fly on.
+- **Not for the second player themselves yet, each with a word why:**
+  - **Planets.** Landing ("Landing on a planet is not the second player's own yet."), and lifting off from a city
+    or a landing field: on a planet they are with you, and when you lift off they come aboard with you, as before,
+    with a line that says so.
+  - **Jumping** ("for now the first player's jump takes you along"): your jump takes them and their ship along
+    from wherever they are, also from a station's deck (stage 4E).
+  - **A station's own window** (the list of its services, "Undock"): docked, the second player stands on the deck
+    at once and uses the counters and the stairs.
+  - **A question for them** (the Colosseum, a night's sleep) is not put while they are out in their ship: the asker
+    reads so.
+- **Known:** your planet map and your flight down to a planet are over the whole picture: the second player does not
+  see their half meanwhile, and their ship is not held. What traffic does around "the player's ship" is still the
+  first player's (0.8.75.36).
+- **Not tried:** a save while the second player stands on a deck of their own and you fly; two real controllers;
+  the second player at the keyboard.
+- Smoke test group `split26` (5 checks, with pictures `split26_deck_und_all.png`, `split26_all_und_deck.png`,
+  `split26_regel9.png` at 1920 x 1080); `split25` expects the second player on their station's deck after they
+  were shot down, and that they fly on when you were.
+  With it run, in parts, none failed: every split screen group (`split0` to `split25`), `pad80`, `controls`,
+  `firegroups79`, `multifocus`, `wingmen`, `gear`, `landing`, `gates40`, `stationwin`, `debug_ground`, `intro56`,
+  `hackpad`, `mining41`, `review6`, `platform`, `gameover`, `crew`, `colsurv62a`, `coltakeb62a`, `colfight62a`,
+  `colprep62a`, `room64e`, `q58`, `w58a`, `foot_combat`, `casino62`, `minigames54b`, `env`, `warp36`, `boost`,
+  `rocks`, `scale`, `moons`, `stars`, `hazards40d`. No full run.
+- **Found on the way, not from this change and not changed:** `deck` fails its first check when it is run alone
+  (it wants the station window of the full run before it); the last commit does the same, checked in a second
+  checkout of it. `cam58` after `pad80` and `controls`: as noted with 0.8.75.34.
+
+## alpha 0.8.75.36 – 2026-11-25
+
+**Package 75, split screen, stage 4C: the world for two in space (Luz's rules 3 to 6: the world is one and hits
+both; the two are allies; kills, bounty and loot are the doer's; shot down, the buy-back window is in your own
+half and the other flies on), and with it windows of your own in space.**
+- **The second player's ship can be targeted and harmed.** The guard of stage 4A is gone.
+- **A ship a player flies does its own work as that player:** their skills and perks, their standing, their numbers,
+  their sounds and their controller's rumble, their list of what happens. (So far the second player's ship was run
+  as a ship of the world's.)
+- **The world for both:**
+  - **Standing is each player's own:** how a ship of the world stands to a player's ship is asked by that player's
+    standing. A pirate friendly to one of you leaves that one alone and fights the other; a haven's guns too, and
+    each is warned themselves.
+  - **Hazards** (radiation, ion storms, minefields) work on every ship as before; the banner, the word on flying in
+    and the numbers are each player's own. **The storm and the black hole** tell each player their own.
+  - **A patrol's scan** is by each player's own standing, read in their own list.
+  - **Pirates** come back at their places only where neither of you is near.
+- **Allies:** neither is hostile to the other, and each has the other's ship in their HUD's list of their own side
+  ("Your group"), with distance, shield and hull.
+- **A kill is the doer's:** standing, the law's record, the numbers and what a bounty contract counts go to the
+  player whose ship (or whose drone) made the kill.
+- **Shot down:** the offer to buy the ship back is that player's own (kept in the save), and their window stands
+  over their own half while the other flies on.
+  - The second player: decided, the ship they come back in is out beside yours again (they cannot undock for
+    themselves yet: stage 4D).
+  - You: decided, you are at the station as always and the picture is one again; the second player's ship goes in
+    with yours (4D).
+- **Windows of your own in space:** pilot's window, journal, ship's menu and galaxy map stand over the half of the
+  player who opens them, and the other flies on (the second player: their window wheel or their keys). The half's
+  HUD waits behind its window, unseen. The station's window and the help are not the second player's own yet: they
+  read so in their list.
+- **Found on the way:** when the second player's active ship changed (a new ship at a yard), the game took it for
+  the first player's and put it into space as the view's own. It keeps the first player's now.
+- **Not built, said outright:**
+  - What traffic does around "the player's ship" still knows the first player's only: convoys to escort, a patrol
+    that stops you, mission escorts. So do the interdictor's game, the market ship, picking up escape pods,
+    wingmen and the platform ship, the Veil's visions, and the story.
+  - Docking, undocking, landing and jumping for themselves (4D, 4E); a course on the second player's map (4E).
+- **Not tried:** a repair module on the other player's ship; a kill by a player's drone; what a mine or a blast of
+  one player does to the other's ship (direct fire needs a hostile lock and is refused); the story's death guard
+  for the second player; a save written to the disk with an open offer of theirs; two real controllers.
+- Smoke test group `split25` (6 checks, with pictures `split25_welt.png`, `split25_fenster.png`,
+  `split25_abgeschossen.png` at 1920 x 1080); `split23` expects a ship that can be harmed now.
+  With it run, in parts, none failed: `split23`, `split24`, `pad80`, `controls`, `firegroups79`, `multifocus`,
+  `wingmen`, `cam58`, `platform`, `review6`, `hazards40d`, `gameover`, `crew`, `intro56`, `hackpad`, `mining41`,
+  `landing`, `gates40`, `warp36`, `boost`, `rocks`, `scale`, `moons`, `stars`, `law`, `patrol_beat`, `archetypes`,
+  `notorious`, `faction_jobs`, `split1`, `split8`, `split9`, `split13`, `split14`, `split16`, `split19`, `split20`,
+  `split22`. No full run.
+- **Found on the way, not from this change and not changed** (each passes alone, and the last commit does the same,
+  checked in a second checkout of it): `split12` fails one check when it runs after `split20`, `split22` and
+  `split14` in one go (it expects that the second player's pilot window was never made); `reputation` fails two
+  checks (patrols scan neutral pilots, ignore friendly ones) when it runs after `traffic`.
+
 ## alpha 0.8.75.35 – 2026-11-25
 
 **Package 75, split screen, stage 4B: a HUD for each player in space, and the second player's controller (Luz saw
