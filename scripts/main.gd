@@ -13,6 +13,17 @@ var station_panel: StationUI
 var ship_menu: ShipMenu
 var pilot_window                       # package 29: skills, skill tree, the pilot (U)
 const PilotWindowScript = preload("res://scripts/ui/pilot_window.gd")
+## Split screen (Luz, 25 Nov 2026): while the picture is in two halves a window stands in the half of the player who
+## opened it and the other goes on playing. `halves`: a place for each player's windows (scripts/ui/win_half.gd).
+## The first player's windows are the ones above; the second player's own are made when first asked for.
+const WinHalf = preload("res://scripts/ui/win_half.gd")
+const SeatMenu = preload("res://scripts/ui/seat_menu.gd")
+var halves: Array = []
+var pilot_window2 = null
+var ship_menu2: ShipMenu = null
+var galaxy2: GalaxyMap = null
+var seat_menu: Node = null
+var _pause_seat := -1                   # whose windows it was before a pause (the pause is theirs who pressed it)
 var loss_window                        # package 31a: the ship is lost – buy it back?
 var warmup                             # package 35: pictures made ahead of time (scripts/core/warmup.gd)
 var loading: CanvasLayer               # package 35: the short loading screen at the start
@@ -43,6 +54,17 @@ func _ready() -> void:
 	add_child(ship_menu)
 	pilot_window = PilotWindowScript.new()
 	add_child(pilot_window)
+	var hl := CanvasLayer.new()
+	hl.layer = 25
+	add_child(hl)
+	for hs in 2:
+		var hh = WinHalf.new()
+		hh.seat = hs
+		hl.add_child(hh)
+		halves.append(hh)
+	seat_menu = SeatMenu.new()
+	seat_menu.main = self
+	add_child(seat_menu)
 	loss_window = LossWindowScript.new()
 	add_child(loss_window)
 	GameState.ship_lost.connect(func(o):
@@ -85,6 +107,7 @@ func _ready() -> void:
 	station_panel.ship_menu_requested.connect(open_ship_menu)
 	ship_menu.closed.connect(_update_input)
 	pilot_window.closed.connect(_update_input)
+	pause_menu.closed.connect(_pause_done)
 	GameState.ship_jumped_out.connect(_on_jumped_out)
 	GameState.ship_arrived_system.connect(_on_arrived_system)
 	GameState.active_changed.connect(_on_active_changed)
@@ -664,16 +687,191 @@ func toggle_ship_menu() -> void:
 
 ## Package 29: the Pilot window – also over the station. 0.5.30.5: U always opens the Pilot tab (Info);
 ## the HUD hint for tiles / perk points opens the tab it is about.
-func toggle_pilot_window(p_tab: int = 0) -> void:
+func toggle_pilot_window(p_tab: int = 0, seat: int = 0) -> void:
+	if seat == 1:
+		_toggle_two("pilot", p_tab)
+		return
 	if pilot_window.visible:
 		pilot_window.close()
 	elif not in_hyperspace:
 		galaxy.close()
 		ship_menu.close()
+		_halves_step()                                   # (split screen: in its half before it lays itself out)
 		if p_tab == 0:
 			pilot_window.sub = 0
 		pilot_window.open(p_tab)
 	_update_input()
+
+
+# ---------------------------------------------------------------- split screen: a window in its player's half
+
+## Is the picture in two halves right now (on foot, both of you free to go)?
+func halves_on() -> bool:
+	return Players.split and GameState.has_pilot2() and ground != null and is_instance_valid(ground) and ground.split_open()
+
+
+## The pilot window of a player (the second player's is made when first asked for, in their half).
+func _pilot_win(seat: int):
+	return pilot_window if seat == 0 else _win2("pilot")
+
+
+## A window of the second player's own: "pilot", "ship", "galaxy". Each is the first player's window's own class,
+## made when first asked for, standing in their half.
+func _win2(kind: String):
+	match kind:
+		"pilot":
+			if pilot_window2 == null:
+				pilot_window2 = PilotWindowScript.new()
+				pilot_window2.seat = 1
+				halves[1].take(pilot_window2)
+				pilot_window2.closed.connect(_update_input)
+			return pilot_window2
+		"ship":
+			if ship_menu2 == null:
+				ship_menu2 = ShipMenu.new()
+				ship_menu2.seat = 1
+				halves[1].take(ship_menu2)
+				ship_menu2.closed.connect(_update_input)
+			return ship_menu2
+		"galaxy":
+			if galaxy2 == null:
+				galaxy2 = GalaxyMap.new()
+				galaxy2.seat = 1
+				halves[1].take(galaxy2)
+				galaxy2.closed.connect(_update_input)
+			return galaxy2
+	return null
+
+
+func _wins2() -> Array:
+	return [pilot_window2, ship_menu2, galaxy2].filter(func(w): return w != null)
+
+
+## The second player's window of this kind opens over their half (again: it shuts). One of theirs at a time.
+func _toggle_two(kind: String, p_tab: int = 0) -> void:
+	if not halves_on() or in_hyperspace:
+		return
+	GameState.ship_along()
+	var w = _win2(kind)
+	var was: bool = w.visible
+	for o in _wins2():
+		if o.visible:
+			o.close()
+	if not was:
+		_halves_step()                                   # (in its place before it lays itself out)
+		match kind:
+			"pilot":
+				if p_tab == 0:
+					w.sub = 0
+				w.open(p_tab)
+			"ship":
+				w.open(view)
+			"galaxy":
+				w.open()
+	_update_input()
+
+
+## Each frame: the halves where the picture has them. The first player's windows stand in their half while the
+## picture is in two and over the whole picture otherwise; the second player's are shut when it is one again.
+func _halves_step() -> void:
+	var on := halves_on()
+	if on:
+		var sp: Dictionary = ground._split
+		for s in 2:
+			var src: Control = sp["fa" if s == 0 else "fb"]
+			(halves[s] as Control).position = src.position
+			(halves[s] as Control).size = src.size
+	for w in [pilot_window, ship_menu, galaxy]:
+		if on and not halves[0].holds(w):
+			w.set_meta("home_at", w.get_index())
+			halves[0].take(w)
+		elif not on and halves[0].holds(w):
+			halves[0].vp.remove_child(w)
+			add_child(w)
+			move_child(w, mini(int(w.get_meta("home_at", get_child_count() - 1)), get_child_count() - 1))
+	if not on:
+		for w2 in _wins2():
+			if w2.visible:
+				w2.close()
+	for s2 in 2:
+		var any := false
+		for c in halves[s2].vp.get_children():
+			if (c is CanvasLayer or c is Control) and c.visible:
+				any = true
+		(halves[s2] as Control).visible = on and any
+	if ground != null and is_instance_valid(ground):
+		ground.two_busy = on and (halves[1] as Control).visible
+
+
+## Something of a player's own into their half (the controller's window wheel).
+func win_show(seat: int, n: Node) -> void:
+	halves[seat].take(n)
+	_halves_step()
+
+
+func win_hide(_seat: int) -> void:
+	_halves_step.call_deferred()
+
+
+## The second player goes back: their window on top shuts; with none up the game pauses, for both.
+func win_back(seat: int) -> void:
+	if seat == 0:
+		return
+	var up: Array = _wins2().filter(func(w): return w.visible)
+	if not up.is_empty():
+		for w in up:
+			w.close()
+		_update_input()
+	elif not in_hyperspace and not pause_menu.visible:
+		pause_for(seat)
+
+
+## … and what they picked on their window wheel, or with a window's key.
+func win_action(seat: int, what: String) -> void:
+	match what:
+		"pilot_window":
+			toggle_pilot_window(0, seat)
+		"journal":
+			open_journal(seat)
+		"ship_menu":
+			if seat == 1:
+				_toggle_two("ship")
+			else:
+				toggle_ship_menu()
+		"galaxy_map":
+			if seat == 1:
+				_toggle_two("galaxy")
+			else:
+				toggle_galaxy()
+		_:
+			if seat == 1 and ground != null and is_instance_valid(ground):
+				ground.two_say("%s: not the second player's own yet." % String({"station": "The station's window", "help": "The help"}.get(what, what)))
+				Audio.play("ui_error", "second player: no such window yet")
+
+
+## The pause is theirs who pressed it (their device walks its menu) and holds the game for both.
+func pause_for(seat: int) -> void:
+	if Players.split and seat != Players.act_seat:
+		_pause_seat = Players.act_seat
+		Players.act_seat = seat
+		Pad._pick_device()
+	pause_menu.open()
+
+
+func _pause_done() -> void:
+	if _pause_seat >= 0:
+		Players.act_seat = _pause_seat
+		_pause_seat = -1
+		Pad._pick_device()
+
+
+## Whose key or button an event is (the second player's keyboard, or the controller Pad listens to).
+func _event_seat(event: InputEvent) -> int:
+	if not Players.split or not GameState.has_pilot2():
+		return 0
+	if event is InputEventKey or event is InputEventMouseButton:
+		return 0 if Players.on_keys(0) else 1
+	return Players.act_seat
 
 
 func open_ship_menu() -> void:
@@ -883,6 +1081,15 @@ func handle_input(event: InputEvent) -> void:
 		return                                            # review W3: a decision is needed first
 	if not event.is_pressed() or event.is_echo():
 		return
+	var seat := _event_seat(event)                       # (split screen: a window is theirs whose key it was)
+	if seat == 1 and halves_on():
+		for wa in ["galaxy_map", "ship_menu", "pilot_window", "journal"]:
+			if event.is_action_pressed(wa, false, true):
+				win_action(1, wa)
+				return
+		if event.is_action_pressed("menu_back", false, true):
+			win_back(1)
+			return
 	if event.is_action_pressed("galaxy_map", false, true):
 		toggle_galaxy()
 	elif event.is_action_pressed("ship_menu", false, true):
@@ -1003,6 +1210,7 @@ func _show_loading() -> void:
 
 func _process(delta: float) -> void:
 	_check_deck()                                        # package 49: undocked, lost or moved – back from the deck
+	_halves_step()                                       # split screen: each player's windows over their half
 	if loading == null:
 		return
 	_loading_t += delta
@@ -1018,13 +1226,15 @@ func _process(delta: float) -> void:
 
 
 ## Package 55: the journal – the pilot window on its Journal tab (again: closed).
-func open_journal() -> void:
-	if pilot_window.visible and pilot_window.tab == pilot_window.TAB_JOURNAL:
-		pilot_window.close()
+func open_journal(seat: int = 0) -> void:
+	var w = _pilot_win(seat)
+	if w.visible and w.tab == w.TAB_JOURNAL:
+		w.close()
 		return
-	if not pilot_window.visible:
-		toggle_pilot_window()
-	pilot_window._set_tab(pilot_window.TAB_JOURNAL)
+	if not w.visible:
+		toggle_pilot_window(0, seat)
+	if w.visible:
+		w._set_tab(w.TAB_JOURNAL)
 
 
 ## Package 58: Esc (or ◯ in a menu) closes a small window – the city's take-off question.

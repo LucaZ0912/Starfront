@@ -11,6 +11,7 @@ const COLS := [Color(0.35, 0.65, 1.0), Color(1.0, 0.8, 0.3), Color(0.9, 0.3, 0.3
 const DT_COL := {"optical": Color(0.45, 0.85, 1.0), "kinetic": Color(1.0, 0.8, 0.35), "explosive": Color(1.0, 0.55, 0.25)}
 var combat: GroundCombat
 var suit_hud: SuitHud
+var seat := 0                       # split screen: whose fight this display shows (0 the first player, 1 the second: over their half)
 
 
 func _ready() -> void:
@@ -36,9 +37,20 @@ func _s(p: Vector2, t: String, col: Color, sz: int = 12) -> void:
 	draw_string(ThemeDB.fallback_font, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, col)
 
 
+## The key or button of this display's player for an action, in words.
+func _k(action: String) -> String:
+	return Players.key_text(seat, action)
+
+
 func _draw() -> void:
 	if combat == null or not is_instance_valid(combat):
 		return
+	if seat == 1 and not combat.two_in:
+		return
+	combat.with_seat(seat, _draw_all)              # (in this player's turn: the fight's own vars are theirs while it is drawn)
+
+
+func _draw_all() -> void:
 	var vs: Vector2 = (get_parent() as Control).size if get_parent() is Control else get_viewport_rect().size      # (in a split picture: your half)
 	var red := Color(1.0, 0.35, 0.3)
 	var dim := Color(0.7, 0.72, 0.76)
@@ -69,7 +81,7 @@ func _draw() -> void:
 	# 0.7.52.21 (Luz): sneaking – its own line
 	if combat.sneaking:
 		var sl := "SNEAKING  •  red: where they would spot you  •  low cover hides you  •  they do not hear you"
-		var sk := "%s: stand up  •  half speed  •  your first shot on an unaware foe: double damage  •  R: lock without being noticed" % Keybinds.key_text("foot_sneak")
+		var sk := "%s: stand up  •  half speed  •  your first shot on an unaware foe: double damage  •  R: lock without being noticed" % _k("foot_sneak")
 		var sw := maxf(font.get_string_size(sl, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, font.get_string_size(sk, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x) + 20.0
 		var sr := Rect2(Vector2(vs.x * 0.5 - sw * 0.5, 82 if n > 0 else 12), Vector2(sw, 40))
 		_panel(sr, Color(0.65, 0.5, 1.0, 0.8))
@@ -83,7 +95,7 @@ func _draw() -> void:
 		var you := ""
 		if tred and who != null and combat._vis.get("rays") != null:
 			you = "  •  you are %s" % ("IN ITS SIGHT" if combat.lit_in(combat._vis["rays"], combat._vis["from"], combat.pilot_pos()) else "safe from it")
-		var keys := "%s: %s  •  hold %s: off  •  %s / wheel: %s  •  yellow hatched: behind smoke, shots aim badly" % [Keybinds.key_text("foot_tactics"), "the target's sight" if not tred else "your sight", Keybinds.key_text("foot_tactics"), Keybinds.key_text("foot_zoom"), "zoom back in" if combat.view.tac_zoom < 1.0 else "zoom out"]
+		var keys := "%s: %s  •  hold %s: off  •  %s / wheel: %s  •  yellow hatched: behind smoke, shots aim badly" % [_k("foot_tactics"), "the target's sight" if not tred else "your sight", _k("foot_tactics"), _k("foot_zoom"), "zoom back in" if combat.view.tac_zoom < 1.0 else "zoom out"]
 		var tcol := Color(1.0, 0.45, 0.4) if tred else Color(0.45, 1.0, 0.6)
 		var tw := maxf(font.get_string_size(line + you, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, font.get_string_size(keys, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x) + 20.0
 		var tr := Rect2(Vector2(vs.x * 0.5 - tw * 0.5, 82 if n > 0 else 12), Vector2(tw, 40))
@@ -135,11 +147,17 @@ func _draw() -> void:
 func _draw_team(y0: float) -> void:
 	var green := GroundCombat.TEAM_COL
 	var CD = GroundCombat.CrewData
-	for i in combat.allies.size():
-		var a: Dictionary = combat.allies[i]
+	var cards: Array = combat.allies.duplicate()
+	var pn = combat.partner()                        # split screen: the other pilot, a card after your team's
+	if pn != null and pn["w"] != null:
+		cards.append(pn)
+	var arena_now: bool = String(combat.view.level) == "zcolvr"
+	for i in cards.size():
+		var a: Dictionary = cards[i]
 		var m: Dictionary = a["m"]
+		var mate: bool = a.has("px")
 		var r := Rect2(Vector2(14, y0 + i * 84), Vector2(320, 76))
-		var sel: bool = combat.team_sel == i or combat.team_sel >= combat.allies.size()
+		var sel: bool = not mate and (combat.team_sel == i or combat.team_sel >= combat.allies.size())
 		var col := green if not a["down"] else (Color(1.0, 0.6, 0.3) if not a["dead"] else Color(0.5, 0.5, 0.52))
 		draw_rect(r, Color(0.03, 0.04, 0.08, 0.88))
 		draw_rect(r, Color(col, 0.95 if sel else 0.45), false, 2.0 if sel else 1.0)
@@ -147,7 +165,7 @@ func _draw_team(y0: float) -> void:
 		draw_texture_rect(ChibiArt.PilotArt.portrait(m.get("look", {})), pr, false, Color(1, 1, 1) if not a["dead"] else Color(0.5, 0.5, 0.5))
 		draw_rect(pr, Color(0.3, 0.35, 0.4), false, 1.0)
 		_s(r.position + Vector2(78, 18), String(m.get("name", "")).left(22), Color(0.92, 0.95, 1.0), 13)
-		_s(r.position + Vector2(78, 32), "%s  ·  %s %s" % ["Gladiator" if a.has("arena") else CD.role_name(String(m.get("role", ""))), String(a["quality"]),
+		_s(r.position + Vector2(78, 32), ("Player %d  ·  pilot" % (int(a["px"]) + 1)) if mate else "%s  ·  %s %s" % ["Gladiator" if a.has("arena") else CD.role_name(String(m.get("role", ""))), String(a["quality"]),
 			String(CD.QUALITY_NAMES.get(String(a["quality"]), ""))], Color(0.7, 0.75, 0.8), 10)
 		var st: Dictionary = a["st"]
 		var mx: Dictionary = a["mx"]
@@ -157,11 +175,13 @@ func _draw_team(y0: float) -> void:
 			_bar(r.position + Vector2(210, 39), 100, float(a["energy"]) / maxf(float(a["energy_max"]), 0.001), Color(1.0, 0.85, 0.3))      # (beside shield and body: energy, rounds)
 			_bar(r.position + Vector2(210, 47), 100, float(a["ammo"]) / maxf(float(a["ammo_max"]), 1.0), Color(0.78, 0.78, 0.72))
 			_s(r.position + Vector2(210, 33), "energy  ·  rounds", Color(0.6, 0.65, 0.7), 9)
-		var ord := "dead: a clinic can bring them back" if not a.has("arena") else "out of this fight"
+		var ord := "dead: a clinic can bring them back" if not (a.has("arena") or mate) else "out of this fight"
 		if not a["dead"] and a["down"]:
-			ord = "DOWN: hold %s beside them  (%d s)" % [Keybinds.key_text("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
-		elif a.has("p2") and not a["dead"]:
-			ord = "Player 2"                                 # split screen: nobody you give orders to
+			ord = "DOWN: hold %s beside them  (%d s)" % [_k("interact"), int(ceil(CD.DOWN_TIME - float(a["down_t"])))]
+			if mate and not arena_now:
+				ord = "DOWN: hold %s beside them" % _k("interact")
+		elif mate and not a["dead"]:
+			ord = "Fights beside you"                        # split screen: a pilot as you are, nobody you give orders to
 		elif not a["dead"]:
 			match String(a["order"]):
 				"hold":
@@ -190,9 +210,9 @@ func _draw_team(y0: float) -> void:
 			draw_arc(cc, 15.0, -PI / 2, -PI / 2 + TAU * k, 28, Color(1.0, 0.82, 0.35) if k < 1.0 else green, 3.0)
 			draw_string(ThemeDB.fallback_font, cc + Vector2(-17, 4), ("%d%%" % int(k * 100.0)) if k < 1.0 else "READY", HORIZONTAL_ALIGNMENT_CENTER, 34, 9, Color(0.9, 0.9, 0.9))
 			draw_string(ThemeDB.fallback_font, cc + Vector2(-44, 33), String(ab["name"]), HORIZONTAL_ALIGNMENT_CENTER, 84, 9, Color(0.75, 0.78, 0.82))
-	if combat.allies.any(func(al): return not al.has("p2")):      # (split screen: the second player takes no orders)
+	if not combat.allies.is_empty():
 		var who := "all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])
-		_label(Vector2(14, y0 + combat.allies.size() * 84 + 14), "%s  orders to: %s  (tap: next, hold: wheel)" % [Keybinds.key_text("foot_team"), who])
+		_label(Vector2(14, y0 + cards.size() * 84 + 14), "%s  orders to: %s  (tap: next, hold: wheel)" % [_k("foot_team"), who])
 
 
 ## 0.7.52.20 (Luz): the command wheel round you while V is held – four fields (follow, attack your target, hold, the
@@ -245,7 +265,7 @@ func _draw_wheel() -> void:
 	else:
 		draw_texture_rect(ChibiArt.PilotArt.portrait(who["m"].get("look", {})), Rect2(c - Vector2(28, 34), Vector2(56, 56)), false)
 		draw_string(ThemeDB.fallback_font, c + Vector2(-40, 38), String(who["name"]), HORIZONTAL_ALIGNMENT_CENTER, 80, 12, green)
-	draw_string(ThemeDB.fallback_font, c + Vector2(-320, -r_out - 22), "let go of %s: the order is given  ·  tap %s (wheel closed): whom" % [Keybinds.key_text("foot_team"), Keybinds.key_text("foot_team")],
+	draw_string(ThemeDB.fallback_font, c + Vector2(-320, -r_out - 22), "let go of %s: the order is given  ·  tap %s (wheel closed): whom" % [_k("foot_team"), _k("foot_team")],
 		HORIZONTAL_ALIGNMENT_CENTER, 640, 13, Color(1.0, 0.82, 0.35))
 
 
@@ -286,7 +306,7 @@ func _draw_dodges(p: Vector2) -> void:
 		var cw := ThemeDB.fallback_font.get_string_size(ct, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0
 		draw_rect(Rect2(p + Vector2(150, 0), Vector2(cw, 20)), Color(0.0, 0.02, 0.06, 0.6))
 		_s(p + Vector2(157, 14), ct, Color(0.6, 0.9, 1.0) if combat.cloak_t > 0.0 else Color(0.6, 0.65, 0.72), 12)
-	var t := "%s  dodge" % Keybinds.key_text("foot_dodge")
+	var t := "%s  dodge" % _k("foot_dodge")
 	var font := ThemeDB.fallback_font
 	var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	var mxd := combat.max_dodges()
@@ -320,7 +340,7 @@ func _draw_tiles(vs: Vector2) -> void:
 	var dim := Color(0.7, 0.72, 0.76)
 	# the weapons
 	if not ws.is_empty():
-		_label(Vector2(x, y - 4), "%s  weapon" % Keybinds.key_text("foot_swap"))
+		_label(Vector2(x, y - 4), "%s  weapon" % _k("foot_swap"))
 		for i in ws.size():
 			var wid := String(ws[i])
 			var st := GearData.stats(wid)
@@ -343,7 +363,7 @@ func _draw_tiles(vs: Vector2) -> void:
 		x += GROUP_GAP - TILE_GAP
 	# the grenades
 	if not gr.is_empty():
-		_label(Vector2(x, y - 4), "%s  grenade, hold: throw" % Keybinds.key_text("foot_grenade"))
+		_label(Vector2(x, y - 4), "%s  grenade, hold: throw" % _k("foot_grenade"))
 		g.grenade()
 		for j in gr.size():
 			var p: Dictionary = gr[j]
@@ -381,7 +401,7 @@ func _draw_tiles(vs: Vector2) -> void:
 			else:
 				barv2 = (float(d["st"]["shield"]) + float(d["st"]["armor"])) / maxf(float(d["mx"]["shield"]) + float(d["mx"]["armor"]), 1.0)
 		var on := combat.drone_flying()
-		_label(Vector2(x, y - 4), "%s  drone" % Keybinds.key_text("foot_drone" if di == 0 else "foot_drone_2"))
+		_label(Vector2(x, y - 4), "%s  drone" % _k("foot_drone" if di == 0 else "foot_drone_2"))
 		SuitHud.tile(self, Rect2(Vector2(x, y), TILE), GearIcons.icon(did), "", String(dst["name"]), sub2,
 			Color(0.45, 0.9, 1.0) if on else Color(0.5, 0.55, 0.6, 0.5), barv2, bcol)
 		x += TILE.x + TILE_GAP

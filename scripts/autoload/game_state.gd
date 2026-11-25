@@ -61,6 +61,7 @@ var casino_spins := 0                   # … how often its reels and its wheel 
 var casino_stats := {"staked": 0, "back": 0, "best": 0}     # … Coins staked, Coins got back, the largest single win
 var col_registered := false             # package 62a, part 2: signed up at the Colosseum (the fighters' gate stands open)
 var col: Dictionary = {}                # … part 3: your gear points, your record, your fit, the way to play and the mode (data/colosseum.gd)
+var col_own_gear2 = null                # … and the second player's (split screen: they wear the house's gear in a fit of their own)
 var col_own_gear = null                 # … part 4: your own gear, put by while you fight with the house's (null: you wear your own)
 var race_shift := 0.0                   # package 62b: what you have waited in The Track's cinema (moves the races' clock on)
 var race_bets: Array = []               # … your tickets: {n, kind, a, b, stake, odds, seat}
@@ -173,6 +174,18 @@ var gear = PilotGearScript.new()
 ## "start_system" is where they come into the game: the first pilot's start system.
 var pilot2 := {}
 var gear2 = PilotGearScript.new()
+## Stage 3: who "the pilot" of the game is right now (0 the first player, 1 the second). While the second player
+## uses a shop or a counter by themselves, they stand in the first one's place: `pilot`, `gear`, `credits` and
+## `coins` are theirs, and the first player's wait in `pilot2` / `gear2`. See act_as(). The save is always written
+## the right way round.
+var acting := 0
+## (Luz, 25 Nov 2026) The second player owns everything as the first does: ships and what lies in storage. `fleet2`,
+## `active_uid2` and `storage2` are those of whoever is not acting; act_as() swaps them with `fleet`, `active_uid`
+## and `storage`. Until the second player flies by themselves (stage 4), the ship they fly comes along with the
+## first player's: wherever that one is docked, theirs is docked too.
+var fleet2: Array = []
+var active_uid2 := -1
+var storage2 := {}
 var wake_pending := false        # 0.7.51.4: the ship was lost – after the buy-back window you wake in the clinic
 const DATA_PRICE := 5000           # per unit of data …
 const DATA_REP := 0.5              # … and standing with the Directorate
@@ -218,6 +231,10 @@ func new_game(p_pilot: String = "Lefty", p_seed: int = -1, test_system: bool = f
 	gear.start()                                 # package 51: a civilian suit, a laser pistol, medkits
 	pilot2 = {}
 	gear2 = PilotGearScript.new()
+	fleet2 = []
+	active_uid2 = -1
+	storage2 = {}
+	acting = 0
 	surveys.clear()
 	stats = {"kills": 0, "jumps": 0, "mined": 0.0, "analysed": 0, "missions_done": 0, "refined": 0, "built": 0, "earned": 0,
 		# package 30: achievements for the skill tree
@@ -526,12 +543,19 @@ func col_gear_on() -> void:
 	if col_own_gear == null:
 		col_own_gear = gear
 	set("gear", load("res://data/colosseum.gd").gear_of(col_state()["fit"]))      # (by name: the gear keeps its type for everybody else)
+	if has_pilot2() and acting == 0:                    # split screen: the second player wears the house's gear too, in their own fit
+		if col_own_gear2 == null:
+			col_own_gear2 = gear2
+		set("gear2", load("res://data/colosseum.gd").gear_of(col_state()["fit2"]))
 
 
 func col_gear_off() -> void:
 	if col_own_gear != null:
 		set("gear", col_own_gear)
 	col_own_gear = null
+	if col_own_gear2 != null:
+		set("gear2", col_own_gear2)
+	col_own_gear2 = null
 
 
 ## Package 62a, part 10c (Luz): everything the Survivor console sells is yours: the Colosseum gives you the Champion's
@@ -662,19 +686,109 @@ func has_pilot2() -> bool:
 
 ## The Coins of one of the two players (0 you, 1 the second player: their own purse).
 func coins_of(seat: int) -> int:
-	return int(pilot2.get("coins", 0)) if seat == 1 and has_pilot2() else coins
+	if not has_pilot2():
+		return coins
+	return coins if seat == acting else int(pilot2.get("coins", 0))
 
 
 func add_coins(seat: int, n: int) -> void:
-	if seat == 1 and has_pilot2():
-		pilot2["coins"] = maxi(0, int(pilot2.get("coins", 0)) + n)
-	else:
+	if not has_pilot2() or seat == acting:
 		coins = maxi(0, coins + n)
+	else:
+		pilot2["coins"] = maxi(0, int(pilot2.get("coins", 0)) + n)
 
 
 ## … and their credits.
 func credits_of(seat: int) -> int:
-	return int(pilot2.get("credits", 0)) if seat == 1 and has_pilot2() else credits
+	if not has_pilot2():
+		return credits
+	return credits if seat == acting else int(pilot2.get("credits", 0))
+
+
+## The pilot of one of the two (their name, looks, skills, level, tree, perks).
+func pilot_of(seat: int) -> Dictionary:
+	return pilot if (seat == acting or not has_pilot2()) else pilot2
+
+
+## … and what they carry.
+func gear_of(seat: int):
+	return gear if (seat == acting or not has_pilot2()) else gear2
+
+
+## One of the two steps into the place of "the pilot": everything the game does for its pilot (a shop, a counter,
+## what is bought and worn, what a skill makes of it) is then done for them, with their own credits and Coins.
+func act_as(seat: int, quiet: bool = false) -> void:
+	if not has_pilot2() or seat == acting or seat < 0 or seat > 1:
+		return
+	var my_credits := credits
+	var my_coins := coins
+	credits = int(pilot2.get("credits", 0))
+	coins = int(pilot2.get("coins", 0))
+	var mine: Dictionary = pilot
+	pilot = pilot2
+	pilot2 = mine
+	pilot2["credits"] = my_credits
+	pilot2["coins"] = my_coins
+	var my_gear = gear
+	gear = gear2
+	gear2 = my_gear
+	# their ships and their storage; the ship they fly stands where the other one's stands
+	var ship_was := active()
+	var my_fleet: Array = fleet
+	fleet = fleet2
+	fleet2 = my_fleet
+	var my_uid := active_uid
+	active_uid = active_uid2
+	active_uid2 = my_uid
+	var my_storage: Dictionary = storage
+	storage = storage2
+	storage2 = my_storage
+	var ship_now := active()
+	if seat == 1 and ship_was != null and ship_now != null and not quiet:
+		ship_now.system_id = ship_was.system_id
+		ship_now.docked_at = ship_was.docked_at
+		ship_now.position = ship_was.position
+	pilot_name = String(pilot.get("name", pilot_name))
+	acting = seat
+	if not quiet:                                       # (quiet: for a moment inside one frame, as the fight on foot does for each pilot's own step)
+		credits_changed.emit(credits)
+
+
+## Split screen, until the second player flies themselves: the ship they fly stands where the first player's stands
+## (the same system, the same hangar). Asked for before a window of theirs shows it.
+func ship_along() -> void:
+	if not has_pilot2() or acting != 0:
+		return
+	var mine := active()
+	if mine == null:
+		return
+	for f in fleet2:
+		if f.uid == active_uid2:
+			f.system_id = mine.system_id
+			f.docked_at = mine.docked_at
+			f.position = mine.position
+
+
+## Runs f with one of the two as the pilot (their gear, purse, ships), then it is who it was again. For a piece of
+## work inside one frame: a window of theirs, their turn in a fight. f must come back (no await in it).
+func with_seat(seat: int, f: Callable) -> Variant:
+	if seat == acting or not has_pilot2():
+		return f.call()
+	var keep := acting
+	act_as(seat, true)
+	var r = f.call()
+	act_as(keep, true)
+	return r
+
+
+## The ships of one of the two.
+func fleet_of(seat: int) -> Array:
+	return fleet if (seat == acting or not has_pilot2()) else fleet2
+
+
+## … and what they have in storage (station id -> {id: count}).
+func storage_seat(seat: int) -> Dictionary:
+	return storage if (seat == acting or not has_pilot2()) else storage2
 
 
 ## Split screen: a new second pilot from the creator's data. Starts like the first one did: level 1, the starting
@@ -684,6 +798,20 @@ func new_pilot2(data: Dictionary) -> void:
 	pilot2["start_system"] = Universe.home_system
 	pilot2["credits"] = START_CREDITS                  # (Luz, 25 Nov 2026) their own money: they act for themselves
 	pilot2["coins"] = 0
+	# … and a ship of their own, as the first pilot began with one: in the first pilot's start system, at its station
+	fleet2 = []
+	storage2 = {}
+	var home: Dictionary = Universe.get_layout(Universe.home_system)["stations"][0]
+	var s2 := create_from_preset("std_dragonfly", "player")
+	s2.ship_name = "Dragonfly »Wingmate«"
+	s2.system_id = Universe.home_system
+	s2.position = (home["pos"] as Vector2) + Vector2(460.0, 190.0)
+	s2.docked_at = String(home["id"])
+	s2.drones = [{"fuel": 1.0, "hp": 1.0, "out": false}, {"fuel": 1.0, "hp": 1.0, "out": false}]
+	s2.uid = _next_uid
+	_next_uid += 1
+	fleet2.append(s2)
+	active_uid2 = s2.uid
 	gear2 = PilotGearScript.new()
 	gear2.start()
 
@@ -704,6 +832,12 @@ var on_foot: Dictionary = {}
 
 
 func to_dict() -> Dictionary:
+	if acting != 0:                                # (the second player stands in the pilot's place right now: saved the right way round)
+		var was := acting
+		act_as(0)
+		var d0 := to_dict()
+		act_as(was)
+		return d0
 	var ships: Array = []
 	for f in fleet:
 		ships.append(f.to_dict())
@@ -720,7 +854,8 @@ func to_dict() -> Dictionary:
 		"rescued": rescued.duplicate(true), "pod_seq": _pod_seq, "wingmen": wingmen.duplicate(true),
 		"collection": collection.duplicate(true), "gear": (col_own_gear if col_own_gear != null else gear).to_dict(),
 		"on_foot": on_foot.duplicate(),
-		"pilot2": pilot2.duplicate(true), "gear2": gear2.to_dict() if not pilot2.is_empty() else {},
+		"pilot2": pilot2.duplicate(true), "gear2": (col_own_gear2 if col_own_gear2 != null else gear2).to_dict() if not pilot2.is_empty() else {},
+		"fleet2": fleet2.map(func(f2): return f2.to_dict()), "active_uid2": active_uid2, "storage2": storage2.duplicate(true),
 	}
 
 
@@ -737,6 +872,12 @@ func from_dict(d: Dictionary) -> void:
 	gear.from_dict(d.get("gear", {}))         # package 51 (older saves: the starting gear)
 	pilot2 = {}
 	gear2 = PilotGearScript.new()
+	acting = 0
+	fleet2 = []
+	for sd2 in d.get("fleet2", []):
+		fleet2.append(ShipFitting.from_dict(sd2))
+	active_uid2 = int(d.get("active_uid2", -1))
+	storage2 = (d.get("storage2", {}) as Dictionary).duplicate(true)
 	var p2d: Dictionary = d.get("pilot2", {})
 	if not p2d.is_empty():                    # split screen: the second pilot
 		pilot2 = make_pilot("Wingmate", p2d)
@@ -756,6 +897,7 @@ func from_dict(d: Dictionary) -> void:
 	col_registered = bool(d.get("col_registered", false))
 	col = (d.get("col", {}) as Dictionary).duplicate(true)
 	col_own_gear = null
+	col_own_gear2 = null
 	race_bets = (d.get("race_bets", []) as Array).duplicate(true)
 	fleet.clear()
 	for sd in d["fleet"]:

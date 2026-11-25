@@ -467,6 +467,78 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.21 (the narrow layout): `UI.NARROW_W` (1200), `UI.narrow(node)` (is its picture narrower?),
+  `UI.wrap_long(root)` (every line of text too wide for the half wraps). `PilotWindow` and `ShipMenu`: `_narrow()`,
+  `_nw(wide, narrow)` for a measure that depends on the picture, the frame's margins set in `_rebuild()`.
+  **Rule for a new page:** no fixed width without `_nw(…)`, and run `--only=winlook` (in a window) before it is
+  done: it must name no page. The group saves "Claude outputs/winlook_<page>_<w>x<h>.png".
+- 0.8.75.20 (their ship menu, their map): `ShipMenu.seat` and `GalaxyMap.seat` (open, rebuild / refresh and the
+  map's drawing run in `GameState.with_seat(seat, …)`); `main.ship_menu2`, `galaxy2`, `_win2(kind)`,
+  `_toggle_two(kind)` (one of theirs at a time), `GameState.ship_along()`. `Players.win_key(seat, action)` (a
+  window's word for a key or button), `Players.button(seat, name)` (a controller button by its name; the smoke test
+  presses it as `"1:btn:r1"`). The second player's menu driver hands a window that reads the controller itself its
+  `pad_button` and `pad_stick` (the galaxy map).
+- 0.8.75.19 (a window in its player's half): `scripts/ui/win_half.gd` (a SubViewportContainer per player over
+  their half, `main.halves`; hidden while empty; passes on only its own player's input and runs it, and the
+  `_process` of what stands in it, in that player's name) and `scripts/ui/seat_menu.gd` (the second player's
+  controller in their windows: the wheel, steps, confirm, back, tabs, scroll; asked through `Players`).
+  `main.halves_on()`, `_halves_step()` (the first player's `pilot_window`, `ship_menu`, `galaxy` move into
+  `halves[0]` while the picture is in two and back under main otherwise), `pilot_window2`, `toggle_pilot_window(tab,
+  seat)`, `open_journal(seat)`, `win_action()`, `win_back()`, `pause_for()`, `_event_seat()`.
+  `GameState.with_seat(seat, f)`. `MenuNav`: a menu belongs to a player (`seat_of(menu)`, `active_menu(seat)`),
+  `try_key()`, and a menu in a half keeps its own highlight (`is_soft`, `current`, `press`, `_light`), because the
+  engine has one keyboard focus for the whole game window, across SubViewports. **Rule for a window that shall be
+  the second player's too:** give it `var seat`, build it in `GameState.with_seat(seat, …)` (rebuild, and anything
+  that runs from a signal, a timer or a draw), write keys with `Players.key_text(seat, …)`, and never read the
+  ground's `pilot` for "my figure". `PilotWindow` is done this way; `ShipMenu` and `GalaxyMap` are next.
+  `GroundView.two_busy`.
+- 0.8.75.18 (the dangers of a place for two): the place's own steps ask about both pilots without changing whose
+  turn it is: `GroundView._pilots_up()` (the seats here and on their feet), `pilot_w(s)`, `down_of(s)`,
+  `GroundCombat.hidden_of(s)`, `sneaking_of(s)`. Only what happens to one pilot runs in their turn: `_say_to(s, …)`,
+  `_hurt_as(s, …)`, `_turret_at()` (a turret's shot carries `seat`). `_hazards_step()` is `_hazards_for(s)` per
+  pilot; a trip wire keeps `warned` and `warned2`. **Rule:** a danger never reads `pilot.pos` for "who is there":
+  it goes through `_pilots_up()`.
+- 0.8.75.17 (the real fight for two): **whose turn it is.** `GroundView.seat_now` and `seat_to(s)`: between
+  `seat_to(1)` and `seat_to(0)` "the pilot" is the second player: `pilot` and `two` change places, so do `zone`,
+  `_seat`, `_stand_pos` and the vars in `_side` (`col_lost`, `col_down`, `_revive`, `_tab_held`, `_team_held`,
+  `_drone_held`, `_socket` …), GameState is theirs (`act_as(seat, true)`: quiet, no signal, the ship stays), the
+  fight's own vars are theirs (`GroundCombat.swap_vars()` over `SEAT_VARS`, the other's wait in `_other`), and
+  `Pad.device` is their controller. Always in pairs inside one piece of work; never across an `await`, a level
+  change or a window that opens. `GroundCombat.with_seat(s, f)` wraps it. `step()` is `_pilot_pre` per seat, the
+  foes (`_foe_seat(f)`: the pilot it deals with), `_team_step` per seat, `_pilot_post` per seat. To the other side
+  a pilot is `px`, an entry of `allies_up()` (never of `allies`): `fire()`, `_hurt_ally()` and `revive()` hand it on
+  to the pilot in their turn. Shots, grenades and the arm laser's beam carry `seat`. `team_up()` is your own team.
+  Down: `col_down` (anywhere, not only the hologram), `col_down_start()`, `col_revive()`, `_col_down_step()`,
+  `combat.all_down` and `_both_down()`. The second player's step where weapons are allowed: `_two_fight()` (their
+  keys asked each frame, the same calls as the first player's events), `_pilot_walk()` shared. Per pilot in the
+  picture: `own_node` and `tac_node` on visibility layers 2 and 4, the halves' viewports cull with 1|2 and 1|4.
+  `CombatHud.seat`, `combat_hud2`. `GameState.col_own_gear2`. Removed: `spawn_p2`, `p2()`, `_p2_step`, `p2_*`,
+  `_split_hud_draw`, `col_revive_k`. **Next with the same means:** the second player's step where no weapons are
+  allowed (`_two_keep`'s own walking code) can run under `seat_to(1)` too, and so can the places' dangers.
+- 0.8.75.16 (the same parts for both): `SuitHud.seat` (it reads `GameState.gear_of(seat)` and names the belt's keys
+  by `Players.key_text(seat, …)`); `Players.key_text(player, action, ctx)`; `GroundView._hint_for(seat)`. The
+  split overlay holds the second player's `plate2`, `title2`, `hint2`, `suit2` (a real SuitHud), `prompt2` and
+  their own log (`_log2`, `_log2_buf`, `two_say()`; `log_event()` writes there while `GameState.acting == 1`).
+  `two_belt(n)`, `_two_env()`. `_split_hud_draw()` now draws only in a fight. **Rule for what comes:** do not build
+  a second version of anything for the second player; run the first player's code and display per seat.
+- 0.8.75.15 (stage 3, third part): `GameState.fleet2`, `active_uid2`, `storage2` (those of whoever is not acting;
+  `act_as()` swaps them with `fleet`, `active_uid`, `storage` and puts the second player's active ship where the
+  first one's stands); `fleet_of(seat)`, `storage_seat(seat)` (`storage_of(station_id)` is the older, other
+  function); `new_pilot2()` makes the »Wingmate«; saved as `fleet2`, `active_uid2`, `storage2`. On foot
+  `_split_hud_draw()` draws the one display for a fight's figure or, where no weapons are allowed, for
+  `_two_stats()` (read from `gear_of(1)`).
+- 0.8.75.14 (stage 3, second part): `GameState.acting` and `act_as(seat)` swap `pilot` / `pilot2`, `gear` /
+  `gear2`, `credits` and `coins` so that all of the game's pilot code works for the second player; `pilot_of()`,
+  `gear_of()`, `coins_of()`, `credits_of()` answer by seat whoever is acting; `to_dict()` always saves with the
+  first player first. `Players.act_seat` is whose device `Pad` follows. `GroundView`: `two_zone`, `two_seat`,
+  `two_use()` (kinds in `TWO_OWN` open as the second player: `two_acting` until every window is shut, then
+  `_two_done()`), `two_prompt()`. Smoke group `split9` (pictures with `SPLIT9_SHOTS=1`).
+- 0.8.75.13 (stage 3, first part): `GroundView.two` (the second player's Walker where `combat` is null),
+  `wants_two()`, `_two_scene()`, `p2_walker()`, `_two_look()`, `_two_keep(delta)` (called first in `_process()`:
+  makes the figure, walks it by `Players.move(1)`, opens and closes the split picture); `p2_may_act()` now also
+  outside a match. `GroundCombat.step()` spawns the second player with `spawn_p2(false)` (their own `gear2`)
+  wherever a fight is set up; outside the hologram they do not die of lying. Smoke group `split8` (pictures with
+  `SPLIT8_SHOTS=1`).
 - 0.8.75.12 (the second player's own money): `pilot2["credits"]`, `pilot2["coins"]` (set in `new_pilot2()`, read
   back in `from_dict()`), `GameState.coins_of(seat)`, `add_coins(seat, n)`, `credits_of(seat)`. The tables check
   and pay per seat; `roulette_spin` pays seat 1 through `add_coins`; `col_fight_end` and `sv_end` pay both;

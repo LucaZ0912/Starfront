@@ -36,6 +36,8 @@ const StandingView = preload("res://scripts/ui/standing_view.gd")
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const TreeData = preload("res://data/skilltree.gd")
 
+var seat := 0                             # split screen: whose window this is (0 the first player, 1 the second: it stands in their half)
+var _win: Control = null                  # the window's frame (its margins are smaller in a narrow picture)
 var tab := 0
 var jsub := "story"                        # the journal's tab: story · side · tips · secrets
 var jsel := ""                             # the mission (or tip, secret) picked
@@ -72,6 +74,7 @@ func _ready() -> void:
 	win.offset_top = 50
 	win.offset_bottom = -40
 	bg.add_child(win)
+	_win = win
 	var v := UI.vbox(10)
 	win.add_child(v)
 	var head := UI.hbox(10)
@@ -84,7 +87,7 @@ func _ready() -> void:
 		head.add_child(b)
 		tab_buttons.append(b)
 	head.add_child(UI.spacer())
-	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("menu_back"), close))
+	head.add_child(UI.button("Close [%s]" % _k("menu_back"), close))
 	_sc = ScrollContainer.new()
 	_sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -94,6 +97,19 @@ func _ready() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_sc.add_child(body)
 	GameState.skills_changed.connect(func(): if visible: rebuild())
+
+
+## The key or button of this window's player for an action, in words.
+func _k(action: String) -> String:
+	if _on_pad():
+		var pad_id := String({"menu_up": "pad_up", "menu_down": "pad_down", "menu_left": "pad_left", "menu_right": "pad_right"}.get(action, action))
+		return Players.key_text(seat, pad_id, "menu") if not Pad.binding("menu", pad_id).is_empty() else Players.key_text(seat, action, "ground")
+	return Players.key_text(seat, action)
+
+
+## Split screen: is this window's player at a controller (their buttons are written, not the keyboard's keys)?
+func _on_pad() -> bool:
+	return Players.split and not Players.on_keys(seat)
 
 
 func open(p_tab: int = -1) -> void:
@@ -121,7 +137,35 @@ func _set_tab(i: int) -> void:
 	rebuild()
 
 
+## Built anew, in the name of the player whose window it is (whoever asks for it, and whenever).
 func rebuild() -> void:
+	GameState.with_seat(seat, _rebuild)
+
+
+## The narrow layout (Luz, 25 Nov 2026): in half a split picture of 1920 × 1080 the same pages, the same pattern,
+## with what does not fit made to: smaller margins, fewer columns, narrower lists, long lines wrapped.
+func _narrow() -> bool:
+	return UI.narrow(self)
+
+
+## A measure by the picture: `wide` as it always was, `narrow_v` in a narrow picture.
+func _nw(wide, narrow_v):
+	return narrow_v if _narrow() else wide
+
+
+func _rebuild() -> void:
+	if _win != null:
+		var nar := _narrow()
+		_win.offset_left = 12 if nar else 90
+		_win.offset_right = -12 if nar else -90
+		_win.offset_top = 12 if nar else 50
+		_win.offset_bottom = -12 if nar else -40
+	_rebuild_pages()
+	if _narrow():
+		UI.wrap_long(body)
+
+
+func _rebuild_pages() -> void:
 	for k in tab_buttons.size():
 		tab_buttons[k].button_pressed = k == tab
 	if tab_buttons.size() > TAB_ACQ:
@@ -457,7 +501,7 @@ func _gear() -> void:
 	row.add_child(right)
 	var sflow := _gear_flow(right, "Suit", "")
 	sflow.add_child(_gear_tile(String(g.suit), 1, "", "suit", 0, "Suit"))
-	for sec in [["weapons", "Weapons"], ["grenades", "Grenades  –  %s switches, hold to throw" % Keybinds.key_text("foot_grenade")], ["belt", "Belt  –  keys 1–%d" % g.belt.size()], ["drones", "Drone  –  %s: its command" % Keybinds.key_text("foot_drone")], ["features", "Features"]]:
+	for sec in [["weapons", "Weapons"], ["grenades", "Grenades  –  %s switches, hold to throw" % _k("foot_grenade")], ["belt", ("Belt  –  %s" % " ".join(PackedStringArray(range(mini(4, g.belt.size())).map(func(bi): return _k("foot_belt_%d" % (bi + 1)))))) if _on_pad() else "Belt  –  keys 1–%d" % g.belt.size()], ["drones", "Drone  –  %s: its command" % _k("foot_drone")], ["features", "Features"]]:
 		var key := String(sec[0])
 		var arr: Array = g.get(key)
 		if arr.is_empty() and key == "drones":
@@ -478,7 +522,7 @@ func _gear() -> void:
 					n = int(it2["n"])
 			else:
 				id = String(it2)
-			flow.add_child(_gear_tile(id, n, str(i + 1) if key == "belt" else "", key, i, "empty"))
+			flow.add_child(_gear_tile(id, n, ((_k("foot_belt_%d" % (i + 1)) if i < 4 else "") if _on_pad() else str(i + 1)) if key == "belt" else "", key, i, "empty"))
 	var pflow := _gear_flow(right, "Pockets", "(%d/%d)" % [GearData.INV_SLOTS - g.free_places(), GearData.INV_SLOTS])
 	for i2 in g.inv.size():
 		var p: Dictionary = g.inv[i2]
@@ -600,7 +644,7 @@ func _gear_of_member(g, m: Dictionary) -> void:
 		sb.custom_minimum_size = Vector2(120, 28)
 		sb.tooltip_text = {"aggressive": "Closes in on the foe", "careful": "Fights from cover near you", "flank": "Runs round to the foe's open side"}[skey]
 		sr.add_child(sb)
-	left.add_child(UI.wrap_label("Without a weapon of their own they carry a slug pistol. Their rounds and energy are their own. Down in a fight, hold %s beside them to bring them back. If they die, a clinic brings them back for a fee." % Keybinds.key_text("interact"), 12, UI.TEXT_DIM, 400))
+	left.add_child(UI.wrap_label("Without a weapon of their own they carry a slug pistol. Their rounds and energy are their own. Down in a fight, hold %s beside them to bring them back. If they die, a clinic brings them back for a fee." % _k("interact"), 12, UI.TEXT_DIM, 400))
 	left.add_child(HSeparator.new())
 	# the piece picked
 	var where := String(_gsel.get("where", ""))
@@ -806,8 +850,13 @@ func _gear_do(err: String) -> void:
 	var mn = get_tree().current_scene
 	var gv = mn.get("ground") if mn != null else null
 	if gv != null and is_instance_valid(gv) and gv.pilot != null:
-		gv.pilot.look = gv.pilot_look()                      # 0.7.51.2: on foot – the new suit at once
-		gv.pilot.slung = gv._slung()
+		if seat == 1:
+			if gv.two != null and is_instance_valid(gv.two):
+				gv.two.look = gv._two_look()                 # (the second player's figure: what they put on shows at once)
+				gv.two.queue_redraw()
+		else:
+			gv.pilot.look = gv.pilot_look()                  # 0.7.51.2: on foot – the new suit at once
+			gv.pilot.slung = gv._slung()
 	Audio.play("ui_click" if err == "" else "ui_error", "gear")
 	rebuild()
 
@@ -818,7 +867,7 @@ func _skills() -> void:
 	_level_bar(body)
 	body.add_child(UI.label("Skills grow by doing: every activity gives experience to the skill behind it, and the skill rises by itself. All of it feeds the pilot level.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = _nw(2, 1)
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 8)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -834,7 +883,7 @@ func _skill_card(s: Array) -> Control:
 	var later := id in ["leadership"]                     # package 52: Athletics and Firearms work on foot
 	var card := UI.neon_panel(Color(COL, 0.35), Color(0.05, 0.04, 0.03, 0.95), 1)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(560, 0)
+	card.custom_minimum_size = Vector2(_nw(560, 0), 0)
 	var v := UI.vbox(3)
 	card.add_child(v)
 	var top := UI.hbox(8)
@@ -878,7 +927,7 @@ func _level_bar(parent: Control) -> void:
 	var lvl := GameState.pilot_level()
 	row.add_child(UI.label("PILOT LEVEL %d" % lvl, 18, COL))
 	var need := SkillData.pilot_need(lvl)
-	var bar := UI.bar(COL, 360)
+	var bar := UI.bar(COL, _nw(360, 170))
 	bar.max_value = need
 	bar.value = minf(float(GameState.pilot.get("xp", 0.0)), need)
 	row.add_child(bar)
@@ -893,7 +942,7 @@ func _perks() -> void:
 	_level_bar(body)
 	body.add_child(UI.label("Every pilot level brings a perk point. Spend it on any perk below: some need a skill level first.", 13, UI.TEXT_DIM))
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = _nw(3, 2)
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	body.add_child(grid)
@@ -1186,7 +1235,7 @@ func _fill_detail() -> void:
 		_detail_box.add_child(ob)
 	_detail_box.add_child(UI.spacer())
 	_detail_box.add_child(UI.wrap_label("Drag to move the tree • %s %s %s %s walk from tile to tile • Enter opens a ready tile.\nA ship without its tile stays docked; a module without it stays offline (core modules fitted already keep working)." % [
-		Keybinds.key_text("menu_up"), Keybinds.key_text("menu_left"), Keybinds.key_text("menu_down"), Keybinds.key_text("menu_right")], 10, UI.TEXT_DIM, 290))
+		_k("menu_up"), _k("menu_left"), _k("menu_down"), _k("menu_right")], 10, UI.TEXT_DIM, 290))
 
 
 ## The view: where it was before, at first the trunk at the bottom; the selected tile takes the highlight.
@@ -1338,7 +1387,7 @@ func _collection() -> void:
 	body.add_child(row)
 	# the categories as a button list on the left (0.5.34.3)
 	var left := UI.vbox(4)
-	left.custom_minimum_size = Vector2(250, 0)
+	left.custom_minimum_size = Vector2(_nw(250, 200), 0)
 	row.add_child(left)
 	var have: Array = GameState.collection.get("perks", [])
 	var killed: Array = GameState.collection.get("notorious", [])
@@ -1355,7 +1404,8 @@ func _collection() -> void:
 		b.toggle_mode = true
 		b.button_pressed = coll_cat == cid
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.custom_minimum_size = Vector2(250, 36)
+		b.custom_minimum_size = Vector2(_nw(250, 200), 36)
+		b.clip_text = _narrow()
 		left.add_child(b)
 	# the chosen category on the right
 	var rs := ScrollContainer.new()
@@ -1675,7 +1725,7 @@ func _pilot_info() -> void:
 	row.add_child(frame)
 	var por := TextureRect.new()
 	por.texture = PilotArt.portrait(GameState.pilot.get("look", {}))
-	por.custom_minimum_size = Vector2(220, 220)
+	por.custom_minimum_size = Vector2(_nw(220, 180), _nw(220, 180))
 	por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	por.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	por.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1717,7 +1767,13 @@ func _pilot_info() -> void:
 	var ships_total := 0
 	for f in GameState.fleet:
 		ships_total += GameState.ship_value(f)
-	var cards := UI.hbox(12)
+	var cards: Control = UI.hbox(12)
+	if _narrow():                                        # (a narrow picture: the four cards two by two)
+		var cg := GridContainer.new()
+		cg.columns = 2
+		cg.add_theme_constant_override("h_separation", 12)
+		cg.add_theme_constant_override("v_separation", 12)
+		cards = cg
 	body.add_child(cards)
 	_stat_card(cards, "FINANCES", [
 		["Credits", GameData.fmt_credits(GameState.credits)],
@@ -1802,7 +1858,7 @@ func _journal() -> void:
 			rebuild())
 		b.toggle_mode = true
 		b.button_pressed = jsub == key
-		b.custom_minimum_size = Vector2(190, 30)
+		b.custom_minimum_size = Vector2(_nw(190, 140), 30)
 		b.add_theme_color_override("font_color", js[2])
 		subs.add_child(b)
 	if jsub == "transactions":
@@ -1816,7 +1872,7 @@ func _journal() -> void:
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(row)
 	var left := UI.vbox(8)
-	left.custom_minimum_size = Vector2(460, 0)
+	left.custom_minimum_size = Vector2(_nw(460, 350), 0)
 	row.add_child(left)
 	var rp := UI.neon_panel(Color(COL, 0.5), Color(0.04, 0.06, 0.11, 0.95), 1)
 	rp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1839,7 +1895,7 @@ func _journal() -> void:
 
 func _j_tile(parent: Control, id: String, title: String, sub: String, prog: float, col: Color, tracked: bool, done: bool) -> void:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(450, 74)
+	b.custom_minimum_size = Vector2(_nw(450, 340), 74)
 	b.toggle_mode = true
 	b.button_pressed = jsel == id
 	var sb := UI.panel_style(Color(0.06, 0.08, 0.13, 0.96) if jsel == id else Color(0.04, 0.05, 0.09, 0.9), col if jsel == id else Color(col, 0.35))
@@ -1861,13 +1917,14 @@ func _j_tile(parent: Control, id: String, title: String, sub: String, prog: floa
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(h)
 	var tl := UI.label(title, 15, Color(0.6, 0.85, 0.65) if done else Color.WHITE)
-	tl.custom_minimum_size = Vector2(320, 0)
+	tl.custom_minimum_size = Vector2(_nw(320, 220), 0)
+	tl.clip_text = _narrow()
 	h.add_child(tl)
 	if tracked:
 		h.add_child(UI.label("◆ TRACKED", 11, COL))
 	v.add_child(UI.label(sub, 12, UI.TEXT_DIM))
-	var bar := UI.bar(col, 420)
-	bar.custom_minimum_size = Vector2(420, 5)
+	var bar := UI.bar(col, _nw(420, 310))
+	bar.custom_minimum_size = Vector2(_nw(420, 310), 5)
 	bar.max_value = 1.0
 	bar.value = prog
 	v.add_child(bar)

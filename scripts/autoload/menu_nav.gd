@@ -12,14 +12,23 @@ const DIRS := {"menu_up": Vector2.UP, "menu_down": Vector2.DOWN, "menu_left": Ve
 var moves := 0                     # highlight moves (smoke test)
 var _last_menu: Node = null        # package 80: where the highlight was – it comes back there after the menu is rebuilt
 var _last_pos := Vector2.INF
+var _lasts := {}                   # … for each menu by itself (two players, two windows): instance id -> where
+## Split screen: the engine has one keyboard highlight for the whole game window, whatever picture a control stands
+## in. Two players walking through a window each need one of their own, so a window in a half of the picture has its
+## highlight kept here: the control it is on (`_soft`) with a frame drawn round it, pressed by press().
+var _soft := {}                    # menu instance id -> the control highlighted in it
+var _frames := {}                  # menu instance id -> the frame round it
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
-## The menu on top: the visible member of "kbd_menu" on the highest canvas layer (later in the tree wins ties).
-func active_menu() -> Node:
+## The menu on top for a player: the visible member of "kbd_menu" on the highest canvas layer (later in the tree wins
+## ties). Split screen: a window in a half of the picture is that half's player's alone; the windows over the whole
+## picture are theirs whose windows these are (Players.act_seat). Without a seat: that player's.
+func active_menu(seat: int = -1) -> Node:
+	var s := seat if seat >= 0 else (Players.act_seat if Players.split else 0)
 	var best: Node = null
 	var best_key := -INF
 	var i := 0
@@ -27,11 +36,76 @@ func active_menu() -> Node:
 		i += 1
 		if not _shown(m):
 			continue
+		var own := seat_of(m)
+		if own >= 0 and own != s:
+			continue                                # in the other player's half
+		if own < 0 and Players.split and Players.act_seat != s:
+			continue                                # over the whole picture, and not theirs right now
 		var key := float(_layer_of(m)) * 10000.0 + float(i)
 		if key > best_key:
 			best_key = key
 			best = m
 	return best
+
+
+## Has this menu a highlight of its own (it stands in a half of the picture)?
+func is_soft(menu: Node) -> bool:
+	return seat_of(menu) >= 0
+
+
+## The control the highlight is on in a menu (null: none yet).
+func current(menu: Node) -> Control:
+	if menu == null or not is_instance_valid(menu) or not menu.is_inside_tree():
+		return null
+	var c = _soft.get(menu.get_instance_id()) if is_soft(menu) else menu.get_viewport().gui_get_focus_owner()
+	if c == null or not is_instance_valid(c) or not (c as Control).is_visible_in_tree() or not (menu == c or menu.is_ancestor_of(c)):
+		return null
+	return c
+
+
+## Presses what is highlighted in a menu that keeps its own highlight. True if something was pressed.
+func press(menu: Node) -> bool:
+	var c := current(menu)
+	if c == null:
+		return false
+	keep(menu, c)
+	if c is LineEdit or c is TextEdit:
+		c.grab_focus()                              # (typing needs the engine's own highlight)
+		return true
+	if c is OptionButton:
+		(c as OptionButton).show_popup()
+		return true
+	if c is BaseButton:
+		var b := c as BaseButton
+		if b.disabled:
+			return false
+		if b.toggle_mode:
+			b.button_pressed = not b.button_pressed
+		b.pressed.emit()
+		return true
+	return false
+
+
+## The player whose half of the picture a menu stands in (-1: it is over the whole picture).
+func seat_of(m: Node) -> int:
+	var v: Viewport = m.get_viewport() if m != null and m.is_inside_tree() else null
+	return int(v.get_meta("win_seat", -1)) if v != null else -1
+
+
+## Where the highlight is now, kept for when the menu is rebuilt.
+func keep(menu: Node, focus: Control) -> void:
+	_last_menu = menu
+	_last_pos = _vrect(focus).get_center() if focus != null else Vector2.INF
+	if menu != null:
+		_lasts[menu.get_instance_id()] = _last_pos
+
+
+func _kept(menu: Node) -> Vector2:
+	if menu == null:
+		return Vector2.INF
+	if _last_menu == menu and _last_pos != Vector2.INF:
+		return _last_pos
+	return _lasts.get(menu.get_instance_id(), Vector2.INF)
 
 
 func menu_open() -> bool:
@@ -58,32 +132,55 @@ func _layer_of(m: Node) -> int:
 
 
 func _input(event: InputEvent) -> void:
-	if not (event is InputEventKey) or not event.pressed:
-		return
-	var focus := get_viewport().gui_get_focus_owner()
-	if focus is LineEdit or focus is TextEdit:
-		return                                  # typing: W / A / S / D are letters here
-	var menu := active_menu()
+	if try_key(event):
+		get_viewport().set_input_as_handled()
+
+
+## A key (or a controller's tab button) for the menu on top of the player it belongs to. True if it was one of the
+## menu's: a step of the highlight, a tab.
+func try_key(event: InputEvent) -> bool:
+	if not event.is_pressed() or event.is_echo() and not (event is InputEventKey):
+		return false
+	var seat := 0
+	if event is InputEventKey:
+		if Players.split and not Players.on_keys(0):
+			if not Players.on_keys(1):
+				return false
+			seat = 1                                # (split screen: the keyboard is the second player's)
+	elif event is InputEventAction:
+		if not String((event as InputEventAction).action) in ["menu_prev_tab", "menu_next_tab"]:
+			return false
+		seat = Players.act_seat if Players.split else 0      # (a controller's tab buttons, through Pad)
+	else:
+		return false
+	var menu := active_menu(seat)
 	if menu == null or (menu.has_method("menu_nav_blocked") and menu.menu_nav_blocked()):
-		return
+		return false
+	var focus := menu.get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit:
+		return false                            # typing: W / A / S / D are letters here
+	var who := seat_of(menu) if seat_of(menu) >= 0 else GameState.acting      # (a window in a half works in its player's name)
+	if event is InputEventKey and is_soft(menu) and not event.is_echo() and event.is_action("ui_accept") and current(menu) != null:
+		GameState.with_seat(who, press.bind(menu))      # Enter / Space on the window's own highlight
+		return true
 	for tab in [["menu_prev_tab", -1], ["menu_next_tab", 1]]:
 		if event.is_action(tab[0]) and menu.has_method("menu_tab"):
-			menu.menu_tab(int(tab[1]))
+			GameState.with_seat(who, menu.menu_tab.bind(int(tab[1])))
 			Audio.play("ui_click", "menu tab", -4.0, 0.02)
-			get_viewport().set_input_as_handled()
-			return
-	for act in DIRS:
-		if InputMap.has_action(act) and event.is_action(act):
-			step(menu, DIRS[act])
-			get_viewport().set_input_as_handled()
-			return
+			return true
+	if event is InputEventKey:
+		for act in DIRS:
+			if InputMap.has_action(act) and event.is_action(act):
+				GameState.with_seat(who, step.bind(menu, DIRS[act]))
+				return true
+	return false
 
 
 ## Moves the highlight one step in `dir` inside `menu` (the first button if nothing is highlighted yet);
 ## on a slider left / right change its value instead.
 func step(menu: Node, dir: Vector2) -> void:
-	var cur := get_viewport().gui_get_focus_owner()
-	var inside := cur != null and (menu == cur or menu.is_ancestor_of(cur)) and cur.is_visible_in_tree()
+	var cur := current(menu)
+	var inside := cur != null
 	if inside and cur is Range and dir.y == 0.0:
 		cur.value += (cur.step if cur.step > 0.0 else (cur.max_value - cur.min_value) / 20.0) * dir.x
 		return
@@ -92,7 +189,7 @@ func step(menu: Node, dir: Vector2) -> void:
 		return
 	var nxt: Control = null
 	if not inside:
-		nxt = _nearest(cands, _last_pos) if _last_menu == menu and _last_pos != Vector2.INF else _first(cands)
+		nxt = _nearest(cands, _kept(menu)) if _kept(menu) != Vector2.INF else _first(cands)
 	else:
 		nxt = _neighbour(cur, cands, dir)
 	if nxt == null:
@@ -101,25 +198,49 @@ func step(menu: Node, dir: Vector2) -> void:
 
 
 func _take(menu: Node, nxt: Control) -> void:
-	nxt.grab_focus()
+	_light(menu, nxt)
 	moves += 1
 	_scroll_to(nxt)
-	_last_menu = menu
-	_last_pos = _vrect(nxt).get_center()
+	keep(menu, nxt)
 
 
 ## Package 80: after a press that rebuilds the menu (a gear tile, a list) the highlight comes back to the control at
 ## the same place – not to the top.
 func restore(menu: Node) -> void:
-	if menu == null or not is_instance_valid(menu) or _last_menu != menu or _last_pos == Vector2.INF:
+	if menu == null or not is_instance_valid(menu) or not menu.is_inside_tree() or _kept(menu) == Vector2.INF:
 		return
-	var cur := get_viewport().gui_get_focus_owner()
-	if cur != null and (menu == cur or menu.is_ancestor_of(cur)) and cur.is_visible_in_tree():
+	if current(menu) != null:
 		return
-	var nxt := _nearest(_candidates(menu), _last_pos)
+	var nxt := _nearest(_candidates(menu), _kept(menu))
 	if nxt != null:
-		nxt.grab_focus()
+		_light(menu, nxt)
 		_scroll_to(nxt)
+
+
+## The highlight onto a control: the engine's own, or (a window in a half of the picture) the window's own with its
+## frame; what listens for the highlight coming (a tile that shows its details) hears it either way.
+func _light(menu: Node, nxt: Control) -> void:
+	if not is_soft(menu):
+		nxt.grab_focus()
+		return
+	var id := menu.get_instance_id()
+	var old = _frames.get(id)
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+	_soft[id] = nxt
+	var fr := Panel.new()
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.border_color = Color(1.0, 0.95, 0.4)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(3)
+	sb.set_expand_margin_all(2)
+	fr.add_theme_stylebox_override("panel", sb)
+	nxt.add_child(fr, false, Node.INTERNAL_MODE_BACK)
+	_frames[id] = fr
+	nxt.focus_entered.emit()
 
 
 func _nearest(cands: Array, at: Vector2) -> Control:

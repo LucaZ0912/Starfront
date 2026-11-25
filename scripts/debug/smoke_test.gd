@@ -762,6 +762,12 @@ func _process(delta: float) -> void:
 				await _test_split5(main.view)           # split screen, stage 1: the rest (swarm, items, blows, the room)
 				await _test_split6(main.view)           # split screen, stage 2: billiards and darts for two
 				await _test_split7(main.view)           # split screen, stage 2: roulette and blackjack for two
+				await _test_split8(main.view)           # split screen, stage 3: two on the ground everywhere
+				await _test_split9(main.view)           # split screen, stage 3: the second player uses things themselves
+				await _test_split10(main.view)          # split screen: the real fight for two, outside the hologram
+				await _test_split11(main.view)          # split screen: the dangers of a place for both pilots
+				await _test_split12(main.view)          # split screen: a window in its player's half, the other plays on
+				await _test_split13(main.view)          # split screen: the second player's own ship menu and galaxy map
 				_shooting = false
 				timer = 0.0
 				return
@@ -29973,39 +29979,52 @@ func _test_split1(_view: SystemView) -> void:
 			await get_tree().process_frame
 		g._col_fight_start()
 		var tc := Time.get_ticks_msec()
+		for f1a in 4:
+			await get_tree().process_frame
 		# (in the count nobody acts: the second player's stick does nothing yet)
-		var a = g.combat.p2()
-		var p_count: Vector2 = (a["w"] as Walker).pos if a != null else Vector2.ZERO
+		var cb = g.combat
+		var w: Walker = g.two
+		var p_count: Vector2 = w.pos if w != null else Vector2.ZERO
 		Players.sim["1:move"] = Vector2(1.0, 0.0)
 		for f1b in 20:
 			await get_tree().process_frame
-		var still: bool = a != null and (a["w"] as Walker).pos.distance_to(p_count) < 0.5 and not g.p2_may_act()
+		var still: bool = w != null and w.pos.distance_to(p_count) < 0.5 and not g.p2_may_act()
 		Players.sim.erase("1:move")
 		while Time.get_ticks_msec() - tc < 8000 and String(g._col_fight.get("state", "")) == "count":
 			await get_tree().process_frame
 		for f2 in 5:
 			await get_tree().process_frame
-		g.combat.frozen = true                                   # (the three stand still: what is tried here is ours)
+		cb.frozen = true                                         # (the three stand still: what is tried here is ours)
 		var vs: Vector2 = get_viewport().get_visible_rect().size
 		var sp: Dictionary = g._split
 		var half: float = g._split_half()
-		var two: bool = a != null and bool(a.get("p2", false)) and bool(a.get("arena", false)) and String(a["name"]) == "Mira" and g.split_open() and not sp.is_empty()
+		var g2 = GameState.gear_of(1)
+		# a pilot of the fight as you are, not one of your team: their own part of the fight, their own figure
+		var two: bool = w != null and is_instance_valid(w) and cb.two_in and g.split_open() and not sp.is_empty() and cb.partner() != null and String(cb.partner()["name"]) == "Mira" \
+			and cb.partner()["w"] == w and not (cb.allies as Array).any(func(al): return al.has("px") or al.has("p2")) and g.seat_now == 0 and GameState.acting == 0
 		var world_ok := false
 		var cam_ok := false
+		var same := false
+		var housed := false
 		if two:
 			world_ok = g._world.get_parent() == sp["va"] and sp["vb"].world_2d == sp["va"].world_2d and absf(sp["fa"].size.x - half) < 1.0 and absf(sp["fb"].size.x - half) < 1.0 \
 				and absf(sp["fb"].position.x - (vs.x - half)) < 1.0 and half < vs.x * 0.5
 			# each in their own half: you on the left one's screen, the second player on the right one's
 			var me: Vector2 = g._world.position + g.pilot.position * g.zoom
-			var them: Vector2 = g._world.position + (a["w"] as Walker).position * g.zoom - (sp["cam"] as Camera2D).position + Vector2(half, vs.y) * 0.5
+			var them: Vector2 = g._world.position + w.position * g.zoom - (sp["cam"] as Camera2D).position + Vector2(half, vs.y) * 0.5
 			cam_ok = Rect2(0, 0, half, vs.y).has_point(me) and Rect2(0, 0, half, vs.y).has_point(them)
-		start_ok = still and two and world_ok and cam_ok and String(g._col_fight.get("state", "")) == "fight" and g.input_enabled and (a["look"] if false else (a["w"] as Walker).look).get("hair", -1) == 9 \
-			and String(a["weapon"]) == String(GameState.gear.weapons[0]) and is_equal_approx(float(a["dmg"]), 1.0)
+			# the same display over their half: the fight display's own class, fed with their fight and their suit's display
+			var hud2 = g.combat_hud2
+			same = hud2 != null and is_instance_valid(hud2) and hud2 is CombatHud and hud2.seat == 1 and g.combat_hud.seat == 0 and hud2.get_script() == g.combat_hud.get_script() \
+				and hud2.combat == cb and hud2.suit_hud == sp["suit2"] and (sp["suit2"] as Control).visible == g.hud.visible and (sp["va"] as SubViewport).canvas_cull_mask == 3 \
+				and (sp["vb"] as SubViewport).canvas_cull_mask == 5 and cb.own_node.visibility_layer == 2 and (cb._other["own_node"] as Node2D).visibility_layer == 4
+			# the house's gear in a fit of their own, their own kept for after
+			housed = GameState.col_own_gear2 != null and g2 != GameState.gear and g2 != GameState.col_own_gear2 and String(g2.suit) == String(CD.fitted(GameState.col_state()["fit2"])["suit"])
+		start_ok = still and two and world_ok and cam_ok and same and housed and String(g._col_fight.get("state", "")) == "fight" and g.input_enabled and w.look.get("hair", -1) == 9
 		if not start_ok:
-			print("SPLIT1 start: still ", still, " two ", two, " world ", world_ok, " cam ", cam_ok, " state ", g._col_fight, " ally ", a)
+			print("SPLIT1 start: still ", still, " two ", two, " world ", world_ok, " cam ", cam_ok, " same ", same, " housed ", housed, " state ", g._col_fight, " in ", cb.two_in, " partner ", cb.partner())
 		if start_ok:
-			# ---- their device walks them, not you; a dodge; a target of their own
-			var w: Walker = a["w"]
+			# ---- their device walks them, not you
 			var me0: Vector2 = g.pilot.pos
 			var far := 0.0
 			for dv in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
@@ -30018,72 +30037,127 @@ func _test_split1(_view: SystemView) -> void:
 			for f3b in 3:
 				await get_tree().process_frame
 			var stood: bool = not w.moving
+			# ---- the dodge is yours: a charge of theirs is spent, the jump carries them, a shot that arrives now is dodged
+			var ch0: float = float(cb._other["dodge_charges"])
+			var mine0: float = cb.dodge_charges
 			Players.sim["1:move"] = Vector2(0.0, -1.0)
 			Players.sim["1:foot_dodge"] = true
 			var dodged := false
 			var no_hit := false
+			var spent := false
 			for f4 in 8:
 				await get_tree().process_frame
-				if float(a["dodge_t"]) > 0.0 and not dodged:
+				if float(cb._other["dodge_t"]) > 0.0 and not dodged:
 					dodged = true
-					var h0 := float(a["st"]["shield"]) + float(a["st"]["armor"]) + float(a["st"]["health"])
-					g.combat._hurt_ally(a, 20.0, "kinetic")
-					no_hit = is_equal_approx(h0, float(a["st"]["shield"]) + float(a["st"]["armor"]) + float(a["st"]["health"]))
+					spent = float(cb._other["dodge_charges"]) <= ch0 - 0.9 and is_equal_approx(cb.dodge_charges, mine0)
+					var h0: float = g2.health + g2.shield + g2.armor
+					cb._resolve({"a": w.pos, "b": w.pos, "t": 0.0, "life": 0.01, "kind": "slug", "col": Color.WHITE, "done": false,
+						"res": {"to": null, "dmg": 20.0, "dtype": "kinetic", "splash": 0.0, "from": cb.alive()[0], "kind": "hit", "seat": 1}})
+					no_hit = is_equal_approx(h0, g2.health + g2.shield + g2.armor) and g.seat_now == 0
 			Players.sim.erase("1:foot_dodge")
 			Players.sim.erase("1:move")
-			for f5 in 30:
+			var f5w := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - f5w < 3000 and float(cb._other["dodge_t"]) > 0.0:
 				await get_tree().process_frame
-			var t1 = a["cur"]
+			for f5 in 5:
+				await get_tree().process_frame
+			# … and a shot that arrives when they stand hurts them, not you
+			var hm0: float = GameState.gear.health + GameState.gear.shield + GameState.gear.armor
+			var ht0: float = g2.health + g2.shield + g2.armor
+			cb._resolve({"a": w.pos, "b": w.pos, "t": 0.0, "life": 0.01, "kind": "slug", "col": Color.WHITE, "done": false,
+				"res": {"to": null, "dmg": 6.0, "dtype": "kinetic", "splash": 0.0, "from": cb.alive()[0], "kind": "hit", "seat": 1}})
+			var hit_them: bool = g2.health + g2.shield + g2.armor < ht0 - 0.5 and is_equal_approx(hm0, GameState.gear.health + GameState.gear.shield + GameState.gear.armor)
+			# ---- a target of their own, locked as yours is; their key takes the next one, yours stays yours
+			var mine_t = cb.active
+			var t1 = cb._other["active"]
 			Players.sim["1:foot_target"] = true
 			for f6 in 4:
 				await get_tree().process_frame
 			Players.sim.erase("1:foot_target")
 			for f6b in 4:
 				await get_tree().process_frame
-			var t2 = a["tgt"]
-			walk_ok = far > 6.0 and stood and g.pilot.pos.distance_to(me0) < 0.5 and dodged and no_hit and float(a["dodge_cd"]) > 0.0
-			fight_ok = t1 != null and t2 != null and t2 != t1 and (g.combat.alive() as Array).size() == 3 and g.combat.active != t2 or (t1 != null and t2 != null and t2 != t1)
+			var t2 = cb._other["active"]
+			# … and their weapon fires by itself at it, on their own energy or rounds
+			var e0: float = g2.energy
+			var a0: int = g2.ammo
+			var keep_pos: Vector2 = w.pos
+			if t2 != null:
+				w.pos = cb._free_near((t2["w"] as Walker).pos + Vector2(40.0, 0.0))
+				w.position = w.pos * GroundMap.SCALE
+			var shot_theirs := false
+			var f6w := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - f6w < 6000:
+				await get_tree().process_frame
+				shot_theirs = shot_theirs or (cb.shots as Array).any(func(s0): return s0.has("res") and s0["res"]["from"] == null and int(s0["res"].get("seat", 0)) == 1)
+				if shot_theirs and (g2.energy < e0 - 0.01 or g2.ammo < a0):
+					break
+			var paid: bool = g2.energy < e0 - 0.01 or g2.ammo < a0
+			w.pos = keep_pos
+			w.position = w.pos * GroundMap.SCALE
+			walk_ok = far > 6.0 and stood and g.pilot.pos.distance_to(me0) < 0.5 and dodged and spent and no_hit and hit_them
+			fight_ok = t1 != null and t2 != null and t2 != t1 and cb.active == mine_t and (cb._other["locks"] as Array).has(t2) and shot_theirs and paid
 			if not walk_ok or not fight_ok:
-				print("SPLIT1 walk: far ", far, " stood ", stood, " me ", g.pilot.pos.distance_to(me0), " dodge ", [dodged, no_hit, a["dodge_cd"]], " targets ", [t1 != null, t2 != null, t1 != t2])
+				print("SPLIT1 walk: far ", far, " stood ", stood, " me ", g.pilot.pos.distance_to(me0), " dodge ", [dodged, spent, no_hit, hit_them], " charges ", [ch0, cb._other["dodge_charges"]],
+					" targets ", [t1 != null, t2 != null, t1 != t2, cb.active == mine_t], " shot ", shot_theirs, " paid ", paid, " energy ", [e0, g2.energy], " ammo ", [a0, g2.ammo], " weapon ", g2.weapons)
 			if shots:
 				Players.sim["1:move"] = Vector2(0.6, -1.0)             # (for the picture: the two apart, each half its own view)
 				for f7a in 110:
 					await get_tree().process_frame
 				Players.sim.erase("1:move")
-				g.combat.frozen = false
+				cb.frozen = false
 				for f7 in 70:
 					await get_tree().process_frame
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split1_match.png")
-				g.combat.frozen = true
-			# ---- the second player goes down: they lie there, you can bring them back
-			g.combat._hurt_ally(a, 99999.0, "kinetic")
+				cb.frozen = true
+			# ---- the second player goes down: they lie there, you bring them back as you would one of your team
+			g.seat_to(1)
+			cb._hurt_pilot(99999.0, "kinetic")
+			g.seat_to(0)
 			w.pos = g.pilot.pos + Vector2(12.0, 0.0)
 			w.position = w.pos * GroundMap.SCALE
 			for f8 in 5:
 				await get_tree().process_frame
-			var lies: bool = bool(a["down"]) and not bool(a["dead"]) and w.down and g.combat.revive_near() == a and not g.combat.p2_up() and String(g._col_fight.get("state", "")) == "fight"
-			g.combat.revive(a)
+			var px2 = cb.partner()
+			var lies: bool = bool(g._side["col_down"]) and not bool(g._side["col_lost"]) and w.down and cb.revive_near() == px2 and not g.partner_up() and bool(px2["down"]) and not bool(px2["dead"]) \
+				and String(g._col_fight.get("state", "")) == "fight" and not g.col_down
+			Players.sim["1:move"] = Vector2(1.0, 0.0)                # (down: their stick does not walk them)
+			var lie_at: Vector2 = w.pos
+			for f8b in 10:
+				await get_tree().process_frame
+			Players.sim.erase("1:move")
+			var lay_still: bool = w.pos.distance_to(lie_at) < 0.5
+			g._revive = 0.0                                          # (your use key pressed beside them, and held)
+			cb.reviving = cb.revive_near()
+			Players.sim["0:interact"] = true
+			var tr0 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr0 < 6000 and bool(g._side["col_down"]):
+				await get_tree().process_frame
+			Players.sim.erase("0:interact")
 			for f9 in 3:
 				await get_tree().process_frame
-			p2_down_ok = lies and g.combat.p2_up() and float(a["st"]["health"]) > 0.0 and not w.down
+			p2_down_ok = lies and lay_still and g.partner_up() and not bool(g._side["col_down"]) and g2.health >= 30.0 and not w.down
 			if not p2_down_ok:
-				print("SPLIT1 second down: lies ", lies, " down ", a["down"], " dead ", a["dead"], " near ", g.combat.revive_near() == a, " state ", g._col_fight)
+				print("SPLIT1 second down: lies ", lies, " still ", lay_still, " side ", g._side, " near ", cb.revive_near() == px2, " state ", g._col_fight, " health ", g2.health)
 			# ---- you go down: not out; the second player holds the use key beside you
-			g.combat._hurt_pilot(99999.0, "kinetic")
+			cb._hurt_pilot(99999.0, "kinetic")
 			for f10 in 5:
 				await get_tree().process_frame
-			var down1: bool = g.col_down and not g.col_lost and g.pilot.down and not g.input_enabled and g.combat.pilot_hidden() and String(g._col_fight.get("state", "")) == "fight"
+			var down1: bool = g.col_down and not g.col_lost and g.pilot.down and cb.pilot_hidden() and String(g._col_fight.get("state", "")) == "fight" and not bool(g._side["col_down"])
 			w.pos = g.pilot.pos + Vector2(120.0, 0.0)                # (too far: holding the key does nothing)
 			w.position = w.pos * GroundMap.SCALE
 			Players.sim["1:interact"] = true
 			for f11 in 30:
 				await get_tree().process_frame
-			var too_far: bool = g.col_down and is_zero_approx(g.col_revive_k)
+			var too_far: bool = g.col_down and cb._other["reviving"] == null and is_zero_approx(float(cb._other["revive_k"]))
+			Players.sim.erase("1:interact")
 			w.pos = g.pilot.pos + Vector2(12.0, 0.0)
 			w.position = w.pos * GroundMap.SCALE
+			for f11b in 4:
+				await get_tree().process_frame
+			Players.sim["1:interact"] = true
 			for f12 in 20:
 				await get_tree().process_frame
-			var filling: bool = g.col_down and g.col_revive_k > 0.0 and g.col_revive_k < 1.0
+			var filling: bool = g.col_down and float(cb._other["revive_k"]) > 0.0 and float(cb._other["revive_k"]) < 1.0
 			if shots:
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split1_down.png")
 			var tr := Time.get_ticks_msec()
@@ -30092,19 +30166,21 @@ func _test_split1(_view: SystemView) -> void:
 			Players.sim.erase("1:interact")
 			p1_down_ok = down1 and too_far and filling and not g.col_down and not g.col_lost and not g.pilot.down and g.input_enabled and GameState.gear.health >= 30.0
 			if not p1_down_ok:
-				print("SPLIT1 first down: ", [down1, too_far, filling], " col_down ", g.col_down, " lost ", g.col_lost, " health ", GameState.gear.health, " input ", g.input_enabled)
+				print("SPLIT1 first down: ", [down1, too_far, filling], " col_down ", g.col_down, " lost ", g.col_lost, " health ", GameState.gear.health, " input ", g.input_enabled, " k ", cb._other["revive_k"])
 			# ---- both down: lost, and the picture is one again
-			g.combat._hurt_pilot(99999.0, "kinetic")
+			cb._hurt_pilot(99999.0, "kinetic")
 			for f13 in 3:
 				await get_tree().process_frame
-			g.combat._hurt_ally(a, 99999.0, "kinetic")
+			g.seat_to(1)
+			cb._hurt_pilot(99999.0, "kinetic")
+			g.seat_to(0)
 			var tl := Time.get_ticks_msec()
 			while Time.get_ticks_msec() - tl < 5000 and String(g._col_fight.get("state", "")) != "over":
 				await get_tree().process_frame
 			lost_ok = String(g._col_fight.get("state", "")) == "over" and not bool(g._col_fight.get("won", true)) and g.col_lost and not g.col_down and not g.split_open() \
-				and g._world.get_parent() == g
+				and g._world.get_parent() == g and g.seat_now == 0 and GameState.acting == 0
 			if not lost_ok:
-				print("SPLIT1 lost: state ", g._col_fight, " lost ", g.col_lost, " down ", g.col_down, " split ", g.split_open(), " world under view ", g._world.get_parent() == g)
+				print("SPLIT1 lost: state ", g._col_fight, " lost ", g.col_lost, " down ", g.col_down, " split ", g.split_open(), " world under view ", g._world.get_parent() == g, " side ", g._side)
 			var tw := Time.get_ticks_msec()
 			while Time.get_ticks_msec() - tw < 6000 and not (g.minigame != null and g.minigame.has_method("is_col_result")):
 				await get_tree().process_frame
@@ -30113,9 +30189,10 @@ func _test_split1(_view: SystemView) -> void:
 				g.minigame.go(false)
 			for f14 in 10:
 				await get_tree().process_frame
-	check(start_ok, "split1: with split screen on a match begins with the second player beside you, in their own looks and the house's gear, and the picture in two halves on one world, each with its player in it; in the count their stick does nothing")
-	check(walk_ok and fight_ok, "split1: the second player's device walks their figure and not yours; their dodge lets no shot through and needs a moment before the next; they have a target of their own and a press takes the next one")
-	check(p2_down_ok, "split1: the second player shot down lies there and is not out; you can bring them back")
+	check(start_ok, "split1: with split screen on a match begins with the second player in it as a pilot of the fight (not one of your team), in their own looks and the house's gear in their own fit, the picture in two halves on one world, each with its player in it, and over their half the fight display's own class; in the count their stick does nothing")
+	check(walk_ok, "split1: the second player's device walks their figure and not yours; their dodge is yours: a charge of theirs is spent, a shot that arrives in the jump is dodged, one that arrives when they stand hurts them and not you")
+	check(fight_ok, "split1: the second player has locks of their own, their key takes the next target and yours stays yours; their weapon fires by itself at their target, on their own energy or rounds")
+	check(p2_down_ok, "split1: the second player shot down lies there, does not walk and is not out; your use key held beside them brings them back, as with one of your team")
 	check(p1_down_ok, "split1: shot down while the second player stands you are down, not out, and the others leave you be; the second player holding the use key beside you brings you back, from afar nothing happens")
 	check(lost_ok, "split1: with both of you down the match is lost, and the picture is one again")
 	# tidy up: the game as it was
@@ -30488,130 +30565,152 @@ func _test_split3(_view: SystemView) -> void:
 		for f2b in 5:
 			await get_tree().process_frame
 		g.combat.frozen = true
-		var a = g.combat.p2()
-		if a != null:
-			var w: Walker = a["w"]
-			# ---- what they carry comes from their fit, not from yours
-			gear_ok = String(a["gear"].suit) == String(f2["suit"]) and (a["grenades"] as Array).size() > 0 and String(a["grenades"][0].get("id", "")) == "gr_frag" and int(a["grenades"][0]["n"]) >= 1 \
-				and String(a["belt"][0].get("id", "")) == "cs_medkit" and float(a["energy_max"]) > 0.0 and is_equal_approx(float(a["energy"]), float(a["energy_max"])) and int(a["ammo_max"]) >= 0 \
-				and (a["stations"] as Array).size() == CD.STATIONS and String(a["weapon"]) == String(a["weapons"][0]) \
-				and (GameState.gear.grenades as Array).all(func(gg): return (gg as Dictionary).is_empty() or String(gg.get("id", "")) != "gr_frag")
-			# ---- their modules count, their drone flies beside them and fires at their target
-			var base_su: Dictionary = GD.stats(String(a["gear"].suit))
-			var plated: bool = float(a["mx"]["armor"]) > float(base_su.get("armor", 0.0)) and float(a["speed"]) < float(base_su.get("speed", 1.0)) + 0.001 and (a["features"] as Array).has("ft_plates:F")
-			for f2c in 30:
+		var cb = g.combat
+		var w: Walker = g.two
+		if w != null and is_instance_valid(w) and cb.two_in:
+			var g2 = GameState.gear_of(1)
+			var tot2: Dictionary = g2.totals()
+			# ---- what they carry comes from their fit, not from yours: the house's gear, as a suit of their own
+			gear_ok = String(g2.suit) == String(CD.fitted(f2)["suit"]) and g2 != GameState.gear and String(g2.grenades[0].get("id", "")) == "gr_frag" and int(g2.grenades[0]["n"]) >= 1 \
+				and String(g2.belt[0].get("id", "")) == "cs_medkit" and float(tot2["energy"]) > 0.0 and is_equal_approx(g2.energy, float(tot2["energy"])) \
+				and (GameState.gear.grenades as Array).all(func(gg): return (gg as Dictionary).is_empty() or String(gg.get("id", "")) != "gr_frag") \
+				and (g.map.get_meta("col_stations", []) as Array).size() == CD.STATIONS
+			if not gear_ok:
+				print("SPLIT3 gear: suit ", g2.suit, " grenades ", g2.grenades, " belt ", g2.belt, " energy ", g2.energy, "/", tot2["energy"], " mine ", GameState.gear.grenades)
+			# ---- their modules count, their drone goes up on their own key and fires at their target
+			var base_su: Dictionary = GD.stats(String(g2.suit))
+			var plated: bool = float(tot2["armor"]) > float(base_su.get("armor", 0.0)) and (g2.features as Array).has("ft_plates:F") and g2.armor > float(base_su.get("armor", 0.0))
+			for f2c in 20:
 				await get_tree().process_frame
-			var dd: Dictionary = a.get("drone", {})
-			var flies: bool = String(a["drone_id"]) == "dr_laser:F" and not dd.is_empty() and String(dd["state"]) == "hover" and (dd["pos"] as Vector2).distance_to(w.pos) < 30.0
+			var mine_dr: Dictionary = cb.drone
+			var docked: bool = String((cb._other["drone"] as Dictionary).get("id", "")) == "dr_laser:F" and String(cb._other["drone"]["state"]) == "docked"
+			Players.sim["1:foot_drone"] = true
+			for f2d in 4:
+				await get_tree().process_frame
+			Players.sim.erase("1:foot_drone")
+			var f2w := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - f2w < 5000 and String((cb._other["drone"] as Dictionary).get("state", "")) != "hover":
+				await get_tree().process_frame
+			var dd: Dictionary = cb._other["drone"]
+			var flies: bool = docked and not dd.is_empty() and String(dd["state"]) == "hover" and (dd["pos"] as Vector2).distance_to(w.pos) < 60.0 and cb.drone.is_empty() == mine_dr.is_empty()
 			var fired := false
-			if flies and a["cur"] != null:
-				var tw0: Walker = a["cur"]["w"]
+			var tgt2 = cb._other["active"]
+			if flies and tgt2 != null:
 				var keep_pos: Vector2 = w.pos
-				w.pos = g.combat._free_near(tw0.pos + Vector2(40.0, 0.0))
+				w.pos = cb._free_near((tgt2["w"] as Walker).pos + Vector2(40.0, 0.0))
 				w.position = w.pos * GroundMap.SCALE
-				for f2d in 90:
+				var f2x := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - f2x < 6000 and not fired:
 					await get_tree().process_frame
-					fired = fired or float(a["drone"].get("heat", 0.0)) > 0.0
+					fired = float((cb._other["drone"] as Dictionary).get("heat", 0.0)) > 0.0
 				w.pos = keep_pos
 				w.position = w.pos * GroundMap.SCALE
 			module_ok = kit_ok and plated and flies and fired
 			if not module_ok:
-				print("SPLIT3 module: kit ", kit_ok, " plated ", plated, " armor ", a["mx"]["armor"], " base ", base_su.get("armor", 0.0), " speed ", a["speed"], " flies ", flies, " fired ", fired, " drone ", dd, " target ", a["cur"] != null)
-			if not gear_ok:
-				print("SPLIT3 gear: suit ", a["gear"].suit, " grenades ", a["grenades"], " belt ", a["belt"], " energy ", a["energy"], "/", a["energy_max"], " ammo ", a["ammo_max"], " stations ", (a["stations"] as Array).size(), " mine ", GameState.gear.grenades)
-			# ---- energy and rounds run out; a charging point fills them and is drawn dry
-			a["energy"] = 0.0
-			a["ammo"] = 0
-			var dry: bool = not g.combat.foe_power(a) or (float(GD.stats(String(a["weapon"])).get("energy", 0.0)) <= 0.0 and int(GD.stats(String(a["weapon"])).get("ammo", 0)) <= 0)
+				print("SPLIT3 module: kit ", kit_ok, " plated ", plated, " armor ", [g2.armor, tot2["armor"], base_su.get("armor", 0.0)], " docked ", docked, " flies ", flies, " fired ", fired, " drone ", dd, " target ", tgt2 != null)
+			# ---- energy and rounds run out; a charging point fills them and is drawn dry, by the use key of the first player's own code
+			g2.energy = 0.0
+			g2.ammo = 0
 			Players.sim["1:interact"] = true
 			for f3 in 4:
 				await get_tree().process_frame
 			Players.sim.erase("1:interact")
 			for f3b in 3:
 				await get_tree().process_frame
-			var not_here: bool = is_zero_approx(float(a["energy"])) and g.combat.p2_station(a).is_empty()
-			var sd: Dictionary = a["stations"][0]
+			var not_here: bool = g2.energy < 1.0 and String(g.two_zone.get("kind", "")) != "col_charge"
+			var zc: Dictionary = (g.map.zones as Array).filter(func(z): return String(z.get("kind", "")) == "col_charge")[0]
+			var sd: Dictionary = g.map.get_meta("col_stations", [])[int(zc["i"])]
 			sd["cool"] = 0.0
-			w.pos = sd["at"]
+			w.pos = (zc["rect"] as Rect2).get_center()
 			w.position = w.pos * GroundMap.SCALE
 			for f4 in 3:
 				await get_tree().process_frame
-			var at_it: bool = g.combat.p2_station(a) == sd
+			var at_it: bool = String(g.two_zone.get("kind", "")) == "col_charge" and String((g._split["prompt2"] as Label).text).contains(Players.key_text(1, "interact"))
 			if shots:
 				for f4b in 10:
 					await get_tree().process_frame
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split3_charge.png")
+			var mine_e: float = GameState.gear.energy
 			Players.sim["1:interact"] = true
 			for f5 in 4:
 				await get_tree().process_frame
 			Players.sim.erase("1:interact")
 			for f5b in 3:
 				await get_tree().process_frame
-			var filled: bool = is_equal_approx(float(a["energy"]), float(a["energy_max"])) and int(a["ammo"]) == int(a["ammo_max"]) and float(sd["cool"]) > 0.0
-			a["energy"] = 1.0
+			var filled: bool = g2.energy >= float(tot2["energy"]) - 1.0 and g2.ammo == int(tot2["ammo"]) and float(sd["cool"]) > 0.0 and is_equal_approx(GameState.gear.energy, mine_e)
+			g2.energy = 1.0
 			Players.sim["1:interact"] = true
 			for f6 in 4:
 				await get_tree().process_frame
 			Players.sim.erase("1:interact")
 			for f6b in 3:
 				await get_tree().process_frame
-			var dry_point: bool = float(a["energy"]) < 2.0
-			power_ok = dry and not_here and at_it and filled and dry_point
+			var dry_point: bool = g2.energy < 3.0
+			power_ok = not_here and at_it and filled and dry_point
 			if not power_ok:
-				print("SPLIT3 power: ", [dry, not_here, at_it, filled, dry_point], " energy ", a["energy"], " cool ", sd["cool"])
-			# ---- the other weapon, a grenade at their target, the belt
-			a["energy"] = float(a["energy_max"])
-			a["weapons"] = [String(a["weapons"][0]), "wp_laser_pistol:F"]
+				print("SPLIT3 power: ", [not_here, at_it, filled, dry_point], " energy ", g2.energy, " ammo ", [g2.ammo, tot2["ammo"]], " cool ", sd["cool"], " zone ", g.two_zone.get("kind", ""), " prompt '", (g._split["prompt2"] as Label).text, "'")
+			# ---- the other weapon, a grenade thrown by a held key where it is aimed, the belt
+			g2.energy = float(tot2["energy"])
+			g2.weapons[1] = "wp_laser_pistol:F"
+			var wi0: int = int(cb._other["weapon_i"])
+			var mine_wi: int = cb.weapon_i
 			Players.sim["1:foot_swap"] = true
 			for f7 in 4:
 				await get_tree().process_frame
 			Players.sim.erase("1:foot_swap")
 			for f7b in 3:
 				await get_tree().process_frame
-			var swapped: bool = String(a["weapon"]) == "wp_laser_pistol:F" and int(a["wi"]) == 1
+			var swapped: bool = int(cb._other["weapon_i"]) != wi0 and cb.weapon_i == mine_wi
 			for f7c in 20:
 				await get_tree().process_frame
-			var n_gr: int = int(a["grenades"][0]["n"])
-			var in_air: int = (g.combat.grenades as Array).size()
-			Players.sim["1:foot_grenade"] = true
-			for f8 in 4:
+			var n_gr: int = int(g2.grenades[0]["n"])
+			var in_air: int = (cb.grenades as Array).size()
+			cb._other["aim_at"] = w.pos + Vector2(60.0, 0.0)
+			Players.sim["1:foot_grenade"] = true                     # held: aimed; let go: thrown
+			var aimed := false
+			var f8w := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - f8w < 3000 and not aimed:
 				await get_tree().process_frame
+				aimed = int(cb._other["gr_hold"]) >= 0 and float(cb._other["gr_held"]) >= cb.GR_HOLD + 0.05
 			Players.sim.erase("1:foot_grenade")
-			for f8b in 2:
+			for f8b in 3:
 				await get_tree().process_frame
-			var thrown: bool = a["cur"] != null and int(a["grenades"][0]["n"]) == n_gr - 1 and ((g.combat.grenades as Array).size() == in_air + 1 or (g.combat.grenades as Array).any(func(gr): return gr["from"] == a))
-			a["st"]["health"] = 20.0
-			var n_bt: int = int(a["belt"][0]["n"])
+			cb._other["aim_at"] = Vector2.INF
+			var thrown: bool = aimed and int((g2.grenades[0] as Dictionary).get("n", 0)) == n_gr - 1 \
+				and ((cb.grenades as Array).size() == in_air + 1 or (cb.grenades as Array).any(func(gr): return gr["from"] == null and int(gr.get("seat", 0)) == 1)) and cb.gr_hold < 0
+			g2.health = 20.0
+			var n_bt: int = int(g2.belt[0]["n"])
+			var mine_h: float = GameState.gear.health
 			Players.sim["1:foot_belt_1"] = true
 			for f9 in 4:
 				await get_tree().process_frame
 			Players.sim.erase("1:foot_belt_1")
 			for f9b in 2:
 				await get_tree().process_frame
-			var healed: bool = float(a["st"]["health"]) > 20.0 and int(a["belt"][0]["n"]) == n_bt - 1
+			var healed: bool = g2.health > 20.0 and int((g2.belt[0] as Dictionary).get("n", 0)) == n_bt - 1 and is_equal_approx(GameState.gear.health, mine_h)
 			hands_ok = swapped and thrown and healed
 			if not hands_ok:
-				print("SPLIT3 hands: ", [swapped, thrown, healed], " weapon ", a["weapon"], " grenades ", a["grenades"], " target ", a["cur"] != null, " health ", a["st"]["health"], " belt ", a["belt"])
-			# ---- your orders go to your two, never to the second player
+				print("SPLIT3 hands: ", [swapped, aimed, thrown, healed], " weapon_i ", [wi0, cb._other["weapon_i"]], " grenades ", g2.grenades, " in air ", [in_air, (cb.grenades as Array).size()], " health ", g2.health, " belt ", g2.belt)
+			# ---- your orders go to your two; the second player is no member of your team, and has no team of yours
 			var named: Array = []
 			for f10 in 6:
-				g.combat.team_sel = (g.combat.team_sel + 1) % (g.combat.allies.size() + 1)
-				if g.combat.team_sel < g.combat.allies.size() and g.combat.allies[g.combat.team_sel].has("p2"):
-					g.combat.team_sel = (g.combat.team_sel + 1) % (g.combat.allies.size() + 1)
-				named.append(g.combat.team_sel)
-			orders_ok = (g.combat.allies as Array).size() == 3 and bool(g.combat.allies[2].get("p2", false)) and not named.has(2) and named.has(0) and named.has(1) and named.has(3)
+				g._team_release()
+				named.append(cb.team_sel)
+			var said: String = cb.order(null, "follow")
+			orders_ok = (cb.allies as Array).size() == 2 and not (cb.allies as Array).any(func(al): return al.has("px")) and (cb._other["allies"] as Array).is_empty() \
+				and named.has(0) and named.has(1) and named.has(2) and not named.has(3) and not said.contains("Mira") and (cb.allies_up() as Array).has(cb.partner()) and not (cb.team_up() as Array).has(cb.partner())
 			if not orders_ok:
-				print("SPLIT3 orders: allies ", (g.combat.allies as Array).map(func(al): return [al["name"], al.has("p2")]), " named ", named)
+				print("SPLIT3 orders: allies ", (cb.allies as Array).map(func(al): return al["name"]), " theirs ", cb._other["allies"], " named ", named, " said ", said)
 			if shots:
 				for f11 in 30:
 					await get_tree().process_frame
 				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split3_match.png")
 	check(room_ok, "split3: in the fighters' room each of the two has a fit of their own: the other one comes onto the table, what is put into it is theirs alone, and yours stays as it was")
-	check(gear_ok, "split3: in the match the second player carries what their own fit says: suit, weapon, grenades, belt, with energy and rounds of their own and the charging points of the ground")
-	check(module_ok, "split3: the second player's modules count (armour plates: more armour, a little slower) and their drone flies beside them and fires at their target")
-	check(power_ok, "split3: out of energy and rounds they cannot fire; the use key does nothing away from a charging point, fills them up at one and draws it dry for a while")
-	check(hands_ok, "split3: a press puts the other weapon into their hand, another throws a grenade at their target, a place of the belt patches them up, and each is used up")
-	check(orders_ok, "split3: your orders go to your two or to all, never to the second player")
+	check(gear_ok, "split3: in the match the second player wears the house's gear in their own fit as a suit of their own: suit, grenades, belt, energy and rounds, none of it yours")
+	check(module_ok, "split3: the second player's modules count (armour plates: more armour) and their drone is yours in kind: on their back, up on their own key, firing at their target and heating up")
+	check(power_ok, "split3: their use key does nothing away from a charging point; at one it fills their suit (not yours) and draws the point dry for a while; their half says so in their own key")
+	check(hands_ok, "split3: their key puts the other weapon into their hand and not into yours; the grenade's key held aims and let go throws, one fewer on their suit; a place of their belt patches them up, not you")
+	check(orders_ok, "split3: your orders go to your two or to all of them; the second player is on your side but no member of your team")
 	# tidy up: the game as it was
 	Players.stop_split()
 	Commands.cheats_enabled = cheats_keep
@@ -31550,3 +31649,1357 @@ func _test_split7(_view: SystemView) -> void:
 		if main.loading == null or not is_instance_valid(main.loading):
 			break
 		await get_tree().process_frame
+
+
+## Split screen, stage 3, first part (Luz): the second player is with you wherever you walk on the ground: a figure
+## of their own walked by their own device, the picture in two halves, through every door with you; one picture while
+## the game plays a scene by itself.
+func _test_split8(_view: SystemView) -> void:
+	var CD = load("res://data/colosseum.gd")
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT8_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	CD.force.clear()
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var none_ok := false
+	var here_ok := false
+	var walk_ok := false
+	var door_ok := false
+	var scene_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		for f0 in 6:
+			await get_tree().process_frame
+		none_ok = not g.wants_two() and g.two == null and g.p2_walker() == null and not g.split_open() and g._world.get_parent() == g
+		var look: Dictionary = GameState.PilotArt.default_look()
+		look["hair"] = 9
+		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		for f1 in 8:
+			await get_tree().process_frame
+		var vs: Vector2 = get_viewport().get_visible_rect().size
+		var half: float = g._split_half()
+		var w: Walker = g.p2_walker()
+		here_ok = g.wants_two() and g.combat == null and w != null and w == g.two and int(w.look.get("hair", -1)) == 9 and w.pos.distance_to(g.pilot.pos) < 40.0 and g.map.free_at(w.pos, 3.0) \
+			and g.split_open() and g._world.get_parent() == g._split["va"] and absf(g._ui.size.x - half) < 2.0 and g.p2_may_act()
+		if not here_ok:
+			print("SPLIT8 here: wants ", g.wants_two(), " combat ", g.combat != null, " walker ", w, " split ", g.split_open(), " ui ", g._ui.size, " half ", half, " may ", g.p2_may_act())
+		if here_ok:
+			# ---- their device walks them; yours does not; each is in their own half of the picture
+			var me0: Vector2 = g.pilot.pos
+			var far := 0.0
+			for dv in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
+				var p0: Vector2 = w.pos
+				Players.sim["1:move"] = dv
+				for f2 in 25:
+					await get_tree().process_frame
+				far = maxf(far, w.pos.distance_to(p0))
+			Players.sim.erase("1:move")
+			for f2b in 3:
+				await get_tree().process_frame
+			var sp: Dictionary = g._split
+			var me: Vector2 = g._world.position + g.pilot.position * g.zoom
+			var them: Vector2 = g._world.position + w.position * g.zoom - (sp["cam"] as Camera2D).position + Vector2(half, vs.y) * 0.5
+			walk_ok = far > 6.0 and g.pilot.pos.distance_to(me0) < 0.5 and not w.moving and Rect2(0, 0, half, vs.y).has_point(me) and Rect2(0, 0, half, vs.y).has_point(them)
+			if not walk_ok:
+				print("SPLIT8 walk: far ", far, " me moved ", g.pilot.pos.distance_to(me0), " moving ", w.moving, " me at ", me, " them at ", them)
+			if shots:
+				Players.sim["1:move"] = Vector2(1.0, 0.3)
+				for f2c in 70:
+					await get_tree().process_frame
+				Players.sim.erase("1:move")
+				for f2d in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split8_hangar.png")
+			# ---- through a door with you: another place, and they are beside you again, the picture in two
+			var old = w
+			g.go_level("zcolin", "from_reg")
+			for f3 in 12:
+				await get_tree().process_frame
+			var w2: Walker = g.p2_walker()
+			door_ok = String(g.level) == "zcolin" and w2 != null and w2 != old and not is_instance_valid(old) and w2.pos.distance_to(g.pilot.pos) < 40.0 and g.split_open() \
+				and g._world.get_parent() == g._split["va"]
+			if not door_ok:
+				print("SPLIT8 door: level ", g.level, " walker ", w2, " old valid ", is_instance_valid(old), " split ", g.split_open())
+			if shots:
+				for f3b in 20:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split8_lobby.png")
+			# ---- a scene the game plays by itself: one picture, they wait; afterwards two again. A window up: they stand still
+			g.story_cam = g.pilot.pos
+			for f4 in 4:
+				await get_tree().process_frame
+			var one: bool = not g.split_open() and g._world.get_parent() == g and w2 != null and is_instance_valid(w2) and not w2.visible and not g.p2_may_act()
+			g.story_cam = Vector2.INF
+			for f5 in 4:
+				await get_tree().process_frame
+			var again: bool = g.split_open() and is_instance_valid(w2) and w2.visible
+			g._col_prep_open()
+			for f6 in 4:
+				await get_tree().process_frame
+			var p_w: Vector2 = w2.pos
+			Players.sim["1:move"] = Vector2(1.0, 0.0)
+			for f7 in 15:
+				await get_tree().process_frame
+			Players.sim.erase("1:move")
+			var held: bool = g.minigame != null and w2.pos.distance_to(p_w) < 0.5 and not g.p2_may_act()
+			g._close_game()
+			# Survivor keeps its one picture and its own second figure
+			Commands.execute({"type": "debug_casino", "sv": "start"})
+			for f8 in 10:
+				await get_tree().process_frame
+			var sv_one: bool = String(g.level) == "zcolsv" and not g.wants_two() and not g.split_open() and g.two == null and g.survivor != null and g.survivor.two != null
+			scene_ok = one and again and held and sv_one
+			if not scene_ok:
+				print("SPLIT8 scene: one ", one, " again ", again, " held ", held, " survivor ", sv_one, " level ", g.level)
+	check(none_ok, "split8: without split screen nobody second walks with you and the picture is one")
+	check(here_ok, "split8: with split screen the second player stands beside you where you walk, in their own looks, and the picture is in two halves, your display in yours")
+	check(walk_ok, "split8: their device walks their figure and not yours, and each of you is in their own half of the picture")
+	check(door_ok, "split8: through a door with you: in the next place they are beside you again and the picture is in two")
+	check(scene_ok, "split8: while the game plays a scene by itself the picture is one and they wait, afterwards it is two again; with a window up they stand still; Survivor keeps its one picture")
+	# tidy up: the game as it was
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen, stage 3, second part (Luz): the second player uses things by themselves: what they stand at has a
+## word in their half, their use key sits them down, takes a door or a lift, and at a counter of their own they stand
+## in the pilot's place with their own credits until its window shuts.
+func _test_split9(_view: SystemView) -> void:
+	var CD = load("res://data/colosseum.gd")
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT9_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	CD.force.clear()
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var swap_ok := false
+	var seat_ok := false
+	var own_ok := false
+	var both_ok := false
+	var fleet_ok := false
+	var same_ok := false
+	var load_ok := false
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+		var first2: Array = GameState.fleet_of(1)
+		var home: Dictionary = Universe.get_layout(Universe.home_system)["stations"][0]
+		var begun: bool = first2.size() == 1 and String(first2[0].ship_name).contains("Wingmate") and int(first2[0].system_id) == int(Universe.home_system) \
+			and String(first2[0].docked_at) == String(home["id"]) and GameState.active_uid2 == int(first2[0].uid) and not GameState.fleet.has(first2[0]) \
+			and (GameState.active() == null or int(first2[0].uid) != int(GameState.active().uid))
+		GameState.pilot2["credits"] = 4321
+		GameState.pilot2["coins"] = 77
+		Players.start_split("kbm", "pad:97")
+		for f1 in 8:
+			await get_tree().process_frame
+		# ---- who the pilot is: the second player steps into the place and out again; the save is the right way round
+		var n1 := String(GameState.pilot_name)
+		var c1: int = GameState.credits
+		var k1: int = GameState.coins
+		var suit1 := String(GameState.gear.suit)
+		GameState.act_as(1)
+		var as_two: bool = GameState.acting == 1 and String(GameState.pilot["name"]) == "Mira Voss" and GameState.credits == 4321 and GameState.coins == 77 and String(GameState.pilot_name) == "Mira Voss" \
+			and GameState.credits_of(0) == c1 and GameState.coins_of(0) == k1 and GameState.credits_of(1) == 4321 and String(GameState.pilot_of(0)["name"]) == n1 and String(GameState.gear_of(0).suit) == suit1
+		GameState.credits -= 321                                  # (they spend of their own)
+		var saved: Dictionary = GameState.to_dict()
+		var save_right: bool = String(saved["pilot_name"]) == n1 and int(saved["credits"]) == c1 and String(saved["pilot2"]["name"]) == "Mira Voss" and int(saved["pilot2"]["credits"]) == 4000 \
+			and GameState.acting == 1
+		GameState.act_as(0)
+		swap_ok = as_two and save_right and GameState.acting == 0 and String(GameState.pilot_name) == n1 and GameState.credits == c1 and GameState.coins == k1 and GameState.credits_of(1) == 4000 \
+			and String(GameState.pilot2["name"]) == "Mira Voss" and String(GameState.gear.suit) == suit1
+		if not swap_ok:
+			print("SPLIT9 swap: as two ", as_two, " save ", save_right, " acting ", GameState.acting, " name ", GameState.pilot_name, " credits ", GameState.credits, " theirs ", GameState.credits_of(1))
+		# ---- ships and storage of their own: one ship to begin with; in the pilot's place the fleet and the storage are theirs,
+		# their ship stands where yours stands; what they store is theirs; the save keeps both apart
+		var ship1 = GameState.active()
+		var n_mine: int = GameState.fleet.size()
+		var theirs0: Array = GameState.fleet_of(1)
+		var store1: Dictionary = GameState.storage
+		GameState.act_as(1)
+		var mine_now: bool = GameState.fleet.size() == 1 and GameState.active() == theirs0[0] and String(GameState.active().docked_at) == String(ship1.docked_at) \
+			and int(GameState.active().system_id) == int(ship1.system_id) and GameState.storage.is_empty() and GameState.storage_seat(0) == store1 and GameState.fleet_of(0).has(ship1)
+		GameState.storage["test_station"] = {"a_module": 2}
+		var sv2: Dictionary = GameState.to_dict()
+		var kept2: bool = (sv2["fleet"] as Array).size() == n_mine and int(sv2["active_uid"]) == int(ship1.uid) and (sv2["fleet2"] as Array).size() == 1 and int(sv2["active_uid2"]) == int(theirs0[0].uid) \
+			and (sv2["storage2"] as Dictionary).has("test_station") and not (sv2["storage"] as Dictionary).has("test_station")
+		GameState.act_as(0)
+		fleet_ok = begun and mine_now and kept2 and GameState.fleet.size() == n_mine and GameState.active() == ship1 and not GameState.storage.has("test_station") \
+			and GameState.storage_seat(1).has("test_station") and GameState.storage == store1
+		if not fleet_ok:
+			print("SPLIT9 fleet: begun ", begun, " theirs ", theirs0.map(func(fq): return [fq.ship_name, fq.system_id, fq.docked_at, fq.uid]), " mine now ", mine_now, " kept ", kept2,
+				" fleet ", GameState.fleet.size(), " of ", n_mine, " storage ", GameState.storage.keys())
+		# ---- the same display as yours, the very same parts: the title, the line of keys in their words, the suit's own
+		# display fed with their suit, the word at the bottom; nothing that yours does not show here (no weapon in a station)
+		for f1b in 4:
+			await get_tree().process_frame
+		var sp9: Dictionary = g._split
+		var suit2 = sp9.get("suit2")
+		var parts: bool = suit2 != null and suit2 is SuitHud and suit2.seat == 1 and suit2.visible and g.hud.seat == 0 and String((sp9["title2"] as Label).text) == String(g._title.text) \
+			and String((sp9["hint2"] as Label).text) == g._hint_for(1) and String((sp9["hint2"] as Label).text) != String(g._hint.text) and String((sp9["hint2"] as Label).text).contains("use / talk") \
+			and (sp9["plate2"] as Control).visible and suit2.get_script() == g.hud.get_script()
+		# their belt on their own key: a medkit is theirs to use, on them
+		var g2q = GameState.gear_of(1)
+		g2q.health = 40.0
+		var h_me: float = GameState.gear.health
+		var n_kit: int = int(g2q.belt[0].get("n", 0)) if not (g2q.belt[0] as Dictionary).is_empty() else 0
+		Players.sim["1:foot_belt_1"] = true
+		for f1c in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:foot_belt_1")
+		for f1d in 3:
+			await get_tree().process_frame
+		var belt_ok: bool = n_kit > 0 and GameState.gear_of(1).health > 40.0 and is_equal_approx(GameState.gear.health, h_me) and GameState.acting == 0 \
+			and (int(GameState.gear_of(1).belt[0].get("n", 0)) == n_kit - 1)
+		same_ok = parts and belt_ok
+		if not same_ok:
+			print("SPLIT9 same: parts ", parts, " suit2 ", suit2, " title '", (sp9.get("title2") as Label).text if sp9.has("title2") else "?", "' hint '", (sp9.get("hint2") as Label).text if sp9.has("hint2") else "?",
+				"' belt ", belt_ok, " kits ", n_kit, " health ", GameState.gear_of(1).health, " belt now ", GameState.gear_of(1).belt)
+		var w: Walker = g.two
+		var kinds := {}
+		for z0 in g.map.zones:
+			if not kinds.has(String(z0.get("kind", ""))) and String(z0.get("closed", "")) == "":
+				kinds[String(z0.get("kind", ""))] = z0
+		if w != null and is_instance_valid(w):
+			# ---- a seat: a word in their half, their key sits them down, a step stands them up
+			if kinds.has("seat"):
+				var zs: Dictionary = kinds["seat"]
+				w.pos = (zs["rect"] as Rect2).get_center()
+				w.position = w.pos * GroundMap.SCALE
+				for f2 in 4:
+					await get_tree().process_frame
+				var at_seat: bool = String(g.two_zone.get("kind", "")) == "seat" and g.two_prompt() != "" and not g.two_prompt().contains("[%s]" % Players.key_text(0, "interact")) \
+					and String((g._split["prompt2"] as Label).text) == g.two_prompt()
+				Players.sim["1:interact"] = true
+				for f3 in 4:
+					await get_tree().process_frame
+				Players.sim.erase("1:interact")
+				for f3b in 3:
+					await get_tree().process_frame
+				var sits: bool = w.sitting and not g.two_seat.is_empty() and w.pos.distance_to(zs["seat"]) < 0.5 and not g.pilot.sitting and g.two_prompt().contains("Stand up")
+				if shots:
+					for f3c in 10:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split9_seat.png")
+				Players.sim["1:move"] = Vector2(0.0, 1.0)
+				for f4 in 6:
+					await get_tree().process_frame
+				Players.sim.erase("1:move")
+				seat_ok = at_seat and sits and not w.sitting and g.two_seat.is_empty()
+				if not seat_ok:
+					print("SPLIT9 seat: at ", at_seat, " zone ", g.two_zone.get("kind", ""), " prompt '", g.two_prompt(), "' sits ", sits, " still ", w.sitting)
+			else:
+				print("SPLIT9 seat: no seat in ", g.level, ": kinds ", kinds.keys())
+			# ---- a counter of their own: they are the pilot while its window is up, with their own credits; then you again
+			var zo := {}
+			for kk in g.TWO_OWN:
+				if zo.is_empty() and kinds.has(kk):
+					zo = kinds[kk]
+			if not zo.is_empty():
+				w.pos = (zo["rect"] as Rect2).get_center()
+				w.position = w.pos * GroundMap.SCALE
+				for f5 in 4:
+					await get_tree().process_frame
+				Players.sim["1:interact"] = true
+				for f6 in 4:
+					await get_tree().process_frame
+				Players.sim.erase("1:interact")
+				for f6b in 6:
+					await get_tree().process_frame
+				var theirs: bool = g.two_acting and GameState.acting == 1 and GameState.credits == 4000 and String(GameState.pilot_name) == "Mira Voss" and Players.act_seat == 1 \
+					and GameState.active() != null and String(GameState.active().ship_name).contains("Wingmate") and String(GameState.active().docked_at) == String(ship1.docked_at)
+				var window_up: bool = g.talk != null or g.talk_menu != null or g.minigame != null or g._lift_menu != null or not g.input_enabled
+				if shots:
+					for f6c in 15:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split9_counter.png")
+				main.station_panel.close()
+				if g.talk != null:
+					g.talk.close()
+				if g.talk_menu != null:
+					g.talk_menu._close()
+				if g._lift_menu != null:
+					g._close_lift_menu()
+				if g.minigame != null:
+					g._close_game()
+				main._update_input()
+				for f7 in 12:
+					await get_tree().process_frame
+				own_ok = theirs and window_up and not g.two_acting and GameState.acting == 0 and GameState.credits == c1 and String(GameState.pilot_name) == n1 and Players.act_seat == 0 \
+					and GameState.active() == ship1
+				if not own_ok:
+					print("SPLIT9 own: zone ", zo.get("kind", ""), " ", zo.get("id", ""), " theirs ", theirs, " window ", window_up, " acting ", g.two_acting, GameState.acting, " credits ", GameState.credits, " seat ", Players.act_seat)
+			else:
+				print("SPLIT9 own: no counter of their own in ", g.level, ": kinds ", kinds.keys())
+			# ---- what the two share: a lift's menu comes up for both, in your name; a talk of the story is not theirs
+			var said: bool = false
+			g.two_zone = {"kind": "story", "id": "nobody", "title": "Somebody", "rect": Rect2()}
+			said = not g.two_use() and GameState.acting == 0 and not g.two_acting
+			var lift_ok := true
+			if kinds.has("lift"):
+				var zl: Dictionary = kinds["lift"]
+				w.pos = (zl["rect"] as Rect2).get_center()
+				w.position = w.pos * GroundMap.SCALE
+				for f8 in 4:
+					await get_tree().process_frame
+				Players.sim["1:interact"] = true
+				for f9 in 4:
+					await get_tree().process_frame
+				Players.sim.erase("1:interact")
+				for f9b in 4:
+					await get_tree().process_frame
+				lift_ok = g._lift_menu != null and GameState.acting == 0 and not g.two_acting and String(GameState.pilot_name) == n1
+				if g._lift_menu != null:
+					g._close_lift_menu()
+			both_ok = said and lift_ok
+			if not both_ok:
+				print("SPLIT9 both: story refused ", said, " lift ", lift_ok, " menu ", g._lift_menu, " acting ", GameState.acting)
+	# their ships and storage through a save and back (the game as it was follows right after)
+	if GameState.has_pilot2():
+		GameState.act_as(0)
+		var disk: Dictionary = str_to_var(var_to_str(GameState.to_dict()))
+		var uid2: int = GameState.active_uid2
+		GameState.from_dict(disk)
+		load_ok = GameState.fleet2.size() == 1 and GameState.active_uid2 == uid2 and String(GameState.fleet2[0].ship_name).contains("Wingmate") and GameState.storage2.has("test_station") \
+			and GameState.acting == 0 and int(GameState.pilot2.get("credits", 0)) == 4000
+		if not load_ok:
+			print("SPLIT9 load: fleet2 ", GameState.fleet2.size(), " uid ", GameState.active_uid2, " storage2 ", GameState.storage2.keys(), " credits ", GameState.pilot2.get("credits"))
+	check(fleet_ok, "split9: the second player has ships and storage of their own: one ship to begin with in your start system; in the pilot's place the fleet and the storage are theirs and their ship stands where yours stands; the save keeps both apart")
+	check(load_ok, "split9: their ships and their storage come back out of a save")
+	check(same_ok, "split9: on foot the second player's half is made of the same parts as yours: the title, the line of keys in their own words, the suit's display fed with their suit, the word at the bottom; their belt works on their own key, on them")
+	check(swap_ok, "split9: the second player can stand in the pilot's place: name, gear, credits and Coins are theirs then and yours wait untouched; what they spend is theirs; the save is written the right way round; and back")
+	check(seat_ok, "split9: at a seat the second player's half says what their key does (their key, not yours); it sits them down, not you, and a step stands them up")
+	check(own_ok, "split9: at a counter of their own the second player is the pilot while its window is up, with their own credits and their own device, and you are again once it shuts")
+	check(both_ok, "split9: a lift's menu comes up for both of you in your name, and a talk of the story is not theirs")
+	# tidy up: the game as it was
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen (Luz, 25 Nov 2026): the real fight for two, outside the hologram. Wherever weapons are allowed the
+## second player is a pilot of the fight; a foe's shot at them is a shot at a pilot; who goes down lies there until
+## the other brings them back, and no clock runs; with both down you come to in the clinic.
+func _test_split10(view: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var GD = load("res://data/gear.gd")
+	var shots := OS.get_environment("SPLIT10_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	_story_quiet()
+	var look: Dictionary = GameState.PilotArt.default_look()
+	look["hair"] = 9
+	look["color1"] = 5
+	GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
+	GameState.gear.suit = "suit_mil_light:C"
+	GameState.gear._fit_slots()
+	GameState.gear.weapons[0] = "wp_laser_rifle:C"
+	GameState.gear.refill()
+	GameState.gear2.suit = "suit_mil_light:C"
+	GameState.gear2._fit_slots()
+	GameState.gear2.weapons[0] = "wp_rifle:C"
+	GameState.gear2.refill()
+	Players.start_split("kbm", "pad:97")
+	for wl10 in 1200:                                         # (the system's loading picture is gone first)
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var e1 := String(Commands.execute({"type": "debug_arena", "world": "desert"}))
+	var g = main.ground
+	var here_ok := false
+	var shot_ok := false
+	var down_ok := false
+	var clinic_ok := false
+	if g != null and is_instance_valid(g) and g.combat != null:
+		var tw := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tw < 20000 and not (g.input_enabled and g._touch < 0.0 and g.two != null and is_instance_valid(g.two) and g.split_open()):
+			await get_tree().process_frame
+		for f0 in 10:
+			await get_tree().process_frame
+		var cb = g.combat
+		cb.frozen = true
+		var w: Walker = g.two
+		var g2 = GameState.gear_of(1)
+		here_ok = w != null and is_instance_valid(w) and w.visible and cb.two_in and g.split_open() and g.combat_hud2 != null and cb.partner() != null and cb.partner()["w"] == w \
+			and (cb._other["allies"] as Array).is_empty() and g2 != GameState.gear and String(g2.weapons[0]) == "wp_rifle:C" and g.seat_now == 0 and GameState.acting == 0 \
+			and not (cb.alive() as Array).is_empty()
+		if not here_ok:
+			print("SPLIT10 here: walker ", w, " in ", cb.two_in, " split ", g.split_open(), " hud ", g.combat_hud2, " foes ", (cb.alive() as Array).size(), " level ", g.level, " touch ", g._touch)
+		if here_ok:
+			# ---- a foe's shot at the other pilot is a shot at a pilot: it flies at them in their turn, their suit takes it
+			var foe: Dictionary = cb.alive()[0]
+			var wst: Dictionary = GD.stats(String(foe["weapon"]))
+			var keep_pos: Vector2 = w.pos
+			var n0: int = (cb.shots as Array).size()
+			cb.fire(foe, cb.partner(), wst)
+			var flown: Array = (cb.shots as Array).slice(n0)
+			var as_pilot: bool = (not flown.is_empty() or bool(wst.get("melee", false))) and flown.all(func(s0): return s0["res"]["to"] == null and int(s0["res"]["seat"]) == 1 and s0["res"]["from"] == foe)
+			var h0: float = g2.health + g2.shield + g2.armor
+			var hm0: float = GameState.gear.health + GameState.gear.shield + GameState.gear.armor
+			cb._hurt_ally(cb.partner(), 10.0, "kinetic")
+			shot_ok = as_pilot and g2.health + g2.shield + g2.armor < h0 - 0.5 and is_equal_approx(hm0, GameState.gear.health + GameState.gear.shield + GameState.gear.armor) \
+				and g.seat_now == 0 and GameState.acting == 0 and (cb.allies_up() as Array).has(cb.partner())
+			if not shot_ok:
+				print("SPLIT10 shot: as pilot ", as_pilot, " flown ", flown.size(), " theirs ", [h0, g2.health + g2.shield + g2.armor], " mine ", [hm0, GameState.gear.health + GameState.gear.shield + GameState.gear.armor])
+			# ---- down outside the hologram: they lie there, no clock runs, the others turn to you; you bring them back
+			g.seat_to(1)
+			cb._hurt_pilot(99999.0, "kinetic")
+			g.seat_to(0)
+			w.pos = g.pilot.pos + Vector2(12.0, 0.0)
+			w.position = w.pos * GroundMap.SCALE
+			for f1 in 25:
+				await get_tree().process_frame
+			var lies: bool = bool(g._side["col_down"]) and w.down and is_zero_approx(float(g._side["col_down_t"])) and not g._collapsed and cb.revive_near() == cb.partner() \
+				and not cb.all_down and not g.partner_up() and not (cb.allies_up() as Array).has(cb.partner()) and cb._foe_seat(foe) == 0
+			if shots:
+				for f1b in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split10_down.png")
+			g._revive = 0.0                                          # (your use key pressed beside them, and held)
+			cb.reviving = cb.revive_near()
+			Players.sim["0:interact"] = true
+			var tr := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tr < 6000 and bool(g._side["col_down"]):
+				await get_tree().process_frame
+			Players.sim.erase("0:interact")
+			for f2 in 3:
+				await get_tree().process_frame
+			down_ok = lies and not bool(g._side["col_down"]) and not w.down and g2.health >= 30.0 and g.partner_up()
+			if not down_ok:
+				print("SPLIT10 down: lies ", lies, " side ", g._side, " walker down ", w.down, " health ", g2.health, " near ", cb.revive_near() == cb.partner())
+			w.pos = keep_pos
+			w.position = w.pos * GroundMap.SCALE
+			# ---- one down: nothing ends; both down: you come to in the clinic, as one who went down alone
+			clinic_ok = true
+			if not main.nearest_clinic_city(view.system_id, String(g._body.get("id", ""))).is_empty():
+				g.seat_to(1)
+				cb._hurt_pilot(99999.0, "kinetic")
+				g.seat_to(0)
+				for f3 in 5:
+					await get_tree().process_frame
+				var one_down: bool = not g._collapsed and bool(g._side["col_down"]) and not g.col_down and main.ground == g
+				cb._hurt_pilot(99999.0, "kinetic")
+				var tc := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tc < 10000 and not (main.ground != null and is_instance_valid(main.ground) and String(main.ground.level) == "clinic"):
+					await get_tree().process_frame
+				for f4 in 10:
+					await get_tree().process_frame
+				var g3 = main.ground
+				clinic_ok = one_down and g3 != null and is_instance_valid(g3) and String(g3.level) == "clinic" and g3.seat_now == 0 and GameState.acting == 0 and not g3.col_down \
+					and not bool(g3._side["col_down"]) and g3.combat == null and GameState.gear_of(1).health > 1.5 and GameState.gear.health > 1.5
+				if not clinic_ok:
+					print("SPLIT10 clinic: one down ", one_down, " level ", g3.level if g3 != null else "?", " seat ", g3.seat_now if g3 != null else -1, " acting ", GameState.acting,
+						" health ", [GameState.gear.health, GameState.gear_of(1).health])
+	else:
+		print("SPLIT10: no arena  [", e1, "]")
+	check(here_ok, "split10: wherever weapons are allowed the second player is a pilot of the fight with their own gear and the fight display's own class over their half; they are on your side, not of your team")
+	check(shot_ok, "split10: a foe's shot at the other pilot flies at a pilot in their turn, and what hits them is taken by their suit, not by yours")
+	check(down_ok, "split10: outside the hologram a pilot who goes down lies there with no clock running, the others turn to the one standing, and your use key held beside them brings them back")
+	check(clinic_ok, "split10: with one of you down nothing ends; with both down you come to in the clinic, the first player the pilot again")
+	# tidy up: the game as it was
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	main.station_panel.close()
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen (Luz, 25 Nov 2026): the dangers of a place are for both pilots. A turret turns to the one it can see
+## (of two, the nearer) and its shots are at that pilot; a trip wire warns each in their own words and goes off under
+## whoever walks into it, not under one who sneaks; a live conduit shocks who steps on it; a camera notices either;
+## a glyph flares under either; and a pilot who is down is left alone.
+func _test_split11(_view: SystemView) -> void:
+	var EX = load("res://scripts/ground/explore.gd")
+	var PilotData = load("res://data/pilot.gd")
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	var god_keep: bool = Commands.suit_god
+	Commands.cheats_enabled = true
+	Commands.suit_god = false
+	_story_quiet()
+	var look: Dictionary = GameState.PilotArt.default_look()
+	look["hair"] = 9
+	GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
+	for gq in [GameState.gear, GameState.gear2]:
+		gq.suit = "suit_mil_light:C"
+		gq._fit_slots()
+		gq.weapons[0] = "wp_rifle:C"
+		gq.refill()
+	Players.start_split("kbm", "pad:97")
+	for wl11 in 1200:                                         # (the system's loading picture is gone first)
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	var e1 := String(Commands.execute({"type": "debug_arena", "world": "desert", "foes": []}))
+	var g = main.ground
+	var turret_ok := false
+	var wire_ok := false
+	var floor_ok := false
+	var eye_ok := false
+	var down_ok := false
+	if g != null and is_instance_valid(g) and g.combat != null:
+		var tw := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tw < 20000 and not (g.input_enabled and g._touch < 0.0 and g.two != null and is_instance_valid(g.two) and g.split_open()):
+			await get_tree().process_frame
+		for f0 in 10:
+			await get_tree().process_frame
+		var cb = g.combat
+		cb.frozen = true
+		for fz in cb.foes:                                       # (whoever stands here stays out of it: what is tried is the place)
+			fz["passive"] = true
+		var w: Walker = g.two
+		var g2 = GameState.gear_of(1)
+		var sum := func(gx) -> float: return float(gx.health) + float(gx.shield) + float(gx.armor)
+		var put := func(wk: Walker, p: Vector2) -> void:
+			wk.pos = p
+			wk.position = p * GroundMap.SCALE
+		var home: Vector2 = g.pilot.pos
+		var here: bool = w != null and is_instance_valid(w) and cb.two_in and (g._pilots_up() as Array) == [0, 1] and g.pilot_w(1) == w and g.pilot_w(0) == g.pilot
+		if here:
+			var open: Vector2 = cb._free_near(home + Vector2(60.0, 40.0))
+			# ---- a turret: the first player unseen, it turns to the second one; its shots are at them; its word is theirs
+			var tu: Dictionary = EX.add(g.map, "turret", open + Vector2(0.0, -70.0), {"no_zone": true, "state": "on"})
+			put.call(w, open)
+			cb.cloak_t = 99.0
+			var n_log2: int = (g._log2_buf as Array).size()
+			var n0: int = (cb.shots as Array).size()
+			for ti in 10:
+				g._turrets_step(0.15)
+			var at_two: Array = (cb.shots as Array).slice(n0)
+			var sees_two: bool = bool(tu.get("seen", false)) and not at_two.is_empty() and at_two.all(func(s0): return s0["res"]["to"] == null and int(s0["res"].get("seat", 0)) == 1) \
+				and (g._log2_buf as Array).size() > n_log2 and String(g._log2_buf[-1]).contains("turret") and g.seat_now == 0 and GameState.acting == 0
+			var h2: float = sum.call(g2)
+			var h1: float = sum.call(GameState.gear)
+			cb._resolve({"a": w.pos, "b": w.pos, "t": 0.0, "life": 0.01, "kind": "slug", "col": Color.WHITE, "done": false,
+				"res": {"to": null, "dmg": 7.0, "dtype": "kinetic", "splash": 0.0, "from": null, "kind": "hit", "seat": 1}})
+			var hits_two: bool = sum.call(g2) < h2 - 0.5 and is_equal_approx(h1, sum.call(GameState.gear))
+			# … both in its sight: the nearer one
+			cb.cloak_t = 0.0
+			put.call(g.pilot, open + Vector2(0.0, -30.0))
+			var n1: int = (cb.shots as Array).size()
+			for ti2 in 10:
+				g._turrets_step(0.15)
+			var at_one: Array = (cb.shots as Array).slice(n1)
+			var nearer: bool = not at_one.is_empty() and at_one.all(func(s0): return int(s0["res"].get("seat", 0)) == 0)
+			# … and its target is a lock for either of them: gone for both when it is switched off
+			var tf = tu.get("foe", null)
+			var locked := false
+			if tf is Dictionary:
+				cb.lock(tf)
+				g.seat_to(1)
+				cb.lock(tf)
+				g.seat_to(0)
+				locked = cb.active == tf and cb._other["active"] == tf
+			tu["state"] = "off"
+			g._turrets_step(0.016)
+			var unlocked: bool = locked and cb.active != tf and cb._other["active"] != tf and not (cb.locks as Array).has(tf) and not (cb._other["locks"] as Array).has(tf)
+			turret_ok = sees_two and hits_two and nearer and unlocked
+			if not turret_ok:
+				print("SPLIT11 turret: ", [sees_two, hits_two, nearer, locked, unlocked], " seen ", tu.get("seen"), " shots ", [at_two.size(), at_one.size()], " log2 ", (g._log2_buf as Array).size() - n_log2)
+			put.call(g.pilot, home)
+			# ---- a trip wire: a word for the one who comes near, in their own keys; sneaking they step over, walking it goes off
+			var wp: Vector2 = cb._free_near(open + Vector2(90.0, 0.0))
+			var wr: Dictionary = EX.add(g.map, "tripwire", wp, {"len": 3, "vertical": true, "no_zone": true})
+			put.call(w, wp + Vector2(-GroundMap.TILE * 2.0, GroundMap.TILE))
+			var n_log2b: int = (g._log2_buf as Array).size()
+			g._wires_step(0.016)
+			var warned: bool = bool(wr.get("warned2", false)) and not bool(wr.get("warned", false)) and bool(wr.get("near", false)) and (g._log2_buf as Array).size() == n_log2b + 1 \
+				and String(g._log2_buf[-1]).contains(Players.key_text(1, "foot_sneak")) and String(wr["state"]) == "shut"
+			cb._other["sneaking"] = true
+			put.call(w, wp + Vector2(0.0, GroundMap.TILE))
+			g._wires_step(0.016)
+			var over: bool = String(wr["state"]) == "shut"
+			cb._other["sneaking"] = false
+			g._wires_step(0.016)
+			var fired: bool = String(wr["state"]) == "fired"
+			var h2w: float = sum.call(g2)
+			var h1w: float = sum.call(GameState.gear)
+			for wi in 10:
+				g._wires_step(0.1)
+			wire_ok = warned and over and fired and sum.call(g2) < h2w - 1.0 and is_equal_approx(h1w, sum.call(GameState.gear))
+			if not wire_ok:
+				print("SPLIT11 wire: ", [warned, over, fired], " state ", wr["state"], " theirs ", [h2w, sum.call(g2)], " mine ", [h1w, sum.call(GameState.gear)], " keys ", wr.keys())
+			g2.refill()
+			# ---- a live conduit shocks who steps on it; a glyph flares under their feet
+			var cp: Vector2 = cb._free_near(open + Vector2(0.0, 70.0))
+			var cd: Dictionary = EX.add(g.map, "conduit", cp, {"no_zone": true})
+			put.call(w, cp)
+			var h2c: float = sum.call(g2)
+			var h1c: float = sum.call(GameState.gear)
+			g._hazards_step(0.016)
+			var zapped: bool = sum.call(g2) < h2c - 1.0 and is_equal_approx(h1c, sum.call(GameState.gear)) and g._haz_t.has((g.map.explore as Array).find(cd))
+			var gl: Dictionary = EX.add(g.map, "glyph_trap", cp + Vector2(40.0, 0.0), {"no_zone": true})
+			put.call(w, cp + Vector2(40.0, 0.0))
+			g2.refill()
+			var h2g: float = sum.call(g2)
+			g._cams_step(0.016)
+			floor_ok = zapped and String(gl["state"]) == "spent" and sum.call(g2) < h2g - 1.0
+			if not floor_ok:
+				print("SPLIT11 floor: zapped ", zapped, " glyph ", gl["state"], " theirs ", [h2c, h2g, sum.call(g2)])
+			g2.refill()
+			# ---- a camera notices either of you; the cloaked one it does not
+			var cam_at: Vector2 = cb._free_near(open + Vector2(-80.0, 60.0))
+			put.call(w, cam_at + Vector2(0.0, 36.0))
+			var rel: Vector2 = w.pos - (cam_at + Vector2(0, 4))
+			var cam: Dictionary = EX.add(g.map, "camera", cam_at, {"no_zone": true, "state": "on", "ang": Vector2(rel.x, rel.y / 0.75).angle()})
+			cb._other["cloak_t"] = 99.0
+			for ci in 12:
+				g._cams_step(0.1)
+			var blind: bool = is_zero_approx(float(cam.get("notice", 0.0))) and not bool(cam.get("raised", false))
+			cb._other["cloak_t"] = 0.0
+			for ci2 in 12:
+				g._cams_step(0.1)
+			eye_ok = blind and bool(cam.get("raised", false))
+			if not eye_ok:
+				print("SPLIT11 camera: blind ", blind, " cam ", cam)
+			cam["state"] = "off"
+			# ---- a pilot who is down is left alone: no turret turns to them, no conduit shocks them
+			tu["state"] = "on"
+			put.call(w, open)
+			cb.cloak_t = 99.0
+			g.seat_to(1)
+			cb._hurt_pilot(99999.0, "kinetic")
+			g.seat_to(0)
+			tu["seen"] = false
+			var n2: int = (cb.shots as Array).size()
+			for ti3 in 10:
+				g._turrets_step(0.15)
+			put.call(w, cp)
+			g._haz_t.clear()
+			var h2d: float = sum.call(g2)
+			g._hazards_step(0.016)
+			down_ok = bool(g._side["col_down"]) and (g._pilots_up() as Array) == [0] and not bool(tu.get("seen", false)) and (cb.shots as Array).size() == n2 and is_equal_approx(h2d, sum.call(g2)) \
+				and g.seat_now == 0 and GameState.acting == 0
+			if not down_ok:
+				print("SPLIT11 down: side ", g._side["col_down"], " up ", g._pilots_up(), " seen ", tu.get("seen"), " shots ", (cb.shots as Array).size() - n2, " theirs ", [h2d, sum.call(g2)])
+			cb.cloak_t = 0.0
+			tu["state"] = "off"
+		else:
+			print("SPLIT11 here: walker ", w, " in ", cb.two_in, " up ", g._pilots_up())
+	else:
+		print("SPLIT11: no arena  [", e1, "]")
+	check(turret_ok, "split11: a turret turns to the pilot it can see, of two to the nearer one; its shots are at that pilot and hurt their suit, its word stands in their list; its target is a lock for either of them and gone for both when it is switched off")
+	check(wire_ok, "split11: a trip wire warns the second player in their own keys, lets them step over it sneaking, goes off when they walk into it, and its blast hurts them, not the first player far off")
+	check(floor_ok, "split11: a live conduit shocks the second player who steps on it and not the first, and a glyph flares under their feet")
+	check(eye_ok, "split11: a camera notices the second player in its view and rings the alarm; cloaked, it does not see them")
+	check(down_ok, "split11: a pilot who is down is left alone by the place: no turret turns to them, no conduit shocks them")
+	# tidy up: the game as it was
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	Commands.suit_god = god_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main._close_planet_map()
+	if main._fade_tw != null and main._fade_tw.is_valid():
+		main._fade_tw.kill()
+	if main._fade != null:
+		main._fade.color = Color(0, 0, 0, 0)
+	main.station_panel.close()
+	Universe.debug_bodies.clear()
+	Universe.debug_sites.clear()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen (Luz, 25 Nov 2026): a window stands in the half of the player who opened it, and the other goes on
+## playing. Each has a pilot window of their own that shows and changes what is theirs; the second player opens
+## theirs from the window wheel of their controller and walks through it with their own buttons, with a highlight
+## of their own; a pause is for both.
+func _test_split12(_view: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT12_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var mine_ok := false
+	var theirs_ok := false
+	var walk_ok := false
+	var name_ok := false
+	var pause_ok := false
+	var one_ok := false
+	var texts := func(root: Node) -> String:
+		var out := ""
+		for lb in root.find_children("*", "Label", true, false):
+			out += String((lb as Label).text) + "\n"
+		return out
+	var wait_s := func(secs: float) -> void:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < int(secs * 1000.0):
+			await get_tree().process_frame
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		var look: Dictionary = GameState.PilotArt.default_look()
+		look["hair"] = 9
+		look["color1"] = 5
+		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts < 10000 and not (g.split_open() and main.halves_on()):
+			await get_tree().process_frame
+		for f0 in 6:
+			await get_tree().process_frame
+		var sp: Dictionary = g._split
+		var h0 = main.halves[0]
+		var h1 = main.halves[1]
+		var first := String(GameState.pilot.get("name", GameState.pilot_name))
+		# ---- the first player's window: in their half, and the second player walks on
+		var none: bool = not h0.visible and not h1.visible and main.pilot_window2 == null
+		main.toggle_pilot_window(0)
+		for f1 in 6:
+			await get_tree().process_frame
+		var pw = main.pilot_window
+		var in_half: bool = pw.visible and h0.holds(pw) and h0.visible and not h1.visible and pw.get_viewport() == h0.vp and absf(h0.size.x - (sp["fa"] as Control).size.x) < 1.0 \
+			and absf(h0.position.x) < 1.0 and h0.size.x < get_viewport().get_visible_rect().size.x * 0.5 and Vector2(h0.vp.size).is_equal_approx(h0.size) and MenuNav.seat_of(pw) == 0 \
+			and MenuNav.active_menu() == pw and MenuNav.active_menu(1) == null
+		var p_two: Vector2 = g.two.pos
+		var p_one: Vector2 = g.pilot.pos
+		Players.sim["1:move"] = Vector2(1.0, 0.0)
+		Players.sim["0:move"] = Vector2(1.0, 0.0)
+		await wait_s.call(0.5)
+		Players.sim.erase("1:move")
+		Players.sim.erase("0:move")
+		var other_plays: bool = g.two.pos.distance_to(p_two) > 3.0 and g.pilot.pos.distance_to(p_one) < 0.5 and not g.input_enabled and g.p2_may_act() and not g.two_busy
+		mine_ok = none and in_half and other_plays and String(texts.call(pw)).contains(first) and not String(texts.call(pw)).contains("Mira Voss")
+		if not mine_ok:
+			print("SPLIT12 mine: none ", none, " in half ", in_half, " other plays ", other_plays, " moved ", [g.two.pos.distance_to(p_two), g.pilot.pos.distance_to(p_one)], " host ", [h0.visible, h0.position, h0.size, h0.vp.size],
+				" menu ", [MenuNav.active_menu(), MenuNav.active_menu(1)])
+		# ---- the second player's: from the window wheel of their controller, into their half, with what is theirs
+		Players.sim["1:pad_options"] = true
+		await wait_s.call(0.6)
+		var wheel_up: bool = main.seat_menu.wheel != null and main.seat_menu.wheel.get_viewport() == h1.vp and h1.visible and g.two_busy
+		Players.sim["1:aim"] = Vector2.from_angle(-PI / 6.0)           # (the second field: the pilot)
+		for f2 in 4:
+			await get_tree().process_frame
+		if shots:
+			for f2b in 10:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/split12_wheel.png")
+		Players.sim.erase("1:pad_options")
+		for f3 in 6:
+			await get_tree().process_frame
+		Players.sim.erase("1:aim")
+		var pw2 = main.pilot_window2
+		var both: bool = pw2 != null and pw2.visible and pw2.seat == 1 and h1.holds(pw2) and h1.visible and pw2.get_viewport() == h1.vp and pw.visible and h0.visible \
+			and absf(h1.position.x - (sp["fb"] as Control).position.x) < 1.0 and main.seat_menu.wheel == null and MenuNav.active_menu(1) == pw2 and MenuNav.active_menu() == pw \
+			and pw2.get_script() == pw.get_script() and pw2 != pw
+		var t2: String = String(texts.call(pw2)) if pw2 != null else ""
+		theirs_ok = wheel_up and both and t2.contains("Mira Voss") and not t2.contains(first) and GameState.acting == 0 and g.seat_now == 0
+		if not theirs_ok:
+			print("SPLIT12 theirs: wheel ", wheel_up, " both ", both, " window ", pw2, " events ", main.seat_menu.events, " names ", [t2.contains("Mira Voss"), t2.contains(first)], " acting ", GameState.acting)
+		if theirs_ok:
+			# ---- they stand while it is up; their buttons walk their window, with a highlight of their own
+			var p_two2: Vector2 = g.two.pos
+			Players.sim["1:move"] = Vector2(0.0, 1.0)
+			await wait_s.call(0.5)
+			Players.sim.erase("1:move")
+			for f4a in 3:
+				await get_tree().process_frame
+			var stands: bool = g.two.pos.distance_to(p_two2) < 0.5 and g.two_busy and not g.p2_may_act()
+			var tab1: int = pw.tab
+			for nx in 4:                                                # (to the Gear page: four tabs on)
+				Players.sim["1:menu_next_tab"] = true
+				for f4 in 3:
+					await get_tree().process_frame
+				Players.sim.erase("1:menu_next_tab")
+				for f4b in 3:
+					await get_tree().process_frame
+			var tabbed: bool = pw2.tab == pw2.TAB_GEAR and pw.tab == tab1
+			var f_one = MenuNav.current(pw)
+			Players.sim["1:pad_down"] = true
+			for f5 in 3:
+				await get_tree().process_frame
+			Players.sim.erase("1:pad_down")
+			for f5b in 3:
+				await get_tree().process_frame
+			var f_two = MenuNav.current(pw2)
+			var own_light: bool = f_two != null and pw2.is_ancestor_of(f_two) and MenuNav.current(pw) == f_one and MenuNav.is_soft(pw2) and MenuNav.is_soft(pw) \
+				and (f_two as Control).get_child_count(true) > (f_two as Control).get_child_count(false)
+			# the first player's keys walk the first player's window, not theirs
+			var kev := InputEventKey.new()
+			kev.keycode = KEY_S
+			kev.physical_keycode = KEY_S
+			kev.pressed = true
+			var stepped: bool = MenuNav.try_key(kev)
+			var f_one2 = MenuNav.current(pw)
+			var mine_light: bool = stepped and f_one2 != null and pw.is_ancestor_of(f_one2) and MenuNav.current(pw2) == f_two
+			# … and a controller's tab button, as Pad sends it for the first player, turns the first player's page
+			var aev := InputEventAction.new()
+			aev.action = "menu_next_tab"
+			aev.pressed = true
+			var pad_tab: bool = MenuNav.try_key(aev) and pw.tab == posmod(tab1 + 1, (pw.TABS as Array).size()) and pw2.tab == pw2.TAB_GEAR
+			# ---- what they press in it is done in their name: the helmet "always", theirs and not yours
+			var hb: Button = _find_button(pw2, "Always")
+			var helm_one := String(GameState.gear.helmet)
+			var pressed_theirs := false
+			if hb != null:
+				MenuNav._light(pw2, hb)
+				Players.sim["1:pad_confirm"] = true
+				for f6 in 3:
+					await get_tree().process_frame
+				Players.sim.erase("1:pad_confirm")
+				for f6b in 8:
+					await get_tree().process_frame
+				pressed_theirs = String(GameState.gear_of(1).helmet) == "always" and String(GameState.gear.helmet) == helm_one and GameState.acting == 0 \
+					and bool(g.two.look.get("helmet", false)) and not bool(g.pilot.look.get("helmet", false))
+			if shots:
+				for f6c in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split12_both.png")
+			walk_ok = stands and tabbed and own_light and mine_light and pad_tab and pressed_theirs
+			if not walk_ok:
+				print("SPLIT12 walk: stands ", stands, " tabbed ", tabbed, " tabs ", [pw2.tab, pw.tab], " light ", [own_light, mine_light, stepped, pad_tab], " focus ", [f_two, f_one2], " helmet ", [hb != null, pressed_theirs, GameState.gear_of(1).helmet, GameState.gear.helmet],
+					" events ", main.seat_menu.events)
+			# ---- the first player shuts theirs and walks on while the second one reads; the words in theirs are their buttons'
+			main.toggle_pilot_window(0)
+			for f7 in 4:
+				await get_tree().process_frame
+			var p_one2: Vector2 = g.pilot.pos
+			Players.sim["0:move"] = Vector2(-1.0, 0.0)
+			await wait_s.call(0.5)
+			Players.sim.erase("0:move")
+			var close_word: String = String(_find_button(pw2, "Close").text) if _find_button(pw2, "Close") != null else ""
+			name_ok = not pw.visible and not h0.visible and pw2.visible and h1.visible and g.input_enabled and g.pilot.pos.distance_to(p_one2) > 3.0 \
+				and close_word.contains(Players.key_text(1, "menu_back", "menu")) and not close_word.contains(Keybinds.key_text("menu_back"))
+			if shots:
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split12_theirs.png")
+			if not name_ok:
+				print("SPLIT12 name: windows ", [pw.visible, h0.visible, pw2.visible, h1.visible], " input ", g.input_enabled, " moved ", g.pilot.pos.distance_to(p_one2), " close '", close_word, "'")
+			# ---- back shuts their window; with none up their Options pauses, for both, and the pause is theirs
+			Players.sim["1:menu_back"] = true
+			for f8 in 3:
+				await get_tree().process_frame
+			Players.sim.erase("1:menu_back")
+			await wait_s.call(0.4)
+			var shut: bool = not pw2.visible and not h1.visible and not g.two_busy and g.p2_may_act()
+			Players.sim["1:pad_options"] = true
+			for f9 in 3:
+				await get_tree().process_frame
+			Players.sim.erase("1:pad_options")
+			for f9b in 6:
+				await get_tree().process_frame
+			var paused: bool = main.pause_menu.visible and get_tree().paused and Players.act_seat == 1 and MenuNav.seat_of(main.pause_menu) == -1 and MenuNav.active_menu() == main.pause_menu
+			main.pause_menu.close()
+			for f9c in 4:
+				await get_tree().process_frame
+			pause_ok = shut and paused and not get_tree().paused and Players.act_seat == 0
+			if not pause_ok:
+				print("SPLIT12 pause: shut ", shut, " paused ", paused, " now ", [get_tree().paused, Players.act_seat, main.pause_menu.visible], " events ", main.seat_menu.events)
+			# ---- the picture one again: the first player's window is over the whole of it, the second player's shut; in two again: back in its half
+			main.toggle_pilot_window(0)
+			main.toggle_pilot_window(0, 1)
+			for f10 in 4:
+				await get_tree().process_frame
+			var two_up: bool = pw.visible and pw2.visible and h0.holds(pw)
+			g.story_cam = g.pilot.pos
+			var to := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - to < 4000 and g.split_open():
+				await get_tree().process_frame
+			for f11 in 4:
+				await get_tree().process_frame
+			var whole: bool = not g.split_open() and pw.visible and pw.get_parent() == main and pw.get_viewport() == get_viewport() and not pw2.visible and not h0.visible and not h1.visible \
+				and MenuNav.seat_of(pw) == -1
+			# … and the ship's menu and the galaxy map of the first player stand in their half too
+			pw.close()
+			g.story_cam = Vector2.INF
+			var tb := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - tb < 4000 and not main.halves_on():
+				await get_tree().process_frame
+			for f12 in 4:
+				await get_tree().process_frame
+			main.toggle_ship_menu()
+			for f13 in 6:
+				await get_tree().process_frame
+			var ship_in: bool = main.ship_menu.visible and h0.holds(main.ship_menu) and h0.visible and not h1.visible
+			if shots:
+				for f13b in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split12_ship.png")
+			main.ship_menu.close()
+			main.toggle_galaxy()
+			for f14 in 6:
+				await get_tree().process_frame
+			var map_in: bool = main.galaxy.visible and h0.holds(main.galaxy) and h0.visible
+			if shots:
+				for f14b in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split12_map.png")
+			main.galaxy.close()
+			for f15 in 4:
+				await get_tree().process_frame
+			one_ok = two_up and whole and ship_in and map_in and not h0.visible
+			if not one_ok:
+				print("SPLIT12 one: two up ", two_up, " whole ", whole, " parent ", pw.get_parent(), " ship ", ship_in, " map ", map_in, " hosts ", [h0.visible, h1.visible])
+	check(mine_ok, "split12: in a split picture the first player's pilot window stands in their half, laid out for it, with their own pilot in it; while it is up they stand and the second player walks on")
+	check(theirs_ok, "split12: the second player holds Options: the window wheel comes up in their half; what they pick opens a pilot window of their own in their half, with their pilot in it, beside the first player's")
+	check(walk_ok, "split12: while their window is up the second player stands; their buttons switch its tabs and move a highlight of its own, the first player's keys move the first player's; what they press is done in their name (the helmet: theirs, not yours)")
+	check(name_ok, "split12: the first player shuts theirs and walks on while the second player's stays up; the words in theirs name their own buttons")
+	check(pause_ok, "split12: back shuts the second player's window; with none up their Options pauses the game for both, the pause menu is theirs to walk, and after it the first player has their windows again")
+	check(one_ok, "split12: when the picture is one again the first player's window is over the whole of it and the second player's is shut; the first player's ship menu and galaxy map stand in their half too")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	if main.pause_menu.visible:
+		main.pause_menu.close()
+	for wz in [main.pilot_window, main.ship_menu, main.galaxy]:
+		wz.close()
+	if main.pilot_window2 != null:
+		main.pilot_window2.close()
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.ground.story_cam = Vector2.INF
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## Split screen (Luz, 25 Nov 2026): the second player's own ship menu and galaxy map, each the first player's
+## window's own class, over their half, showing and changing what is theirs; one window of theirs at a time; the
+## galaxy map reads their controller itself (the sticks move and pick, the shoulder buttons zoom), and a course is
+## not theirs to set while they do not fly themselves.
+func _test_split13(_view: SystemView) -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var shots := OS.get_environment("SPLIT13_SHOTS") != ""
+	var snap: Dictionary = GameState.to_dict()
+	var t_keep := GameState.play_time
+	var cheats_keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	_story_quiet()
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sid := Universe.special_system("fern")
+	var pel := ""
+	for mo in Universe.get_layout(sid)["moons"]:
+		if String(mo["name"]) == "Pelagia":
+			pel = String(mo["id"])
+	Commands.execute({"type": "debug_land", "body": pel, "kind": "city"})
+	var tm := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tm < 40000:
+		await get_tree().process_frame
+		if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled and String(main.ground.level) == "hangar":
+			break
+	var g = main.ground
+	var ship_ok := false
+	var press_ok := false
+	var map_ok := false
+	var pad_ok := false
+	var one_ok := false
+	var unfit_note := "not tried"
+	var texts := func(root: Node) -> String:
+		var out := ""
+		for lb in root.find_children("*", "Label", true, false):
+			out += String((lb as Label).text) + "\n"
+		for bt in root.find_children("*", "Button", true, false):
+			out += String((bt as Button).text) + "\n"
+		return out
+	var wait_s := func(secs: float) -> void:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < int(secs * 1000.0):
+			await get_tree().process_frame
+	# (their window wheel: Options held, the stick at a field, let go)
+	var wheel_pick := func(at: Vector2) -> void:
+		Players.sim["1:pad_options"] = true
+		await wait_s.call(0.6)
+		Players.sim["1:aim"] = at
+		for fw in 4:
+			await get_tree().process_frame
+		Players.sim.erase("1:pad_options")
+		for fw2 in 6:
+			await get_tree().process_frame
+		Players.sim.erase("1:aim")
+	var tap := func(key: String) -> void:
+		Players.sim[key] = true
+		for ft in 3:
+			await get_tree().process_frame
+		Players.sim.erase(key)
+		for ft2 in 4:
+			await get_tree().process_frame
+	if g != null and is_instance_valid(g) and g.is_centauria():
+		var look: Dictionary = GameState.PilotArt.default_look()
+		look["hair"] = 9
+		GameState.new_pilot2({"name": "Mira Voss", "look": look, "attrs": PilotData.default_attrs()})
+		Players.start_split("kbm", "pad:97")
+		var ts := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - ts < 10000 and not (g.split_open() and main.halves_on()):
+			await get_tree().process_frame
+		for f0 in 6:
+			await get_tree().process_frame
+		var h0 = main.halves[0]
+		var h1 = main.halves[1]
+		var mine_name := String(GameState.active().ship_name)
+		var their_ship = null
+		for fq in GameState.fleet2:
+			if fq.uid == GameState.active_uid2:
+				their_ship = fq
+		var their_name := String(their_ship.ship_name) if their_ship != null else "?"
+		# ---- the ship's menu: theirs from their wheel, yours beside it, each with its own ship
+		await wheel_pick.call(Vector2(0.0, -1.0))                      # (the first field: the ship)
+		var sm2 = main.ship_menu2
+		main.toggle_ship_menu()
+		for f1 in 6:
+			await get_tree().process_frame
+		var sm = main.ship_menu
+		var both: bool = sm2 != null and sm2.visible and sm2.seat == 1 and h1.holds(sm2) and h1.visible and sm.visible and h0.holds(sm) and sm2 != sm and sm2.get_script() == sm.get_script() \
+			and MenuNav.active_menu(1) == sm2 and MenuNav.active_menu() == sm and g.two_busy
+		var own_ship: bool = sm2 != null and sm2.fit == their_ship and sm.fit == GameState.active() and String(sm2.title_label.text) == their_name and String(sm.title_label.text) == mine_name \
+			and their_name != mine_name and String(texts.call(sm2)).contains(their_name) and not String(texts.call(sm2)).contains(mine_name) \
+			and their_ship.docked_at == GameState.active().docked_at and their_ship.system_id == GameState.active().system_id
+		var close2: String = String(_find_button(sm2, "Close").text) if sm2 != null and _find_button(sm2, "Close") != null else ""
+		ship_ok = both and own_ship and close2.contains(Players.key_text(1, "menu_back", "menu")) and GameState.acting == 0 and g.seat_now == 0
+		if not ship_ok:
+			print("SPLIT13 ship: both ", both, " own ", own_ship, " menu ", sm2, " titles ", [sm2.title_label.text if sm2 != null else "?", sm.title_label.text], " close '", close2, "' events ", main.seat_menu.events)
+		if ship_ok:
+			# ---- their buttons turn its pages and press what is in it, in their name
+			var tab_one: int = sm.tab
+			await tap.call("1:menu_next_tab")
+			var paged: bool = sm2.tab == 1 and sm.tab == tab_one
+			var pb: Button = _find_button(sm2, "POWER MANAGEMENT")
+			var had_pb: bool = pb != null
+			if pb != null:
+				MenuNav._light(sm2, pb)
+				await tap.call("1:pad_confirm")
+				for f2 in 6:
+					await get_tree().process_frame
+			var powered: bool = had_pb and String(sm2.mod_view) == "power" and String(sm.mod_view) == "fitting"
+			if shots:
+				for f2b in 10:
+					await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/split13_ship.png")
+			# a module off their ship into their storage, if the place lets ships be worked on
+			sm2.mod_view = "fitting"
+			var slot := ""
+			for k in their_ship.slot_keys():
+				if slot == "" and String(k).begins_with("optional") and String(their_ship.get_module(String(k))) != "":
+					slot = String(k)
+			var took := true
+			unfit_note = "not tried: slot '%s', docked %s" % [slot, str(sm2._docked())]
+			if slot != "" and sm2._docked():
+				var mid := String(their_ship.get_module(slot))
+				var mine_store: String = var_to_str(GameState.storage_seat(0))
+				sm2.selected_slot = slot
+				sm2.selected_store = ""
+				sm2.rebuild()
+				var ub: Button = _find_button(sm2, "Unfit")
+				if ub != null:
+					MenuNav._light(sm2, ub)
+					await tap.call("1:pad_confirm")
+					for f3 in 6:
+						await get_tree().process_frame
+					if String(their_ship.get_module(slot)) == "":
+						took = int((GameState.storage_seat(1).get(their_ship.docked_at, {}) as Dictionary).get(mid, 0)) >= 1 and var_to_str(GameState.storage_seat(0)) == mine_store
+						unfit_note = "a module off their ship into their storage: %s" % ("theirs alone" if took else "WRONG STORAGE")
+					else:
+						unfit_note = "the place did not let the module off (no service here)"
+				else:
+					unfit_note = "no unfit button"
+			press_ok = paged and powered and took and GameState.acting == 0
+			if not press_ok:
+				print("SPLIT13 press: paged ", paged, " tabs ", [sm2.tab, sm.tab], " powered ", powered, " view ", [sm2.mod_view, sm.mod_view], " took ", took, " (", unfit_note, ") events ", main.seat_menu.events)
+			main.toggle_ship_menu()
+			# ---- the galaxy map: theirs to read; one window of theirs at a time
+			await tap.call("1:pad_options")                               # (a window is up: Options tapped shuts it)
+			var shut_first: bool = not sm2.visible
+			await wheel_pick.call(Vector2.from_angle(PI / 6.0))            # (the third field: the galaxy map)
+			var gm2 = main.galaxy2
+			var up: bool = gm2 != null and gm2.visible and gm2.seat == 1 and h1.holds(gm2) and h1.visible and not sm2.visible and not main.galaxy.visible and not h0.visible \
+				and gm2.get_script() == main.galaxy.get_script() and gm2 != main.galaxy
+			var no_course: bool = gm2 != null and gm2.course_btn.disabled and String(gm2.course_btn.text).contains("fly yourself") and gm2.view_btn.disabled
+			var fleet_txt: String = String(texts.call(gm2)) if gm2 != null else ""
+			map_ok = shut_first and up and no_course and fleet_txt.contains(their_name) and not fleet_txt.contains(mine_name) and gm2.selected_system == GameState.current_system
+			if not map_ok:
+				print("SPLIT13 map: shut first ", shut_first, " up ", up, " no course ", no_course, " names ", [fleet_txt.contains(their_name), fleet_txt.contains(mine_name)], " events ", main.seat_menu.events)
+			if map_ok:
+				# ---- it reads their controller itself: the right stick moves it, the shoulder buttons zoom, the left stick picks
+				var z0: float = gm2.view_zoom
+				await tap.call("1:btn:r1")
+				var zoomed: bool = gm2.view_zoom > z0 + 0.001
+				var c0: Vector2 = gm2.view_center
+				var moved := false
+				for av in [Vector2(1.0, 0.0), Vector2(-1.0, 0.0), Vector2(0.0, 1.0), Vector2(0.0, -1.0)]:      # (one way or the other: it may stand at the map's edge)
+					Players.sim["1:aim"] = av
+					await wait_s.call(0.25)
+					moved = moved or gm2.view_center.distance_to(c0) > 0.5
+				Players.sim.erase("1:aim")
+				var s0: int = gm2.selected_system
+				Players.sim["1:move"] = Vector2(1.0, 0.0)
+				await wait_s.call(0.25)
+				Players.sim.erase("1:move")
+				for f4 in 4:
+					await get_tree().process_frame
+				var picked: bool = gm2.selected_system != s0 or gm2.pick_towards(Vector2.RIGHT) < 0
+				var p_one: Vector2 = g.pilot.pos
+				Players.sim["0:move"] = Vector2(1.0, 0.0)                    # (the first player walks while they read the map)
+				await wait_s.call(0.4)
+				Players.sim.erase("0:move")
+				if shots:
+					for f4b in 10:
+						await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://Claude outputs/split13_map.png")
+				pad_ok = zoomed and moved and picked and g.pilot.pos.distance_to(p_one) > 3.0 and main.seat_menu.events.has("own:r1") and GameState.acting == 0
+				if not pad_ok:
+					print("SPLIT13 pad: zoomed ", zoomed, " zoom ", [z0, gm2.view_zoom], " moved ", moved, " picked ", picked, " walked ", g.pilot.pos.distance_to(p_one), " events ", main.seat_menu.events)
+				# ---- another window of theirs takes its place; back shuts it
+				main.toggle_pilot_window(0, 1)
+				for f5 in 6:
+					await get_tree().process_frame
+				var swapped: bool = main.pilot_window2 != null and main.pilot_window2.visible and not gm2.visible and h1.visible
+				await tap.call("1:menu_back")
+				await wait_s.call(0.3)
+				one_ok = swapped and not main.pilot_window2.visible and not h1.visible and not g.two_busy and g.p2_may_act() and not get_tree().paused
+				if not one_ok:
+					print("SPLIT13 one: swapped ", swapped, " windows ", [main.pilot_window2.visible, gm2.visible, h1.visible], " busy ", g.two_busy, " paused ", get_tree().paused)
+	print("SPLIT13 note: ", unfit_note)
+	check(ship_ok, "split13: the second player picks the ship on their window wheel: a ship menu of their own opens over their half with their ship in it (standing where yours stands), beside yours with yours")
+	check(press_ok, "split13: their buttons turn its pages and press what is in it, in their name; yours stays as it was")
+	check(map_ok, "split13: with a window up their Options shuts it; the galaxy map of their own opens over their half with their ships in its list, and a course is not theirs to set while they do not fly themselves")
+	check(pad_ok, "split13: their galaxy map reads their controller itself: a shoulder button zooms, the right stick moves it, the left stick picks a system; the first player walks on meanwhile")
+	check(one_ok, "split13: one window of theirs at a time: another takes its place, and back shuts it")
+	# tidy up: the game as it was
+	Players.sim.clear()
+	if main.pause_menu.visible:
+		main.pause_menu.close()
+	for wz in [main.pilot_window, main.ship_menu, main.galaxy, main.pilot_window2, main.ship_menu2, main.galaxy2]:
+		if wz != null:
+			wz.close()
+	GameState.act_as(0)
+	Players.stop_split()
+	Commands.cheats_enabled = cheats_keep
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	main.station_panel.close()
+	if Commands.world != null and is_instance_valid(Commands.world):
+		Commands.world.remove_player()
+	GameState.from_dict(snap)
+	GameState.play_time = t_keep
+	main.load_system(GameState.current_system)
+	GameState.active_changed.emit()
+	for i9 in 30:
+		await get_tree().process_frame
+	for wl9 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+## A look, and one check (not part of the full run: `--only=winlook`, in a window): every page of the pilot window,
+## the ship's menu and the galaxy map laid out for a picture of a given size, as a half of a split picture has it.
+## Saves each as "Claude outputs/winlook_<page>_<w>x<h>.png" and says which pages run out of the picture.
+## WINLOOK_SIZES="958x1080,638x800" (default: 958x1080, half of 1920 x 1080).
+func _test_winlook(_view: SystemView) -> void:
+	_story_quiet()
+	Commands.cheats_enabled = true
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	var sizes: Array = []
+	for sz in (OS.get_environment("WINLOOK_SIZES") if OS.get_environment("WINLOOK_SIZES") != "" else "958x1080").split(",", false):
+		var wh := String(sz).split("x")
+		sizes.append(Vector2(int(wh[0]), int(wh[1])))
+	var pw = main.pilot_window
+	var sm = main.ship_menu
+	var pages: Array = []
+	for s4 in 4:
+		pages.append(["pilot_%s" % ["info", "standings", "codex", "collection"][s4], pw, func(): pw.sub = s4; pw.open(0)])
+	for t7 in range(1, 7):
+		pages.append(["pilot_%s" % ["", "skills", "perks", "tree", "gear", "journal", "acquaintances"][t7], pw, func(): pw.open(t7)])
+	pages.append(["ship_info", sm, func(): sm.open(main.view, 0)])
+	for mv in ["fitting", "power", "groups"]:
+		pages.append(["ship_modules_%s" % mv, sm, func(): sm.mod_view = mv; sm.open(main.view, 1)])
+	pages.append(["ship_ship", sm, func(): sm.open(main.view, 2)])
+	pages.append(["ship_inventory", sm, func(): sm.open(main.view, 3)])
+	pages.append(["map", main.galaxy, func(): main.galaxy.open()])
+	var out_of: Array = []
+	for size in sizes:
+		var box := SubViewportContainer.new()
+		box.stretch = false
+		var sv := SubViewport.new()
+		sv.size = Vector2i(size)
+		sv.transparent_bg = false
+		sv.canvas_item_default_texture_filter = get_tree().root.canvas_item_default_texture_filter
+		box.add_child(sv)
+		var cl := CanvasLayer.new()
+		cl.layer = 60
+		get_tree().root.add_child(cl)
+		cl.add_child(box)
+		for pg in pages:
+			var win: Node = pg[1]
+			var home: Node = win.get_parent()
+			var at := win.get_index()
+			home.remove_child(win)
+			sv.add_child(win)
+			(pg[2] as Callable).call()
+			for f2 in 12:
+				await get_tree().process_frame
+			# how far the window's own frame reaches: past the picture's edge it runs out of the half
+			var far := 0.0
+			var low := 0.0
+			for c in win.get_children():
+				if c is Control:
+					for c2 in [c] + (c as Control).get_children():
+						if c2 is Control and (c2 as Control).visible:
+							far = maxf(far, (c2 as Control).get_global_rect().end.x)
+							low = maxf(low, (c2 as Control).get_global_rect().end.y)
+			if far > size.x + 1.0 or low > size.y + 1.0:
+				out_of.append("%s at %dx%d: needs %d x %d" % [String(pg[0]), int(size.x), int(size.y), int(ceil(far)), int(ceil(low))])
+			sv.get_texture().get_image().save_png("res://Claude outputs/winlook_%s_%dx%d.png" % [String(pg[0]), int(size.x), int(size.y)])
+			win.close()
+			sv.remove_child(win)
+			home.add_child(win)
+			home.move_child(win, mini(at, home.get_child_count() - 1))
+		cl.queue_free()
+		for f3 in 3:
+			await get_tree().process_frame
+	for line in out_of:
+		print("WINLOOK out of the picture: ", line)
+	print("WINLOOK pages ", pages.size(), " sizes ", sizes, " out of the picture: ", out_of.size())
+	check(out_of.is_empty(), "winlook: every page of the pilot window, the ship's menu and the galaxy map fits a picture of %s  [%d run out of it]" % [str(sizes), out_of.size()])

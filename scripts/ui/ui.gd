@@ -59,6 +59,29 @@ static func wrap_label(text: String, size: int = 13, color: Color = TEXT_DIM, wi
 	return l
 
 
+## For a window laid out for a narrow picture (half of a split screen): every line of text under `root` that is wider
+## than `max_w` wraps instead of pushing the window out of the picture.
+const NARROW_W := 1200.0
+static func wrap_long(root: Node, max_w: float = 340.0, min_w: float = 180.0) -> void:
+	for lb in root.find_children("*", "Label", true, false):
+		var l := lb as Label
+		if l.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			if l.custom_minimum_size.x > max_w:              # a wrapped line held wide: it may be as narrow as the rest
+				l.custom_minimum_size.x = min_w
+				l.size_flags_horizontal = l.size_flags_horizontal | Control.SIZE_EXPAND_FILL
+			continue
+		if l.autowrap_mode == TextServer.AUTOWRAP_OFF and l.get_minimum_size().x > max_w and not l.clip_text:
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size.x = maxf(l.custom_minimum_size.x, min_w) if l.custom_minimum_size.x <= max_w else min_w
+			l.size_flags_horizontal = l.size_flags_horizontal | Control.SIZE_EXPAND_FILL
+
+
+## Is this node in a narrow picture (a half of a split screen at 1920 x 1080 and below)?
+static func narrow(n: Node) -> bool:
+	var v := n.get_viewport() if n != null and n.is_inside_tree() else null
+	return v != null and v.get_visible_rect().size.x < NARROW_W
+
+
 static func button(text: String, cb: Callable, tooltip: String = "") -> Button:
 	var b := Button.new()
 	b.text = text

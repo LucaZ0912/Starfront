@@ -95,6 +95,25 @@ var tac_node: Node2D = null
 var _vis: Dictionary = {}                         # {from, reach, rays: [[t0, t1], …] per ray, at}
 const TAC_RAYS := 360
 const TAC_STEP := 3.0
+## Split screen (Luz, 25 Nov 2026): the second player is a second pilot of this very fight, not a helper. Everything
+## above that belongs to "the pilot" (the locks, the weapon in hand, the dodge, cover, grenades, drones, the cloak, the
+## arm laser, the blade, the tactical view, the ground team and its wheel) is there once for each of the two: the one
+## whose turn it is has it in the vars above, the other's waits in `_other`. `view.seat_to(s)` changes whose turn it is
+## (with the figure, the gear and the device), so the pilot's own code runs for either of them: see with_seat().
+var two_in := false                                # a second pilot is in this fight
+var _other: Dictionary = {}                        # the waiting pilot's vars (SEAT_VARS)
+var px: Dictionary = {}                            # how the pilot whose turn it is looks to the other one: one of "your side" (an entry of allies_up())
+var own_node: Node2D = null                        # what only this pilot sees: the lock brackets (a layer of its own in a split picture)
+var all_down := false                              # both pilots are down outside the hologram: the view lets you collapse
+var _began := false                                # the fight began / ended in this step (each pilot is told)
+var _ended := false
+const SEAT_VARS := ["locks", "active", "lock_t", "weapon_i", "pilot_cool", "dodge_charges", "dodge_t", "dodge_dir", "dodge_mult", "trail", "in_cover",
+	"tactics", "gr_hold", "gr_held", "gr_aim", "_gr_off", "aim_at", "drone", "drone_rebuild", "drones", "drone_rebuilds", "drone_slot", "allies", "team_sel",
+	"wheel_open", "_team_made", "sneaking", "cloak_t", "cloak_cd", "reviving", "revive_k", "arm_charge", "blade", "blade_cool", "_arm_up", "camp_t", "_camp_at",
+	"tac_node", "_vis", "_drone_pv", "_drone_pp", "_out_warned", "px", "own_node"]
+var seat: int:                                     # whose turn it is: 0 the first player, 1 the second
+	get:
+		return int(view.seat_now) if view != null else 0
 
 
 func setup(p_view, p_map: GroundMap) -> void:
@@ -104,10 +123,9 @@ func setup(p_view, p_map: GroundMap) -> void:
 	_build_cover()
 	dodge_charges = float(max_dodges())
 	# the tactical view lies on the ground: under the people and the cover, over the floor
-	tac_node = Node2D.new()
-	tac_node.draw.connect(_draw_tactics)
-	view._world.add_child(tac_node)
-	view._world.move_child(tac_node, view._sorted.get_index())
+	tac_node = _tac_make(0)
+	own_node = _own_make(0)
+	px = _px_make(0)
 
 
 # ---------------------------------------------------------------- cover and sight
@@ -415,8 +433,56 @@ func chance_at_pilot(f) -> float:
 
 # ---------------------------------------------------------------- the step
 
-func step(delta: float, move: Vector2) -> void:
+func step(delta: float, _move: Vector2) -> void:
 	_t += delta
+	emp_t = maxf(0.0, emp_t - delta)
+	for s in seats():                                 # each pilot: the dodge that carries them, the charges, the shield
+		with_seat(s, _pilot_pre.bind(delta))
+	# the foes: each one deals with the pilot nearer to it (to it the other one is one of your side)
+	var mine: Array = []
+	var theirs: Array = []
+	for f in foes:
+		if _foe_seat(f) == 1:
+			theirs.append(f)
+		else:
+			mine.append(f)
+	_foes_step(mine, delta)
+	if not theirs.is_empty():
+		with_seat(1, _foes_step.bind(theirs, delta))
+	var aware_any := false
+	for f2 in foes:
+		if not f2["dead"] and f2["aware"]:
+			aware_any = true
+	for s2 in seats():                                # 0.7.52.20: the ground teams, each beside its own pilot
+		with_seat(s2, _team_step.bind(delta))
+	# the fight begins and ends
+	_began = false
+	_ended = false
+	if aware_any and not fight:
+		fight = true
+		_end_t = 0.0
+		_began = true
+		Audio.play("warn", "fight on foot")
+		GameState.codex.event("foot_fight")
+	if fight:
+		if not aware_any:
+			_end_t += delta
+			if _end_t > 1.5:
+				fight = false
+				_ended = true
+		else:
+			_end_t = 0.0
+	for s3 in seats():                                # each pilot: the target, the weapon, cover, grenade, drones, the view
+		with_seat(s3, _pilot_post.bind(delta))
+	_grenade_step(delta)
+	_fx_step(delta)
+	queue_redraw()
+	for s4 in seats():
+		with_seat(s4, _redraw_own)
+
+
+## A pilot's part of the step before the others move: the dodge, its charges, the shield.
+func _pilot_pre(delta: float) -> void:
 	if not _team_made:
 		_team_made = true
 		spawn_team()                                 # 0.7.52.20: your ground team beside you
@@ -430,40 +496,43 @@ func step(delta: float, move: Vector2) -> void:
 	if dodge_charges < mx:
 		dodge_charges = minf(float(mx), dodge_charges + delta / (GearData.DODGE_RECHARGE * (1.0 - 0.03 * GameState.skill_level("athletics"))))
 	g.shield_step(delta)
-	# the foes
-	var aware_any := false
-	for f in foes:
+	_px_sync()
+
+
+func _foes_step(list: Array, delta: float) -> void:
+	for f in list:
 		if f["dead"]:
 			_rise_step(f, delta)                          # 53f: a necrotic thing gets up once more
 			continue
 		_creature_step(f, delta)
 		if not _wild_step(f, delta):                     # 53f-2: the animals of the wild have their own ways
 			_foe_step(f, delta)
-		if f["aware"]:
-			aware_any = true
-	for al in allies:                                 # 0.7.52.20: your ground team
+
+
+func _team_step(delta: float) -> void:
+	for al in allies:
 		_ally_step(al, delta)
-	# the fight begins and ends
-	if aware_any and not fight:
-		fight = true
-		_end_t = 0.0
+
+
+## … and after them: the target, the weapon that fires by itself, cover, the grenade in hand, drones, arm laser,
+## blade, cloak, the weapon in the hands, the tactical view.
+func _pilot_post(delta: float) -> void:
+	var g = GameState.gear
+	if _began:
 		var beasts := alive().filter(func(o): return bool(o["aware"])).all(func(o): return String(o.get("wild", "")) != "")
 		view._say_toast("An animal attacks: it defends its ground!" if beasts else "Hostiles: they have seen you!", 2.5)
-		Audio.play("warn", "fight on foot")
-		GameState.codex.event("foot_fight")
 		if active == null:
 			_auto_lock()
 	if fight:
 		g.combat_t = maxf(g.combat_t, 8.0)
-		if not aware_any:
-			_end_t += delta
-			if _end_t > 1.5:
-				fight = false
-				locks.clear()
-				active = null
-				view._say_toast("The fight is over." if alive().is_empty() else "They have lost you.", 3.0)
-		else:
-			_end_t = 0.0
+	if _ended:
+		locks.clear()
+		active = null
+		view._say_toast("The fight is over." if alive().is_empty() else "They have lost you.", 3.0)
+	if two_in:                                         # (a lock of yours the other pilot brought down: it goes, as one you brought down does)
+		for lk in locks.duplicate():
+			if lk["dead"] and lk != active:
+				locks.erase(lk)
 	# the active target: gone → the next lock, else the nearest (Luz: the nearest by itself)
 	if active != null and active["dead"]:
 		unlock(active)
@@ -493,7 +562,6 @@ func step(delta: float, move: Vector2) -> void:
 	if gr_hold >= 0:
 		gr_held += delta
 		gr_aim = _grenade_aim()
-	_grenade_step(delta)
 	_drone_step(delta)
 	_arm_step(delta)
 	_blade_step(delta)
@@ -510,11 +578,17 @@ func step(delta: float, move: Vector2) -> void:
 			view.pilot.dir = _face((active["w"] as Walker).pos - pilot_pos())
 	else:
 		view.pilot.aim = Vector2.INF
-	_fx_step(delta)
+	for tr in trail:
+		tr["t"] = float(tr["t"]) - delta
+	trail = trail.filter(func(tr): return float(tr["t"]) > 0.0)
 	_tac_step(delta)
-	queue_redraw()
-	if tac_node != null:
+
+
+func _redraw_own() -> void:
+	if tac_node != null and is_instance_valid(tac_node):
 		tac_node.queue_redraw()                       # (0.7.52.21: also the sneaking view)
+	if own_node != null and is_instance_valid(own_node):
+		own_node.queue_redraw()
 
 
 static func _face(d: Vector2) -> int:
@@ -529,7 +603,7 @@ func _pilot_fire(delta: float) -> void:
 		return
 	if cloak_t > 0.0:
 		return                                         # 0.7.52.25: cloaked, your weapons hold fire
-	if view.level == "zcolvr" and (view.col_lost or view.col_down):
+	if view.col_down or (view.level == "zcolvr" and view.col_lost):
 		return                                         # (out of the fight, or down: no shot)
 	if view.charging():
 		return                                         # 0.7.53.16 (Luz): charging at a socket – no shooting
@@ -613,7 +687,7 @@ func _wild_step(f: Dictionary, delta: float) -> bool:
 	var hidden := pilot_hidden()
 	if mode == "flee":
 		f["scare"] = maxf(0.0, float(f.get("scare", 0.0)) - delta)
-		var near := 45.0 if sneaking else (150.0 if (Input.is_action_pressed("foot_run") or Pad.run_held()) else 95.0)
+		var near := 45.0 if sneaking else (150.0 if view.runs() else 95.0)
 		if (not hidden and dist < near) or bool(f.get("provoked", false)):
 			f["scare"] = maxf(float(f["scare"]), 6.0 if bool(f.get("provoked", false)) else 3.0)
 			f["provoked"] = false
@@ -790,6 +864,9 @@ func _melee(from: Dictionary, to, w: Dictionary) -> void:
 
 
 func fire(from, to, w: Dictionary) -> void:
+	if to != null and to.has("px"):                       # at the other pilot: the shot goes at them as it would at you
+		with_seat(int(to["px"]), fire.bind(from, null, w))
+		return
 	if from != null and bool(w.get("melee", false)):
 		_melee(from, to, w)                               # 53f: claws and teeth
 		return
@@ -818,7 +895,7 @@ func fire(from, to, w: Dictionary) -> void:
 	var muzzle := shooter.muzzle_art()
 	for i in pellets:
 		var r := randf()
-		var res := {"to": to, "dmg": float(w["damage"]) * (float(from["dmg"]) if from != null else 1.0), "dtype": dtype, "splash": float(w.get("splash", 0.0)), "from": from}
+		var res := {"to": to, "dmg": float(w["damage"]) * (float(from["dmg"]) if from != null else 1.0), "dtype": dtype, "splash": float(w.get("splash", 0.0)), "from": from, "seat": seat}
 		if from == null and to != null and not at_drone and not to.has("ally") and not to["aware"]:
 			res["dmg"] = float(res["dmg"]) * SNEAK_ATTACK                 # 0.7.52.21 (Luz): unaware – double
 			res["sneak"] = true
@@ -861,6 +938,10 @@ func fire(from, to, w: Dictionary) -> void:
 ## A shot arrives: the hit is applied (a dodge at this moment turns it into a miss), or sparks where it stopped.
 func _resolve(s: Dictionary) -> void:
 	if s["done"]:
+		return
+	var rs := int((s["res"] as Dictionary).get("seat", seat))
+	if two_in and rs != seat:                             # a shot of the other pilot's, or at them: it lands in their turn
+		with_seat(rs, _resolve.bind(s))
 		return
 	s["done"] = true
 	var res: Dictionary = s["res"]
@@ -952,8 +1033,8 @@ func blast_share(at: Vector2, p: Vector2, r: float) -> float:
 func _hurt_pilot(dmg: float, dtype: String) -> void:
 	if Commands.suit_god:
 		return                                          # debug: invulnerable
-	if view.level == "zcolvr" and (view.col_lost or view.col_down):
-		return                                          # package 62a, part 4: out of the fight already (or down, waiting for the second player)
+	if view.col_down or (view.level == "zcolvr" and view.col_lost):
+		return                                          # package 62a, part 4: out of the fight already (or down, waiting for the other pilot)
 	var out: Dictionary = GameState.gear.take_damage(dmg, dtype)
 	_number(pilot_pos(), out)
 	Audio.play("hit_hull" if float(out["health"]) > 0.0 else ("hit_armor" if float(out["armor"]) > 0.0 else "hit_shield"), "hit on foot", -8.0)
@@ -963,8 +1044,8 @@ func _hurt_pilot(dmg: float, dtype: String) -> void:
 		if view.level == "zcolvr":
 			# package 62a, part 4 (Luz): the Colosseum's hologram: nobody dies, you are out of the fight
 			GameState.gear.health = 1.0
-			if p2_up():
-				view.col_down_start()                     # split screen: the second player can bring you back
+			if two_in and view.partner_up():
+				view.col_down_start()                     # split screen: the other pilot can bring you back
 			else:
 				view.col_lost = true
 			return
@@ -972,6 +1053,14 @@ func _hurt_pilot(dmg: float, dtype: String) -> void:
 			# package 58, part 6: shot down in the simulation – nobody dies; the round starts again
 			GameState.gear.refill()
 			view.sim_lost = true
+			return
+		if two_in:
+			# split screen: you lie where you fell until the other pilot brings you back; with both down you collapse
+			GameState.gear.health = 1.0
+			var alone: bool = not view.partner_up()
+			view.col_down_start()
+			if alone:
+				all_down = true
 			return
 		view._collapse("fight")
 
@@ -1122,7 +1211,7 @@ func _foe_step(f: Dictionary, delta: float) -> void:
 		var pd := w.pos.distance_to(pilot_pos())
 		var heard := false
 		if not sneaking and not pilot_hidden() and view.pilot.moving:
-			var nr := NOISE_RUN if (Input.is_action_pressed("foot_run") or Pad.run_held()) else NOISE_WALK
+			var nr := NOISE_RUN if view.runs() else NOISE_WALK
 			heard = pd < (nr if not sight(w.pos, pilot_pos())["blocked"] else nr * 0.5)
 		if float(f.get("notice", 0.0)) >= 1.0 or heard or _sees_ally(f):
 			_wake(f)
@@ -1739,7 +1828,7 @@ func throw_grenade(from, at: Vector2, id: String) -> void:
 	var w: Walker = view.pilot if from == null else from["w"]
 	var a := w.pos + Vector2(0, -16)
 	var life := clampf(a.distance_to(at) / 260.0, 0.45, 0.95)
-	grenades.append({"a": a, "b": at, "t": 0.0, "life": life, "id": id, "from": from, "st": GearData.stats(id)})
+	grenades.append({"a": a, "b": at, "t": 0.0, "life": life, "id": id, "from": from, "st": GearData.stats(id), "seat": seat})
 	if from == null:
 		GameState.gear.combat_t = maxf(GameState.gear.combat_t, 8.0)
 		for f in alive():
@@ -1753,7 +1842,7 @@ func _grenade_step(delta: float) -> void:
 		gr["t"] = float(gr["t"]) + delta
 		if float(gr["t"]) >= float(gr["life"]) and not gr.has("done"):
 			gr["done"] = true
-			_detonate(gr)
+			with_seat(int(gr.get("seat", seat)), _detonate.bind(gr))        # (your grenade goes off in your turn: what it does to "you" is done to its thrower)
 	grenades = grenades.filter(func(gr): return not gr.has("done"))
 	for c in clouds:
 		c["t"] = float(c["t"]) + delta
@@ -1771,17 +1860,13 @@ func _detonate(gr: Dictionary) -> void:
 	match String(gr["id"]):
 		"gr_frag":
 			var mult := float(from["dmg"]) / FoeData.DAMAGE * 0.25 if from != null else 1.0
-			if from != null and from.has("p2"):
-				mult = 1.0                                 # (split screen: the second player's grenade is as good as yours)
 			_explode(at, r, float(st.get("damage", 60.0)) * mult, "explosive", from, from != null and from.has("ally"))
 		"gr_emp":
 			booms.append({"pos": at, "r": r, "t": 0.0, "col": Color(0.45, 0.8, 1.0)})
 			Audio.play("shield_down", "EMP grenade", -4.0)
 			var sd := float(st.get("shield_damage", 90.0))
-			if blast_share(at, pilot_pos(), r) > 0.0 and not Commands.suit_god:
-				GameState.gear.shield = maxf(0.0, GameState.gear.shield - sd)
-				GameState.gear.shield_wait = GearData.SHIELD_WAIT
-				_number(pilot_pos(), {"shield": sd, "armor": 0.0, "health": 0.0})
+			for es in seats():
+				with_seat(es, _emp_pilot.bind(at, r, sd))
 			for f in alive():
 				if blast_share(at, (f["w"] as Walker).pos, r) > 0.0:
 					var had := float(f["st"]["shield"])
@@ -1796,6 +1881,14 @@ func _detonate(gr: Dictionary) -> void:
 			domes.append({"pos": at, "r": r * 0.75, "hp": float(st.get("shield", 120.0)), "mx": float(st.get("shield", 120.0)), "t": 0.0,
 				"time": float(st.get("time", 10.0))})
 			Audio.play("module_on", "shield grenade", -4.0)
+
+
+## An EMP grenade's blast on the pilot whose turn it is: the shield is gone.
+func _emp_pilot(at: Vector2, r: float, sd: float) -> void:
+	if blast_share(at, pilot_pos(), r) > 0.0 and not Commands.suit_god:
+		GameState.gear.shield = maxf(0.0, GameState.gear.shield - sd)
+		GameState.gear.shield_wait = GearData.SHIELD_WAIT
+		_number(pilot_pos(), {"shield": sd, "armor": 0.0, "health": 0.0})
 
 
 ## Does the line a → b pass through a smoke cloud?
@@ -1856,7 +1949,10 @@ func _draw_grenades() -> void:
 			draw_circle(Vector2.ZERO, rr, Color(1.0, 0.2, 0.15, 0.1 + 0.15 * k2))
 			draw_arc(Vector2.ZERO, rr, 0.0, TAU, 40, Color(1.0, 0.25, 0.2, 0.5 + 0.5 * sin(_t * 18.0) * 0.5), 2.5)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	# your aim while holding the key: the arc, where it lands, how far it reaches
+
+
+## Your aim while holding the grenade's key: the arc, where it lands, how far it reaches.
+func _draw_aim() -> void:
 	if grenade_aiming():
 		var g = GameState.gear
 		if not g.grenade().is_empty():
@@ -2030,7 +2126,7 @@ func _drone_command() -> String:
 	var stt := String(drone["state"])
 	if stt == "docked":
 		_drone_up()
-		var key := Keybinds.key_text("foot_drone" if drone_slot == 0 else "foot_drone_2")
+		var key: String = view.key_of("foot_drone" if drone_slot == 0 else "foot_drone_2")
 		return ("Kamikaze drone up. Tap %s again: at your target, hold it: back." % key if String(drone["kind"]) == "kamikaze" else "Drone up: it fights your target.") + nth
 	if stt in ["return", "reload"]:
 		drone["stay"] = not bool(drone["stay"])
@@ -2205,7 +2301,7 @@ func _drone_fire(f: Dictionary, st: Dictionary) -> void:
 	var dtype := String(st["dtype"])
 	var muzzle := dp + Vector2(0, -float(drone["alt"]) + 3.0)
 	var r := randf()
-	var res := {"to": f, "dmg": float(st["damage"]), "dtype": dtype, "splash": 0.0, "from": null}
+	var res := {"to": f, "dmg": float(st["damage"]), "dtype": dtype, "splash": 0.0, "from": null, "seat": seat}
 	var end: Vector2
 	if r < ch:
 		res["kind"] = "hit"
@@ -2256,12 +2352,6 @@ func _draw_drone() -> void:
 		pick_drone(i)
 		_draw_drone_one()
 	pick_drone(keep)
-	var pa = p2()                                          # split screen: the second player's drone, drawn as yours is
-	if pa != null and not (pa.get("drone", {}) as Dictionary).is_empty():
-		var mine := drone
-		drone = pa["drone"]
-		_draw_drone_one()
-		drone = mine
 
 
 func _draw_drone_one() -> void:
@@ -2393,7 +2483,7 @@ func _fire_arm(f: Dictionary, w: Dictionary) -> void:
 	var a := pilot_pos()
 	var beam := {"kind": "armbeam", "t": 0.0, "life": ARM_HOLD, "col": Color(1.0, 0.3, 0.2), "done": true, "to": f,
 		"dmg": float(w["damage"]) / ARM_TICKS, "tick": 0.0, "ticks": ARM_TICKS, "off": Vector2.ZERO, "geo_t": 0.0,
-		"a": Vector2.ZERO, "b": Vector2.ZERO, "cuts": [], "runs": [], "dir": Vector2.RIGHT}
+		"a": Vector2.ZERO, "b": Vector2.ZERO, "cuts": [], "runs": [], "dir": Vector2.RIGHT, "seat": seat}
 	shots.append(beam)
 	_arm_tick(beam)                                       # the first burn at once
 	_arm_geometry(beam)
@@ -2615,8 +2705,8 @@ const CLOAK_CD := {"F": 30.0, "D": 27.0, "C": 24.0, "B": 21.0, "A": 18.0}
 
 
 func pilot_hidden() -> bool:
-	if view != null and view.level == "zcolvr" and (view.col_lost or view.col_down):
-		return true                                     # package 62a, part 5: out of the fight; the others turn to your team
+	if view != null and (view.col_down or (view.level == "zcolvr" and view.col_lost)):
+		return true                                     # package 62a, part 5: out of the fight (or down); the others turn to your side
 	return cloak_t > 0.0
 
 
@@ -2634,7 +2724,7 @@ func cloak(id: String) -> String:
 	Audio.play("module_on", "short cloak", -4.0)
 	# 0.7.52.26 (Luz): your team cloaks with you – those with a short cloak of their own, if it is ready
 	var with: Array = []
-	for a in allies_up():
+	for a in team_up():
 		if String(a["cloak_id"]) != "" and float(a["cloak_cd"]) <= 0.0:
 			var aq := GearData.quality(String(a["cloak_id"]))
 			a["cloak_t"] = float(CLOAK_TIME.get(aq, 2.0))
@@ -2662,7 +2752,6 @@ func emp(t: float) -> void:
 
 
 func _cloak_step(delta: float) -> void:
-	emp_t = maxf(0.0, emp_t - delta)
 	var was := cloak_t > 0.0
 	cloak_t = maxf(0.0, cloak_t - delta)
 	cloak_cd = maxf(0.0, cloak_cd - delta)
@@ -2698,7 +2787,7 @@ func toggle_sneak() -> String:
 	for a in allies:
 		(a["w"] as Walker).crouch = sneaking and a["order"] == "follow"
 	Audio.play("ui_click", "sneak", -10.0)
-	return "Sneaking: they do not hear you, and see you only in their view. %s: stand up." % Keybinds.key_text("foot_sneak") if sneaking else "You stand up."
+	return "Sneaking: they do not hear you, and see you only in their view. %s: stand up." % view.key_of("foot_sneak") if sneaking else "You stand up."
 
 
 ## Where an unaware foe looks: it turns its head slowly about the way it faces.
@@ -2918,328 +3007,170 @@ func spawn_ally(m: Dictionary, i: int) -> Dictionary:
 	return a
 
 
-# ---------------------------------------------------------------- split screen, stage 1: the second player
+# ---------------------------------------------------------------- split screen: two pilots in one fight
 
-const P2_DODGE := 0.22                             # seconds a dodge lasts
-const P2_DODGE_COOL := 1.5                         # ... and until the next one
-const P2_REACH := 26.0                             # how near they stand to bring you back
-
-## The second player's figure: one of your side with their own pilot's looks, walked by their own device. Their
-## weapon fires by itself at their target as yours does. In the Colosseum they wear the house's gear as you do.
-func spawn_p2(arena: bool) -> Dictionary:
-	var old = p2()
-	if old != null:
-		if is_instance_valid(old["w"]):
-			(old["w"] as Walker).queue_free()
-		allies.erase(old)
-	# in the Colosseum: the house's gear in a fit of their own (the fighters' room); elsewhere what they carry
-	var gr = load("res://data/colosseum.gd").gear_of(GameState.col_state()["fit2"]) if arena else GameState.gear2
-	var wids: Array = []
-	for wi in gr.weapons:
-		if String(wi) != "":
-			wids.append(String(wi))
-	if wids.is_empty():
-		wids.append(CrewData.TEAM_WEAPON)
-	var wid := String(wids[0])
-	var suit_id := String(gr.suit)
-	var p2d: Dictionary = GameState.pilot2
-	var m := {"name": String(p2d.get("name", "Wingmate")), "look": (p2d.get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate(),
-		"quality": "F", "gear": {"suit": suit_id, "weapons": [wid]}}
-	var a := spawn_ally(m, allies.size())
-	var sst := GearData.stats(suit_id)
-	var sk: Dictionary = p2d.get("skills", {})
-	a["p2"] = true
-	a["name"] = String(m["name"]).get_slice(" ", 0)
-	a["weapon"] = wid
-	a["dmg"] = 1.0
-	a["firearms"] = int(sk.get("firearms", {}).get("lvl", 0))
-	a["athletics"] = int(sk.get("athletics", {}).get("lvl", 0))
-	var tot0: Dictionary = gr.totals()                    # (the suit with its modules: a shield generator, plates, packs, boosters)
-	a["st"] = {"shield": float(tot0.get("shield", sst.get("shield", 0.0))), "armor": float(tot0.get("armor", sst.get("armor", 0.0))), "health": float(GearData.HEALTH)}
-	a["mx"] = (a["st"] as Dictionary).duplicate()
-	a["regen"] = float(tot0.get("regen", 2.0))
-	a["speed"] = float(tot0.get("speed", 1.0))
-	a["sprint"] = float(tot0.get("sprint", 1.0))
-	a["dash"] = 1.0
-	for fid in gr.features:
-		if String(fid) != "":
-			a["dash"] = maxf(float(a["dash"]), float(GearData.stats(String(fid)).get("dash", 1.0)))
-	a["features"] = (gr.features as Array).filter(func(f0): return String(f0) != "")
-	# their drone: the first one of their fit, in the air beside them from the start
-	a["drone"] = {}
-	a["drone_id"] = ""
-	a["drone_rebuild"] = 0.0
-	for did in gr.drones:
-		if String(did) != "" and String(a["drone_id"]) == "":
-			a["drone_id"] = String(did)
-	a["order"] = "own"
-	a["cool"] = 0.4
-	a["dodge_t"] = 0.0
-	a["dodge_cd"] = 0.0
-	a["dodge_dir"] = Vector2.ZERO
-	a["cloak_id"] = ""
-	# what they carry: the weapons in their hands, grenades, the belt, energy and rounds as the suit holds them
-	var tot: Dictionary = gr.totals()
-	a["gear"] = gr
-	a["weapons"] = wids
-	a["wi"] = 0
-	a["grenades"] = (gr.grenades as Array).duplicate(true)
-	a["belt"] = (gr.belt as Array).duplicate(true)
-	a["energy_max"] = float(tot.get("energy", 50.0))
-	a["energy"] = float(a["energy_max"])
-	a["ammo_max"] = int(tot.get("ammo", 0))
-	a["ammo"] = int(a["ammo_max"])
-	a["stations"] = map.get_meta("col_stations", []) if arena else []
-	a["station_cool"] = load("res://data/colosseum.gd").STATION_COOL
-	if arena:
-		a["arena"] = true
-	return a
-
-
-## Split screen: the second player's drone. In the air beside them from the start of the fight; it fires at their
-## target as yours fires at yours (the laser drone heats up, the kinetic one empties its magazine and fills it from
-## their rounds), and the kamikaze dives at their target on their drone key and is built anew after a while. Simpler
-## than yours: it is not called back, and nobody shoots at it.
-func _p2_drone_step(a: Dictionary, delta: float, live: bool) -> void:
-	var id := String(a.get("drone_id", ""))
-	if id == "":
+## The second pilot comes into this fight (the view calls it once their figure stands in the place).
+func two_join() -> void:
+	if two_in:
 		return
-	var w: Walker = a["w"]
-	var st := GearData.stats(id)
-	if (a["drone"] as Dictionary).is_empty():
-		a["drone_rebuild"] = maxf(0.0, float(a["drone_rebuild"]) - delta)
-		if float(a["drone_rebuild"]) > 0.0:
-			return
-		a["drone"] = {"is_drone": true, "id": id, "kind": String(st["kind"]), "pos": w.pos + Vector2(-1, -1), "alt": 16.0, "head": PI * 0.5, "state": "hover", "t": 0.0,
-			"heat": 0.0, "over": false, "ammo": int(st.get("mag", 0)), "cool": 0.0, "rl": 0.0, "dive": Vector2.INF, "fall": 0.0, "vel": Vector2.ZERO}
-	var d: Dictionary = a["drone"]
-	d["t"] = float(d["t"]) + delta
-	d["cool"] = maxf(0.0, float(d["cool"]) - delta)
-	if String(d["kind"]) == "laser":
-		d["heat"] = maxf(0.0, float(d["heat"]) - float(st["cool"]) * delta)
-		if bool(d["over"]) and float(d["heat"]) <= 0.0:
-			d["over"] = false
-	var t = a.get("cur")
-	var has_t: bool = t != null and not t["dead"] and not a["down"] and not a["dead"]
-	var side := 1.0 if not has_t or (t["w"] as Walker).pos.x >= w.pos.x else -1.0
-	var want: Vector2 = w.pos + Vector2(14.0 * side, -4.0) + Vector2(sin(float(d["t"]) * 1.7) * 3.0, cos(float(d["t"]) * 1.3) * 2.0)
-	var alt := 30.0 if not a["down"] else 8.0
-	var p0: Vector2 = d["pos"]
-	if String(d["state"]) == "dive":
-		var df = d.get("dive_f")
-		if df != null and not df["dead"]:
-			d["dive"] = (df["w"] as Walker).pos
-		want = d["dive"]
-		alt = maxf(4.0, (d["pos"] as Vector2).distance_to(want) * 0.25)
-		d["pos"] = (d["pos"] as Vector2) + (want - (d["pos"] as Vector2)).limit_length(float(st.get("speed", 150.0)) * delta)
-		if (d["pos"] as Vector2).distance_to(want) < 6.0:
-			_explode(want, float(st.get("radius", 55.0)), float(st["damage"]), "explosive", null, true)
-			a["drone"] = {}
-			a["drone_rebuild"] = float(st.get("rebuild", 20.0))
-			return
-	else:
-		d["pos"] = (d["pos"] as Vector2).lerp(want, 1.0 - exp(-delta * 6.0))
-	d["alt"] = lerpf(float(d["alt"]), alt, 1.0 - exp(-delta * 5.0))
-	var mv: Vector2 = (d["pos"] as Vector2) - p0
-	var face := float(d["head"])
-	if has_t and String(d["state"]) == "hover":
-		face = ((t["w"] as Walker).pos - (d["pos"] as Vector2)).angle()
-	elif mv.length() > 0.15:
-		face = mv.angle()
-	d["head"] = lerp_angle(float(d["head"]), face, 1.0 - exp(-delta * 8.0))
-	if not live or not has_t:
+	_other = {"locks": [], "active": null, "lock_t": 0.0, "weapon_i": 0, "pilot_cool": 0.0, "dodge_charges": 2.0, "dodge_t": 0.0, "dodge_dir": Vector2.ZERO,
+		"dodge_mult": 1.0, "trail": [], "in_cover": 0, "tactics": 0, "gr_hold": -1, "gr_held": 0.0, "gr_aim": Vector2.ZERO, "_gr_off": Vector2.INF,
+		"aim_at": Vector2.INF, "drone": {}, "drone_rebuild": 0.0, "drones": [{}, {}], "drone_rebuilds": [0.0, 0.0], "drone_slot": 0, "allies": [], "team_sel": 0,
+		"wheel_open": false, "_team_made": String(view.level) == "zcolvr", "sneaking": false, "cloak_t": 0.0, "cloak_cd": 0.0, "reviving": null, "revive_k": 0.0,
+		"arm_charge": 0.0, "blade": {}, "blade_cool": 0.0, "_arm_up": false, "camp_t": 0.0, "_camp_at": Vector2.INF, "tac_node": _tac_make(1), "_vis": {},
+		"_drone_pv": Vector2.ZERO, "_drone_pp": Vector2.INF, "_out_warned": false, "px": _px_make(1), "own_node": _own_make(1)}
+	two_in = true
+	with_seat(1, _two_first)
+
+
+func _two_first() -> void:
+	dodge_charges = float(max_dodges())
+	_px_sync()
+
+
+## … and leaves it (split screen ended while you stand here).
+func two_leave() -> void:
+	if not two_in:
 		return
-	if String(d["kind"]) == "kamikaze":
-		if String(d["state"]) == "hover" and Players.just_pressed(1, "foot_drone"):
-			d["state"] = "dive"
-			d["dive_f"] = t
-			d["dive"] = (t["w"] as Walker).pos
-			Audio.play("drone_launch", "second player: the kamikaze dives", -6.0)
-		return
-	if String(d["state"]) == "p2reload":                 # the magazine is filled from their rounds
-		d["rl"] = float(d["rl"]) - delta
-		if float(d["rl"]) <= 0.0:
-			var take := mini(int(a.get("ammo", 0)), int(st.get("mag", 40)))
-			if take <= 0:
-				d["rl"] = 1.0
-			else:
-				a["ammo"] = int(a["ammo"]) - take
-				d["ammo"] = take
-				d["state"] = "hover"
-		return
-	if String(d["state"]) != "hover" or not fight or peaceful(t) or float(d["cool"]) > 0.0:
-		return
-	var tp: Vector2 = (t["w"] as Walker).pos
-	var dp: Vector2 = d["pos"]
-	if dp.distance_to(tp) > float(st["range"]) or sight(dp, tp)["blocked"]:
-		return
-	var keep := drone                                     # (the shot itself is the one your drone fires)
-	drone = d
-	if String(d["kind"]) == "laser" and not bool(d["over"]):
-		_drone_fire(t, st)
-		d["heat"] = float(d["heat"]) + float(st["heat"])
-		if float(d["heat"]) >= float(st["heat_max"]):
-			d["over"] = true
-			floaters.append({"pos": dp + Vector2(0, -50), "text": "overheated", "col": Color(1.0, 0.6, 0.3), "t": 0.0})
-	elif String(d["kind"]) == "kinetic" and int(d["ammo"]) > 0:
-		_drone_fire(t, st)
-		d["ammo"] = int(d["ammo"]) - 1
-		if int(d["ammo"]) <= 0:
-			d["state"] = "p2reload"
-			d["rl"] = float(st.get("reload", 3.0))
-	drone = keep
-	d["cool"] = 1.0 / float(st["rof"])
+	for a in _other["allies"]:
+		if is_instance_valid(a["w"]):
+			(a["w"] as Walker).queue_free()
+	for k in ["tac_node", "own_node"]:
+		if _other[k] != null and is_instance_valid(_other[k]):
+			(_other[k] as Node).queue_free()
+	two_in = false
+	_other = {}
 
 
-## Split screen: the other weapon into their hand. Returns its name ("" they carry one only).
-func p2_swap(a: Dictionary) -> String:
-	var ws: Array = a.get("weapons", [])
-	if ws.size() < 2:
-		return ""
-	a["wi"] = (int(a["wi"]) + 1) % ws.size()
-	a["weapon"] = String(ws[int(a["wi"])])
-	a["cool"] = maxf(float(a["cool"]), 0.5)
-	var w: Walker = a["w"]
-	w.slung = String(GearData.base(String(a["weapon"])).get("dtype", "kinetic"))
-	w.aim_dtype = w.slung
-	w.aim_weapon = GearData.family(String(a["weapon"]))
-	w.queue_redraw()
-	Audio.play("ui_click", "second player: the other weapon", -6.0)
-	return String(GearData.base(String(a["weapon"])).get("name", ""))
+## The pilots of this fight, by their seats.
+func seats() -> Array:
+	return [0, 1] if two_in else [0]
 
 
-## … a grenade at their target (the first kind they still have). Returns what was thrown ("" none).
-func p2_grenade(a: Dictionary) -> String:
-	var t = a.get("cur")
-	if t == null or t["dead"]:
-		return ""
-	var w: Walker = a["w"]
-	var at: Vector2 = (t["w"] as Walker).pos
-	if w.pos.distance_to(at) > THROW_RANGE:
-		at = w.pos + (at - w.pos).normalized() * THROW_RANGE
-	for g in a.get("grenades", []):
-		if not (g as Dictionary).is_empty() and int(g.get("n", 0)) > 0:
-			g["n"] = int(g["n"]) - 1
-			throw_grenade(a, at, String(g["id"]))
-			return String(g["id"])
-	return ""
+## Runs f in the turn of pilot s: for its length "the pilot" is that player (their figure, their gear, their locks,
+## their device), then it is whose turn it was again. Never leave it half way: f must come back.
+func with_seat(s: int, f: Callable) -> Variant:
+	if not two_in or s == seat:
+		return f.call()
+	var keep := seat
+	view.seat_to(s)
+	var r = f.call()
+	view.seat_to(keep)
+	return r
 
 
-## … a place of their belt: a medkit, an energy cell. Returns what was used ("" nothing to use there).
-func p2_belt(a: Dictionary, i: int) -> String:
-	var bt: Array = a.get("belt", [])
-	if i < 0 or i >= bt.size() or (bt[i] as Dictionary).is_empty() or int(bt[i].get("n", 0)) <= 0:
-		return ""
-	var id := String(bt[i]["id"])
-	var bs: Dictionary = GearData.base(id)
-	var w: Walker = a["w"]
-	if bs.has("heal"):
-		if float(a["st"]["health"]) >= float(a["mx"]["health"]):
-			return ""
-		a["st"]["health"] = minf(float(a["mx"]["health"]), float(a["st"]["health"]) + float(bs["heal"]))
-		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "+%d" % int(bs["heal"]), "col": Color(0.45, 1.0, 0.6), "t": 0.0})
-	elif bs.has("energy"):
-		if float(a["energy"]) >= float(a["energy_max"]):
-			return ""
-		a["energy"] = minf(float(a["energy_max"]), float(a["energy"]) + float(bs["energy"]))
-		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "+%d energy" % int(bs["energy"]), "col": Color(1.0, 0.85, 0.3), "t": 0.0})
-	else:
-		return ""
-	bt[i]["n"] = int(bt[i]["n"]) - 1
-	Audio.play("module_on", "second player: the belt", -6.0)
-	return id
+## The pilot's own vars change places with the waiting one's (only the view calls this, from seat_to()).
+func swap_vars() -> void:
+	for k in SEAT_VARS:
+		var v = get(k)
+		set(k, _other[k])
+		_other[k] = v
 
 
-## … and a charging point they stand at: full again, and the point is drawn dry for a while. The point, or {}.
-func p2_station(a: Dictionary) -> Dictionary:
-	var w: Walker = a["w"]
-	for sd in a.get("stations", []):
-		if w.pos.distance_to(sd["at"]) < 18.0:
-			return sd
-	return {}
+func _tac_make(s: int) -> Node2D:
+	# the tactical view lies on the ground: under the people and the cover, over the floor (in a split picture each
+	# pilot's own is seen in their half only)
+	var n := Node2D.new()
+	n.visibility_layer = 2 if s == 0 else 4
+	n.draw.connect(func(): with_seat(s, _draw_tactics))
+	view._world.add_child(n)
+	view._world.move_child(n, view._sorted.get_index())
+	return n
 
 
-func p2_charge(a: Dictionary) -> bool:
-	var sd := p2_station(a)
-	if sd.is_empty() or float(sd["cool"]) > 0.0:
-		return false
-	a["energy"] = float(a["energy_max"])
-	a["ammo"] = int(a["ammo_max"])
-	sd["cool"] = float(a["station_cool"])
-	floaters.append({"pos": (a["w"] as Walker).pos + Vector2(0, -46), "text": "recharged", "col": Color(0.4, 0.9, 1.0), "t": 0.0})
-	Audio.play_at("dock_clamp", (a["w"] as Walker).pos, "second player at a charging point", -8.0)
-	return true
+func _own_make(s: int) -> Node2D:
+	var n := Node2D.new()
+	n.visibility_layer = 2 if s == 0 else 4
+	n.draw.connect(func(): with_seat(s, _draw_own.bind(n)))
+	add_child(n)
+	return n
 
 
-## The second player's figure (null: none).
-func p2() -> Variant:
-	for a in allies:
-		if a.has("p2"):
-			return a
-	return null
+## A pilot as the other side of the table sees them: an entry among "your side", so that the others' fire, a blast
+## or a helping hand finds them. What happens to it is handed on to the pilot themselves (fire(), _hurt_ally(),
+## revive()).
+func _px_make(s: int) -> Dictionary:
+	return {"ally": true, "px": s, "i": 2 + s, "m": {}, "w": null, "name": "", "weapon": "", "quality": "", "st": {"shield": 0.0, "armor": 0.0, "health": 1.0},
+		"mx": {"shield": 0.0, "armor": 0.0, "health": 1.0}, "dmg": 1.0, "firearms": 0, "athletics": 0, "aim": 1.0, "rof": 1.0, "cool": 0.0, "state": "follow",
+		"order": "own", "hold": Vector2.INF, "tgt": null, "cur": null, "goal": Vector2.INF, "path": PackedVector2Array(), "pi": 0, "think": 0.0, "regen_wait": 0.0,
+		"dead": false, "down": false, "down_t": 0.0, "ab": 0.0, "quick_t": 0.0, "stance": "careful", "role": "rifleman", "faction": "team", "lost_t": 0.0,
+		"cloak_id": "", "cloak_t": 0.0, "cloak_cd": 0.0}
 
 
-## Is the second player there and on their feet?
-func p2_up() -> bool:
-	var a = p2()
-	return a != null and not a["dead"] and not a["down"]
+func _px_sync() -> void:
+	var g = GameState.gear
+	var t: Dictionary = g.totals()
+	var nm := String(GameState.pilot.get("name", GameState.pilot_name))
+	px["w"] = view.pilot
+	px["name"] = nm.get_slice(" ", 0)
+	px["m"] = {"name": nm, "look": GameState.pilot.get("look", {})}
+	px["weapon"] = weapon_id()
+	px["st"] = {"shield": float(g.shield), "armor": float(g.armor), "health": float(g.health)}
+	px["mx"] = {"shield": float(t.get("shield", 0.0)), "armor": float(t.get("armor", 0.0)), "health": float(GearData.HEALTH)}
+	var out: bool = String(view.level) == "zcolvr" and bool(view.col_lost)
+	px["down"] = bool(view.col_down) or out
+	px["dead"] = out
+	px["down_t"] = float(view.col_down_t) if String(view.level) == "zcolvr" else 0.0
+	px["cloak_t"] = cloak_t
+	px["firearms"] = GameState.skill_level("firearms")
+	px["athletics"] = GameState.skill_level("athletics")
 
 
-## Their step: the stick or the keys walk them, a dodge no shot gets through, the next target, and the use key held
-## beside you while you are down.
-func _p2_step(a: Dictionary, delta: float) -> void:
-	var w: Walker = a["w"]
-	a["dodge_t"] = maxf(0.0, float(a["dodge_t"]) - delta)
-	a["dodge_cd"] = maxf(0.0, float(a["dodge_cd"]) - delta)
-	var live: bool = view.p2_may_act()
-	var mv: Vector2 = Players.move(1) if live else Vector2.ZERO
-	if live and Players.just_pressed(1, "foot_dodge") and float(a["dodge_cd"]) <= 0.0 and mv.length() > 0.2:
-		a["dodge_t"] = P2_DODGE
-		a["dodge_cd"] = P2_DODGE_COOL
-		a["dodge_dir"] = mv.normalized()
-		Audio.play("ui_tick", "second player: dodge", -6.0)
-	if live and Players.just_pressed(1, "foot_target"):
-		p2_next_target(a)
-	if live and Players.just_pressed(1, "foot_swap"):
-		p2_swap(a)
-	if live and Players.just_pressed(1, "foot_grenade"):
-		p2_grenade(a)
-	for bi in 4:
-		if live and Players.just_pressed(1, "foot_belt_%d" % (bi + 1)):
-			p2_belt(a, bi)
-	if live and not view.col_down and Players.just_pressed(1, "interact"):
-		p2_charge(a)
-	_p2_drone_step(a, delta, live)
-	var moved := false
-	if float(a["dodge_t"]) > 0.0:
-		moved = _walk(a, a["dodge_dir"], delta, 3.4 * float(a.get("dash", 1.0)))      # (Jump Jets: further)
-	elif mv.length() > 0.15:
-		var run: bool = mv.length() > 0.85 if not Players.on_keys(1) else Players.pressed(1, "foot_run")
-		moved = _walk(a, mv if mv.length() <= 1.0 else mv.normalized(), delta, (1.6 * float(a.get("sprint", 1.0)) if run else 1.0) * float(a.get("speed", 1.0)))
-	if not moved:
-		w.moving = false
-	# you are down: they hold the use key beside you
-	if view.col_down and live and w.pos.distance_to(pilot_pos()) <= P2_REACH and Players.pressed(1, "interact"):
-		view.col_revive_hold(delta)
-	elif view.col_down:
-		view.col_revive_k = 0.0
+## Which pilot a foe deals with in this step: the one who is up; with both up the nearer one (and it does not change
+## its mind for a few steps' difference).
+func _foe_seat(f: Dictionary) -> int:
+	if not two_in:
+		return 0
+	var up0: bool = view.pilot_up()                   # (the step runs in the first pilot's turn)
+	var up1: bool = view.partner_up()
+	if up0 != up1:
+		f["seat"] = 0 if up0 else 1
+		return int(f["seat"])
+	var fp: Vector2 = (f["w"] as Walker).pos
+	var d0 := fp.distance_to(view.pilot.pos)
+	var d1 := fp.distance_to(view.two.pos)
+	var now := int(f.get("seat", 0 if d0 <= d1 else 1))
+	if now == 0 and d1 + 20.0 < d0:
+		now = 1
+	elif now == 1 and d0 + 20.0 < d1:
+		now = 0
+	f["seat"] = now
+	return now
 
 
-## Their next target: the others standing, the nearest first, one further with every press.
-func p2_next_target(a: Dictionary) -> void:
-	var w: Walker = a["w"]
-	var up: Array = alive().filter(func(f): return not peaceful(f))
-	if up.is_empty():
-		a["tgt"] = null
-		return
-	up.sort_custom(func(x, y): return (x["w"] as Walker).pos.distance_to(w.pos) < (y["w"] as Walker).pos.distance_to(w.pos))
-	var i := up.find(a["cur"])
-	a["tgt"] = up[(i + 1) % up.size()]
+## Is pilot s not to be seen (cloaked, down, out)? Asked without changing whose turn it is: the dangers of a place
+## look at both pilots every frame.
+func hidden_of(s: int) -> bool:
+	if s == seat:
+		return pilot_hidden()
+	return two_in and (bool(view.down_of(s)) or float(_other["cloak_t"]) > 0.0)
 
 
-## The members standing (not down, not dead).
-func allies_up() -> Array:
+## … and do they sneak?
+func sneaking_of(s: int) -> bool:
+	return sneaking if s == seat else (two_in and bool(_other["sneaking"]))
+
+
+## The other pilot as one of your side (null: none in this fight).
+func partner() -> Variant:
+	return _other["px"] if two_in else null
+
+
+## Your own ground team's members standing.
+func team_up() -> Array:
 	return allies.filter(func(a): return not a["dead"] and not a["down"])
+
+
+## Everybody of your side standing (not down, not dead) but you: your team, and in a fight for two the other pilot
+## and their team.
+func allies_up() -> Array:
+	var out: Array = allies.filter(func(a): return not a["dead"] and not a["down"])
+	if two_in:
+		var o: Dictionary = _other["px"]
+		if o["w"] != null and not o["down"] and not o["dead"]:
+			out.append(o)
+		out.append_array((_other["allies"] as Array).filter(func(a): return not a["dead"] and not a["down"]))
+	return out
 
 
 func ability_of(a: Dictionary) -> Dictionary:
@@ -3310,10 +3241,11 @@ func _chance_between(from: Dictionary, to: Dictionary) -> float:
 
 
 func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
+	if a.has("px"):                                     # the other pilot: hurt as you are
+		with_seat(int(a["px"]), _hurt_pilot.bind(dmg, dtype))
+		return
 	if a["dead"] or a["down"]:
 		return
-	if a.has("p2") and (float(a.get("dodge_t", 0.0)) > 0.0 or Commands.suit_god):
-		return                                          # split screen: the second player's dodge (and the debug's invulnerable)
 	var out := GearData.apply_damage(a["st"], dmg, dtype)
 	a["regen_wait"] = GearData.SHIELD_WAIT
 	_number((a["w"] as Walker).pos, out)
@@ -3321,7 +3253,7 @@ func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 		a["down"] = true
 		a["down_t"] = 0.0
 		a["state"] = "down"
-		if a.has("arena") and not a.has("p2"):            # package 62a, part 5: in the hologram nobody lies waiting: out is out (the second player does: you can bring them back)
+		if a.has("arena"):                                # package 62a, part 5: in the hologram nobody of the team lies waiting: out is out
 			_ally_dies(a)
 			return
 		a["goal"] = Vector2.INF
@@ -3331,7 +3263,7 @@ func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 		w.aim = Vector2.INF
 		w.z_index = -1
 		floaters.append({"pos": w.pos + Vector2(0, -40), "text": "down", "col": Color(1.0, 0.6, 0.3), "t": 0.0})
-		view._say_toast("%s is down: hold %s beside them to bring them back (%d s)." % [String(a["name"]), Keybinds.key_text("interact"), int(CrewData.DOWN_TIME)], 3.5)
+		view._say_toast("%s is down: hold %s beside them to bring them back (%d s)." % [String(a["name"]), view.key_of("interact"), int(CrewData.DOWN_TIME)], 3.5)
 		Audio.play("hit_hull", "team member down", -4.0)
 
 
@@ -3339,7 +3271,10 @@ func _hurt_ally(a: Dictionary, dmg: float, dtype: String) -> void:
 func revive_near() -> Variant:
 	var best = null
 	var bd := 26.0
-	for a in allies:
+	var all: Array = allies
+	if two_in:                                          # (the other pilot down beside you, or one of their team)
+		all = allies + [_other["px"]] + (_other["allies"] as Array)
+	for a in all:
 		if a["down"] and not a["dead"]:
 			var dd := (a["w"] as Walker).pos.distance_to(pilot_pos())
 			if dd < bd:
@@ -3350,6 +3285,10 @@ func revive_near() -> Variant:
 
 ## Back on its feet with a third of its body.
 func revive(a: Dictionary) -> void:
+	if a.has("px"):                                     # the other pilot: back on their feet as you would be
+		with_seat(int(a["px"]), Callable(view, "col_revive"))
+		a["down"] = false
+		return
 	if a["dead"] or not a["down"]:
 		return
 	a["down"] = false
@@ -3387,14 +3326,14 @@ func _ally_dies(a: Dictionary) -> void:
 
 ## Leaving the place: whoever is still down dies there.
 func leave() -> void:
-	for a in allies:
+	for a in (allies + (_other["allies"] as Array)) if two_in else allies:
 		if a["down"] and not a["dead"]:
 			_ally_dies(a)
 
 
 ## An order to one member (or to all: a = null). Returns what to say.
 func order(a, kind: String) -> String:
-	var who: Array = allies_up() if a == null else ([a] if not a["down"] and not a["dead"] else [])
+	var who: Array = team_up() if a == null else ([a] if not a["down"] and not a["dead"] else [])
 	if who.is_empty():
 		return "Nobody there to take the order." if a == null else "%s is down." % String(a["name"])
 	var said: Array = []
@@ -3517,7 +3456,7 @@ func _ally_target(a: Dictionary) -> Variant:
 	var reach := float(GearData.stats(String(a["weapon"]))["range"])
 	if a["tgt"] != null and not a["tgt"]["dead"]:
 		return a["tgt"]
-	if not a.has("p2") and active != null and not active["dead"] and not sight(w.pos, (active["w"] as Walker).pos)["blocked"] \
+	if active != null and not active["dead"] and not sight(w.pos, (active["w"] as Walker).pos)["blocked"] \
 			and w.pos.distance_to((active["w"] as Walker).pos) <= reach * 1.2:
 		return active
 	var best = null
@@ -3677,10 +3616,6 @@ func _ally_step(a: Dictionary, delta: float) -> void:
 	a["cur"] = _ally_target(a) if fight else null
 	var wst := GearData.stats(String(a["weapon"]))
 	var reach := float(wst["range"])
-	if a.has("p2"):                                    # split screen: the second player walks them, their weapon fires as yours does
-		_p2_step(a, delta)
-		_ally_shoot(a, delta, wst, reach)
-		return
 	if a.has("energy") and _foe_recharge(a, delta):
 		return                                          # (out of energy or rounds, or told to fill up: on its way to a charging point)
 	a["think"] = float(a["think"]) - delta
@@ -3897,7 +3832,7 @@ func _draw_team() -> void:
 			draw_arc(c, 12.0, -PI / 2, -PI / 2 + TAU * left, 24, Color(1.0, 0.6, 0.3), 2.5)
 			if reviving == a:
 				draw_arc(c, 17.0, -PI / 2, -PI / 2 + TAU * revive_k, 24, green, 3.5)
-			draw_string(font, c + Vector2(-60, -20), "hold %s" % Keybinds.key_text("interact"), HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(1.0, 0.82, 0.35))
+			draw_string(font, c + Vector2(-60, -20), "hold %s" % view.key_of("interact"), HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(1.0, 0.82, 0.35))
 			continue
 		if a["dead"]:
 			continue
@@ -3913,6 +3848,15 @@ func _draw_team() -> void:
 			for j in n:
 				if j % 2 == 0:
 					draw_line(p0.lerp(p1, float(j) / n), p0.lerp(p1, float(j + 1) / n), Color(green, 0.45), 2.0)
+	# split screen: you are down yourself: how long is left (in the hologram), and the other pilot's hold filling up
+	if two_in and view.col_down and view.pilot.visible:
+		var c2: Vector2 = view.pilot.pos * S + Vector2(0, -50)
+		var left2: float = (1.0 - float(view.col_down_t) / CrewData.DOWN_TIME) if String(view.level) == "zcolvr" else 1.0
+		draw_circle(c2, 14.0, Color(0.03, 0.04, 0.08, 0.85))
+		draw_arc(c2, 12.0, -PI / 2, -PI / 2 + TAU * left2, 24, Color(1.0, 0.6, 0.3), 2.5)
+		if _other["reviving"] != null and (_other["reviving"] as Dictionary).has("px"):
+			draw_arc(c2, 17.0, -PI / 2, -PI / 2 + TAU * float(_other["revive_k"]), 24, green, 3.5)
+		draw_string(font, c2 + Vector2(-60, -20), "hold %s" % Players.key_text(1 - seat, "interact"), HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Color(1.0, 0.82, 0.35))
 
 
 # ---------------------------------------------------------------- effects
@@ -3925,14 +3869,14 @@ func _fx_step(delta: float) -> void:
 			s["tick"] = float(s["tick"]) + delta
 			if float(s["tick"]) >= ARM_HOLD / ARM_TICKS:
 				s["tick"] = 0.0
-				_arm_tick(s)
+				with_seat(int(s.get("seat", seat)), _arm_tick.bind(s))
 			var bt = s["to"]
 			if (bt == null or bt["dead"]) and float(s["t"]) < float(s["life"]) - 0.3:
 				s["t"] = float(s["life"]) - 0.3
 			s["geo_t"] = float(s["geo_t"]) - delta
 			if float(s["geo_t"]) <= 0.0 and bt != null and not bt["dead"]:
 				s["geo_t"] = 0.08
-				_arm_geometry(s)
+				with_seat(int(s.get("seat", seat)), _arm_geometry.bind(s))
 		if String(s["kind"]) == "armbeam" and float(s["t"]) < float(s["life"]) - 0.25:
 			# 0.7.52.15 (Luz): the beam cuts – a spray of sparks out of every piece of cover it goes through, thrown off to the
 			# sides and onwards, falling
@@ -3957,49 +3901,24 @@ func _fx_step(delta: float) -> void:
 	for b in booms:
 		b["t"] = float(b["t"]) + delta
 	booms = booms.filter(func(b): return float(b["t"]) < 0.5)
-	for tr in trail:
-		tr["t"] = float(tr["t"]) - delta
-	trail = trail.filter(func(tr): return float(tr["t"]) > 0.0)
 
 
 func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var red := Color(1.0, 0.3, 0.3)
 	_draw_grenades()
-	_draw_team()
-	if sneaking:
-		_draw_notice(font)
-		var pr := pilot_pos() * S + Vector2(0, -2)
-		draw_set_transform(pr, 0.0, Vector2(1.0, 0.45))
-		draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, Color(0.7, 0.55, 1.0, 0.9), 3.0)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for s0 in seats():                                 # each pilot's own: the team's rings, the aim, the dodge, the cover ring
+		with_seat(s0, _draw_pilot.bind(font))
 	# 0.7.52.5: a sniper's red aiming line in the last moment before its shot – your cue to dodge
 	for sf in alive():
 		if String(sf["role"]) == "sniper" and sf["aware"] and float(sf["cool"]) < 0.9 and sf["state"] != "flee":
 			var sw: Walker = sf["w"]
-			if not sight(sw.pos, pilot_pos())["blocked"] and sw.aim != Vector2.INF and not pilot_hidden():
+			var tp0: Vector2 = sf.get("tp", pilot_pos())      # (whom it aims at: you, or the other pilot)
+			if not sight(sw.pos, tp0)["blocked"] and sw.aim != Vector2.INF and not pilot_hidden():
 				var k0 := 1.0 - clampf(float(sf["cool"]) / 0.9, 0.0, 1.0)
 				var m0 := sw.muzzle_art() * S
-				draw_line(m0, (pilot_pos() + CHEST) * S, Color(1.0, 0.15, 0.1, 0.25 + 0.55 * k0), 1.0 + 1.5 * k0)
-				draw_circle((pilot_pos() + CHEST) * S, 3.0 + 3.0 * k0, Color(1.0, 0.2, 0.15, 0.4 + 0.5 * k0))
-	# the dodge's after-images
-	for tr in trail:
-		var k: float = float(tr["t"]) / 0.25
-		draw_set_transform((tr["p"] as Vector2) * S + Vector2(0, -3), 0.0, Vector2(1.0, 0.45))
-		draw_circle(Vector2.ZERO, 14.0, Color(0.5, 1.0, 0.7, 0.25 * k))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		draw_line((tr["p"] as Vector2) * S + Vector2(0, -60), (tr["p"] as Vector2) * S + Vector2(0, -6), Color(0.5, 1.0, 0.7, 0.35 * k), 10.0)
-	# the cover ring: a green half-ring on the side the fire comes from
-	if fight and in_cover > 0:
-		var c := Vector2.ZERO
-		for f in alive():
-			if f["aware"]:
-				c += ((f["w"] as Walker).pos - pilot_pos()).normalized()
-		var ang := c.angle() if c.length() > 0.01 else 0.0
-		var col := Color(0.4, 1.0, 0.55, 0.9) if in_cover == 2 else Color(0.85, 1.0, 0.4, 0.8)
-		draw_set_transform(pilot_pos() * S + Vector2(0, -3), 0.0, Vector2(1.0, 0.45))
-		draw_arc(Vector2.ZERO, 40.0, ang - PI * 0.42, ang + PI * 0.42, 24, col, 4.0)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				draw_line(m0, (tp0 + CHEST) * S, Color(1.0, 0.15, 0.1, 0.25 + 0.55 * k0), 1.0 + 1.5 * k0)
+				draw_circle((tp0 + CHEST) * S, 3.0 + 3.0 * k0, Color(1.0, 0.2, 0.15, 0.4 + 0.5 * k0))
 	# 0.7.52.9 (Luz): small shield and health bars right over each foe's head
 	for hf in alive():
 		var hw: Walker = hf["w"]
@@ -4011,25 +3930,6 @@ func _draw() -> void:
 			draw_rect(Rect2(top, Vector2(28.0 * clampf(float(hst["shield"]) / float(hmx["shield"]), 0.0, 1.0), 2)), Color(0.45, 0.8, 1.0))
 		var hk := clampf((float(hst["armor"]) + float(hst["health"])) / maxf(float(hmx["armor"]) + float(hmx["health"]), 1.0), 0.0, 1.0)
 		draw_rect(Rect2(top + Vector2(0, 3), Vector2(28.0 * hk, 2)), Color(1.0, 0.35, 0.3) if hk < 0.35 else Color(0.95, 0.55, 0.35))
-	# lock brackets, red (the active one thick), the lock arc while locking, T1–T3, the hit chance under the active
-	for i in locks.size():
-		var f = locks[i]
-		var cpos: Vector2 = ((f["w"] as Walker).pos + Vector2(0, -14)) * S
-		var act: bool = f == active
-		var col2 := red if act else Color(red, 0.6)
-		var r := Vector2(30, 50)
-		var wd := 3.0 if act else 1.5
-		for sx in [-1.0, 1.0]:
-			for sy in [-1.0, 1.0]:
-				var corner := cpos + Vector2(sx * r.x, sy * r.y)
-				draw_line(corner, corner - Vector2(sx * 9.0, 0), col2, wd)
-				draw_line(corner, corner - Vector2(0, sy * 9.0), col2, wd)
-		draw_string(font, cpos + Vector2(r.x + 4, -r.y + 4), "T%d" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col2)
-		if act and lock_t > 0.0:
-			var full := GearData.LOCK_TIME * (1.0 - 0.04 * GameState.skill_level("firearms"))
-			draw_arc(cpos, 62.0, -PI / 2, -PI / 2 + TAU * (1.0 - lock_t / maxf(full, 0.01)), 32, col2, 2.0)
-		if act:
-			_txt(cpos + Vector2(0, r.y + 20), "hit %d%%" % int(round(chance_at_foe(f) * 100.0)), col2, 12)
 	# shots
 	for s in shots:
 		var a: Vector2 = (s["a"] as Vector2) * S
@@ -4082,11 +3982,75 @@ func _draw() -> void:
 	for fl in floaters:
 		var k4: float = float(fl["t"]) / 1.1
 		_txt((fl["pos"] as Vector2) * S + Vector2(0, -k4 * 40.0), String(fl["text"]), Color(fl["col"], 1.0 - k4 * k4), 16 if String(fl["text"]).is_valid_int() else 12)
-	_draw_drone()
-	_draw_blade()
+	for s1 in seats():
+		with_seat(s1, _draw_gadgets)
 	_draw_clouds()
 	if show_ai:
 		_draw_ai(font)
+
+
+## What belongs to one pilot in the picture of the world: the team's rings, the grenade's aim, the ring of the one
+## who sneaks, the dodge's after-images, the cover ring.
+func _draw_pilot(font: Font) -> void:
+	_draw_team()
+	_draw_aim()
+	if sneaking:
+		_draw_notice(font)
+		var pr := pilot_pos() * S + Vector2(0, -2)
+		draw_set_transform(pr, 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, 30.0, 0.0, TAU, 32, Color(0.7, 0.55, 1.0, 0.9), 3.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# the dodge's after-images
+	for tr in trail:
+		var k: float = float(tr["t"]) / 0.25
+		draw_set_transform((tr["p"] as Vector2) * S + Vector2(0, -3), 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 14.0, Color(0.5, 1.0, 0.7, 0.25 * k))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_line((tr["p"] as Vector2) * S + Vector2(0, -60), (tr["p"] as Vector2) * S + Vector2(0, -6), Color(0.5, 1.0, 0.7, 0.35 * k), 10.0)
+	# the cover ring: a green half-ring on the side the fire comes from
+	if fight and in_cover > 0:
+		var c := Vector2.ZERO
+		for f in alive():
+			if f["aware"]:
+				c += ((f["w"] as Walker).pos - pilot_pos()).normalized()
+		var ang := c.angle() if c.length() > 0.01 else 0.0
+		var col := Color(0.4, 1.0, 0.55, 0.9) if in_cover == 2 else Color(0.85, 1.0, 0.4, 0.8)
+		draw_set_transform(pilot_pos() * S + Vector2(0, -3), 0.0, Vector2(1.0, 0.45))
+		draw_arc(Vector2.ZERO, 40.0, ang - PI * 0.42, ang + PI * 0.42, 24, col, 4.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_gadgets() -> void:
+	_draw_drone()
+	_draw_blade()
+
+
+## What only this pilot sees (in a split picture: in their half alone): the lock brackets, red (the active one
+## thick), the lock arc while locking, T1–T3, the hit chance under the active one.
+func _draw_own(n: Node2D) -> void:
+	var font := ThemeDB.fallback_font
+	var red := Color(1.0, 0.3, 0.3)
+	for i in locks.size():
+		var f = locks[i]
+		var cpos: Vector2 = ((f["w"] as Walker).pos + Vector2(0, -14)) * S
+		var act: bool = f == active
+		var col2 := red if act else Color(red, 0.6)
+		var r := Vector2(30, 50)
+		var wd := 3.0 if act else 1.5
+		for sx in [-1.0, 1.0]:
+			for sy in [-1.0, 1.0]:
+				var corner := cpos + Vector2(sx * r.x, sy * r.y)
+				n.draw_line(corner, corner - Vector2(sx * 9.0, 0), col2, wd)
+				n.draw_line(corner, corner - Vector2(0, sy * 9.0), col2, wd)
+		n.draw_string(font, cpos + Vector2(r.x + 4, -r.y + 4), "T%d" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col2)
+		if act and lock_t > 0.0:
+			var full := GearData.LOCK_TIME * (1.0 - 0.04 * GameState.skill_level("firearms"))
+			n.draw_arc(cpos, 62.0, -PI / 2, -PI / 2 + TAU * (1.0 - lock_t / maxf(full, 0.01)), 32, col2, 2.0)
+		if act:
+			var ht := "hit %d%%" % int(round(chance_at_foe(f) * 100.0))
+			var hp := cpos + Vector2(0, r.y + 20) - Vector2(font.get_string_size(ht, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x * 0.5, 0)
+			n.draw_string_outline(font, hp, ht, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 4, Color(0, 0, 0, col2.a * 0.85))
+			n.draw_string(font, hp, ht, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, col2)
 
 
 func _txt(p: Vector2, t: String, col: Color, sz: int = 13) -> void:

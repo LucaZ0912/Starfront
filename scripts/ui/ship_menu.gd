@@ -21,6 +21,8 @@ const TAB_MARKET := 5
 const CodexView = preload("res://scripts/ui/codex_view.gd")
 const FactionData = preload("res://data/factions.gd")
 
+var seat := 0                     # split screen: whose menu this is (0 the first player, 1 the second: it stands in their half)
+var _win: Control = null          # the menu's frame (its margins are smaller in a narrow picture)
 var view: SystemView
 var fit: ShipFitting
 var tab := 0
@@ -54,6 +56,7 @@ func _ready() -> void:
 	win.offset_top = 46
 	win.offset_bottom = -26
 	bg.add_child(win)
+	_win = win
 	var v := UI.vbox(10)
 	win.add_child(v)
 
@@ -71,7 +74,7 @@ func _ready() -> void:
 	status_label = UI.label("", 13, UI.GOLD)
 	names.add_child(status_label)
 	head.add_child(UI.spacer())
-	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("ship_menu"), close))
+	head.add_child(UI.button("Close [%s]" % (_k("menu_back") if (Players.split and not Players.on_keys(seat)) else _k("ship_menu")), close))
 
 	var tabs := UI.hbox(4)
 	v.add_child(tabs)
@@ -92,7 +95,16 @@ func _ready() -> void:
 	v.add_child(content)
 
 
+## The key or button of this menu's player for an action, in words.
+func _k(action: String) -> String:
+	return Players.win_key(seat, action)
+
+
 func open(p_view: SystemView, p_tab: int = -1) -> void:
+	GameState.with_seat(seat, _open.bind(p_view, p_tab))       # (in the name of the player whose menu it is)
+
+
+func _open(p_view: SystemView, p_tab: int) -> void:
 	Audio.play("ui_open", "ship menu")                   # package 28a
 	view = p_view
 	fit = GameState.active()
@@ -145,6 +157,32 @@ func _docked() -> bool:
 
 
 func rebuild() -> void:
+	GameState.with_seat(seat, _rebuild)
+
+
+## The narrow layout (Luz, 25 Nov 2026): in half a split picture of 1920 × 1080 the same pages in the same pattern,
+## with smaller margins, narrower side panels and long lines wrapped.
+func _narrow() -> bool:
+	return UI.narrow(self)
+
+
+func _nw(wide, narrow_v):
+	return narrow_v if _narrow() else wide
+
+
+func _rebuild() -> void:
+	if _win != null:
+		var nar := _narrow()
+		_win.offset_left = 10 if nar else 50
+		_win.offset_right = -10 if nar else -50
+		_win.offset_top = 10 if nar else 46
+		_win.offset_bottom = -10 if nar else -26
+	_rebuild_pages()
+	if _narrow() and content != null:
+		UI.wrap_long(content)
+
+
+func _rebuild_pages() -> void:
 	if not visible:
 		return
 	fit = GameState.active()
@@ -322,7 +360,7 @@ static func _fmt_time(sec: float) -> String:
 func _build_info() -> void:
 	var box := _scroll()
 	_news_card(box)
-	var row := UI.hbox(14)
+	var row: Control = UI.hbox(14) if not _narrow() else UI.vbox(8)      # (a narrow picture: the two cards one under the other)
 	box.add_child(row)
 	# Active ship
 	var shipc := _card(row, "ACTIVE SHIP")
@@ -339,7 +377,7 @@ func _build_info() -> void:
 		"Scan of this system: %d%%" % int(GameState.scan_progress(fit.system_id) * 100.0),
 	])
 	var hint := _card(row, "PILOT")
-	hint.add_child(UI.wrap_label("Name, finances, career statistics, standings and the codex are in the Pilot window [%s]." % Keybinds.key_text("pilot_window"), 13, UI.TEXT_DIM, 360))
+	hint.add_child(UI.wrap_label("Name, finances, career statistics, standings and the codex are in the Pilot window [%s]." % _k("pilot_window"), 13, UI.TEXT_DIM, 360))
 	# Contracts
 	var con := _card(box, "ACTIVE CONTRACTS  (%d / %d)" % [GameState.contract_count(), GameState.MAX_ACTIVE_MISSIONS])
 	if GameState.missions.is_empty():
@@ -520,7 +558,7 @@ func _build_fire_groups() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(body)
 	var lp := UI.neon_panel(Color(UI.NEON_CYAN, 0.3), Color(0.05, 0.07, 0.12, 0.95), 1)
-	lp.custom_minimum_size = Vector2(420, 0)
+	lp.custom_minimum_size = Vector2(_nw(420, 280), 0)
 	body.add_child(lp)
 	var left := UI.vbox(6)
 	lp.add_child(left)
@@ -539,7 +577,7 @@ func _build_fire_groups() -> void:
 		chip.custom_minimum_size = Vector2(28, 24)
 		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(chip)
-		row.add_child(UI.label("key %s" % Keybinds.key_text("module_%d" % (g + 1)), 12, Color(0.8, 0.85, 1.0)))
+		row.add_child(UI.label("key %s" % _k("module_%d" % (g + 1)), 12, Color(0.8, 0.85, 1.0)))
 		var names: Array = []
 		for slot in fit.group_slots(g + 1):
 			for e in mods:
@@ -552,7 +590,7 @@ func _build_fire_groups() -> void:
 			sum = ("%s ×%d" % [names[0], names.size()]) if names.count(names[0]) == names.size() else ", ".join(PackedStringArray(names))
 		var sl := UI.label(sum, 12, HUD.FIRE_COLORS[g] if not names.is_empty() else UI.TEXT_DIM)
 		sl.clip_text = true
-		sl.custom_minimum_size = Vector2(290, 0)
+		sl.custom_minimum_size = Vector2(_nw(290, 150), 0)
 		row.add_child(sl)
 	left.add_child(UI.label("", 4))
 	left.add_child(UI.wrap_label("Until you change them, the groups follow the kind: each kind of weapon its own group 1–3, the auto mode 4, tools 5, active modules 6, point defence and mines 7.", 12, UI.TEXT_DIM, 390))
@@ -617,7 +655,7 @@ func _build_fire_groups() -> void:
 			var gb := Button.new()
 			gb.text = str(gn)
 			gb.focus_mode = Control.FOCUS_NONE
-			gb.custom_minimum_size = Vector2(44, 34)
+			gb.custom_minimum_size = Vector2(_nw(44, 34), 34)
 			var bs := UI.panel_style(Color(HUD.FIRE_COLORS[g2], 0.9) if on else Color(0.07, 0.1, 0.16), HUD.FIRE_COLORS[g2] if on else Color(0.3, 0.35, 0.45))
 			bs.set_corner_radius_all(4)
 			for stn in ["normal", "hover", "pressed"]:

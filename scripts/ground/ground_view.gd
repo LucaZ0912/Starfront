@@ -267,6 +267,13 @@ func _ready() -> void:
 func _set_hint() -> void:
 	if _hint == null:
 		return
+	_hint.text = _hint_for(0)
+
+
+## … in the words of one of the two players' own keys.
+func _hint_for(seat: int) -> String:
+	var kt := func(id: String) -> String: return Players.key_text(seat, id)
+	var out := ""
 	var back := "the stairs in the hangar lead back to your ship"
 	if level in ["landing", "settlement"] and _lander:
 		back = "the landing drone's ramp takes you back up"
@@ -276,16 +283,19 @@ func _set_hint() -> void:
 		back = "the lifts lead to the other floors, the doors of the lobby back out onto the plaza"      # package 62
 	elif is_city():
 		back = "the lifts lead to the hangar: your ship and the way up"
-	_hint.text = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
-		Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
-		Keybinds.key_text("foot_run"), Keybinds.key_text("interact"), back]
+	out = "%s %s %s %s walk  •  %s run  •  %s use / talk  •  %s" % [
+		kt.call("walk_up"), kt.call("walk_left"), kt.call("walk_down"), kt.call("walk_right"),
+		kt.call("foot_run"), kt.call("interact"), back]
 	if level == "zcolsv":                                 # package 62a, part 7: Survivor
-		_hint.text = "%s %s %s %s walk  •  %s dodge  •  your weapons fire by themselves" % [
-			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"), Keybinds.key_text("foot_dodge")]
+		out = "%s %s %s %s walk  •  %s dodge  •  your weapons fire by themselves" % [
+			kt.call("walk_up"), kt.call("walk_left"), kt.call("walk_down"), kt.call("walk_right"), kt.call("foot_dodge")]
 	if combat_allowed():
-		_hint.text = "%s %s %s %s walk  •  %s next target / click  •  %s dodge  •  %s other weapon  •  %s tactics  •  1–4 belt" % [
-			Keybinds.key_text("walk_up"), Keybinds.key_text("walk_left"), Keybinds.key_text("walk_down"), Keybinds.key_text("walk_right"),
-			Keybinds.key_text("foot_target"), Keybinds.key_text("foot_dodge"), Keybinds.key_text("foot_swap"), Keybinds.key_text("foot_tactics")]
+		var keys: bool = not Players.split or Players.on_keys(seat)      # (the mouse and the number keys are theirs who sits at the keyboard)
+		out = "%s %s %s %s walk  •  %s next target%s  •  %s dodge  •  %s other weapon  •  %s tactics  •  %s belt" % [
+			kt.call("walk_up"), kt.call("walk_left"), kt.call("walk_down"), kt.call("walk_right"),
+			kt.call("foot_target"), " / click" if keys else "", kt.call("foot_dodge"), kt.call("foot_swap"), kt.call("foot_tactics"),
+			"1–4" if keys else "%s %s %s %s" % [kt.call("foot_belt_1"), kt.call("foot_belt_2"), kt.call("foot_belt_3"), kt.call("foot_belt_4")]]
+	return out.replace("    ", " ").replace("   ", " ")
 
 
 ## A station's deck: available = service id -> "" or the reason it is closed; crew = the bar's offers.
@@ -377,6 +387,10 @@ func go_level(p_level: String, arrive: String = "lift") -> void:
 		map.set_meta("seen", poi_seen)                  # 0.7.53.3: the minimap of the level you leave stays
 	_split_close()                                        # (split screen: a new place starts as one picture)
 	col_down = false
+	_side = {"col_lost": false, "col_down": false, "col_down_t": 0.0, "_revive": -1.0, "_tab_held": -1.0, "_team_held": -1.0, "_drone_held": [-1.0, -1.0],
+		"_wheel_stick": Vector2.ZERO, "_col_vel": Vector2.ZERO, "_socket": -1}
+	two_seat = {}
+	two_zone = {}
 	for c in _world.get_children():
 		_world.remove_child(c)
 		c.queue_free()
@@ -1265,6 +1279,21 @@ func _collapse(reason: String = "") -> void:
 func _on_click(event: InputEvent) -> void:
 	if combat == null or not input_enabled or _collapsed or not (event is InputEventMouseButton) or not event.pressed:
 		return
+	if Players.split:
+		# split screen: the mouse is theirs who sits at the keyboard, and it points into their own half
+		var ms := 0 if Players.on_keys(0) else (1 if Players.on_keys(1) else -1)
+		var right: bool = not _split.is_empty() and event.position.x >= (_split["fb"] as Control).position.x
+		if ms < 0 or (ms == 1) != right or (ms == 1 and not combat.two_in):
+			return
+		if ms == 1:
+			seat_to(1)
+			_click_do(event)
+			seat_to(0)
+			return
+	_click_do(event)
+
+
+func _click_do(event: InputEvent) -> void:
 	# 0.7.52.8 / 0.7.52.13 (Luz): the mouse wheel steps the zoom – in a fight normal and near, in the tactical view also
 	# out to half
 	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN or event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -1272,7 +1301,7 @@ func _on_click(event: InputEvent) -> void:
 		return
 	if event.button_index != MOUSE_BUTTON_LEFT and event.button_index != MOUSE_BUTTON_RIGHT:
 		return
-	var f = combat.foe_at((event.position - _world.position) / (GroundMap.SCALE * zoom))
+	var f = combat.foe_at(_art_at(event.position))
 	if f == null:
 		return
 	if event.button_index == MOUSE_BUTTON_LEFT:
@@ -1322,39 +1351,53 @@ func _turrets_step(delta: float) -> void:
 		if String(d["state"]) != "on" or combat.emp_t > 0.0:
 			continue
 		var eye: Vector2 = (d["pos"] as Vector2) + Vector2(0, 10)
-		var pp: Vector2 = combat.pilot_pos()
-		if eye.distance_to(pp) > TURRET_REACH or combat.pilot_hidden() or bool(combat.sight(eye, pp)["blocked"]) or Commands.suit_god:
+		# it turns to the pilot it can see (in reach, not cloaked, nothing high between); of two, to the nearer one
+		var s := -1
+		var bd := INF
+		for sc in _pilots_up():
+			var pq: Vector2 = pilot_w(sc).pos
+			var dq := eye.distance_to(pq)
+			if dq <= TURRET_REACH and dq < bd and not combat.hidden_of(sc) and not bool(combat.sight(eye, pq)["blocked"]) and not Commands.suit_god:
+				bd = dq
+				s = sc
+		if s < 0:
 			d["seen"] = false
 			continue
-		var want := ((pp + Vector2(0, -12)) - ((d["pos"] as Vector2) + Vector2(0, -26))).angle()
-		d["ang"] = lerp_angle(float(d.get("ang", PI * 0.5)), want, minf(1.0, delta * 6.0))
-		if not bool(d.get("seen", false)):
-			d["seen"] = true
-			d["cool"] = 0.6                               # it turns before it fires
-			_say_toast("A turret has you. Get into cover!", 2.0)
-			raise_alarm()
-		d["cool"] = float(d.get("cool", 0.0)) - delta
-		if float(d["cool"]) > 0.0:
-			continue
-		d["cool"] = TURRET_ROF
-		d["flash"] = 0.06
-		var sg: Dictionary = combat.sight(eye, pp)
-		var chance := 0.42 * (0.45 if sg["cover"] else 1.0)
-		var muzzle: Vector2 = (d["pos"] as Vector2) + Vector2(0, -26) + Vector2.from_angle(float(d["ang"])) * 12.0
-		var res := {"to": null, "dmg": 7.0, "dtype": "kinetic", "splash": 0.0, "from": null}
-		var end: Vector2
-		if randf() < chance:
-			res["kind"] = "hit"
-			end = pp + Vector2(randf_range(-2, 2), -12 + randf_range(-3, 3))
-		elif sg["cover"]:
-			res["kind"] = "blocked"
-			end = (sg["at"] as Vector2) + Vector2(0, -6)
-		else:
-			res["kind"] = "miss"
-			end = pp + Vector2(randf_range(-26, 26), randf_range(-20, 8))
-		combat.shots.append({"a": muzzle, "b": end, "t": 0.0, "life": maxf(0.05, muzzle.distance_to(end) / 900.0), "kind": "slug",
-			"col": Color(1.0, 0.85, 0.4), "res": res, "done": false})
-		Audio.play("w_autocannon", "turret fires", -12.0)
+		combat.with_seat(s, _turret_at.bind(d, eye, delta))
+
+
+## A turret that sees the pilot whose turn it is: it turns to them, rings the alarm, fires its bursts.
+func _turret_at(d: Dictionary, eye: Vector2, delta: float) -> void:
+	var pp: Vector2 = combat.pilot_pos()
+	var want := ((pp + Vector2(0, -12)) - ((d["pos"] as Vector2) + Vector2(0, -26))).angle()
+	d["ang"] = lerp_angle(float(d.get("ang", PI * 0.5)), want, minf(1.0, delta * 6.0))
+	if not bool(d.get("seen", false)):
+		d["seen"] = true
+		d["cool"] = 0.6                               # it turns before it fires
+		_say_toast("A turret has you. Get into cover!", 2.0)
+		raise_alarm()
+	d["cool"] = float(d.get("cool", 0.0)) - delta
+	if float(d["cool"]) > 0.0:
+		return
+	d["cool"] = TURRET_ROF
+	d["flash"] = 0.06
+	var sg: Dictionary = combat.sight(eye, pp)
+	var chance := 0.42 * (0.45 if sg["cover"] else 1.0)
+	var muzzle: Vector2 = (d["pos"] as Vector2) + Vector2(0, -26) + Vector2.from_angle(float(d["ang"])) * 12.0
+	var res := {"to": null, "dmg": 7.0, "dtype": "kinetic", "splash": 0.0, "from": null, "seat": seat_now}
+	var end: Vector2
+	if randf() < chance:
+		res["kind"] = "hit"
+		end = pp + Vector2(randf_range(-2, 2), -12 + randf_range(-3, 3))
+	elif sg["cover"]:
+		res["kind"] = "blocked"
+		end = (sg["at"] as Vector2) + Vector2(0, -6)
+	else:
+		res["kind"] = "miss"
+		end = pp + Vector2(randf_range(-26, 26), randf_range(-20, 8))
+	combat.shots.append({"a": muzzle, "b": end, "t": 0.0, "life": maxf(0.05, muzzle.distance_to(end) / 900.0), "kind": "slug",
+		"col": Color(1.0, 0.85, 0.4), "res": res, "done": false})
+	Audio.play("w_autocannon", "turret fires", -12.0)
 
 
 ## 0.8.58.6 (Luz: there was no way to aim at a turret): a turret that is on can be locked (R) and shot to pieces –
@@ -1381,13 +1424,18 @@ func _turret_target(d: Dictionary) -> void:
 			Audio.play("explosion_small", "turret wrecked", -4.0)
 			_say_toast("The turret is wrecked.", 2.5)
 	elif have:
-		combat.foes.erase(tf)                            # (switched off: no longer a target)
-		combat.locks.erase(tf)
-		if combat.active == tf:
-			combat.active = null
+		combat.foes.erase(tf)                            # (switched off: no longer a target, for either pilot)
+		for ls in combat.seats():
+			combat.with_seat(ls, _turret_unlock.bind(tf))
 		if is_instance_valid(tf["w"]):
 			(tf["w"] as Walker).queue_free()
 		d["foe"] = null
+
+
+func _turret_unlock(tf: Dictionary) -> void:
+	combat.locks.erase(tf)
+	if combat.active == tf:
+		combat.active = null
 
 
 ## 0.7.53.5 (Luz): the alarm – if the level has a box that is not cut, it rings: everyone here comes for you and two
@@ -1486,45 +1534,56 @@ func _hazards_step(delta: float) -> void:
 		_haz_t[k] = float(_haz_t[k]) - delta
 		if float(_haz_t[k]) <= 0.0:
 			_haz_t.erase(k)
+	for d0 in map.explore:
+		if String(d0["kind"]) == "searchlight":
+			d0["seen"] = false
+	for s in _pilots_up():                                # (each pilot on their feet: what catches one of you is theirs)
+		_hazards_for(s, delta)
+
+
+func _hazards_for(s: int, delta: float) -> void:
+	var pp: Vector2 = pilot_w(s).pos
 	for i in map.explore.size():
 		var d: Dictionary = map.explore[i]
 		var kd := String(d["kind"])
-		if kd == "conduit" and not _haz_t.has(i) and (d["pos"] as Vector2).distance_to(pilot.pos) < 10.0:
+		if kd == "conduit" and not _haz_t.has(i) and (d["pos"] as Vector2).distance_to(pp) < 10.0:
 			_haz_t[i] = 1.2
 			if not Commands.suit_god:
-				combat._hurt_pilot(16.0, "optical")
+				_hurt_as(s, 16.0, "optical")
 			combat.sparks.append({"pos": d["pos"], "vel": Vector2(0, -40), "t": 0.0, "col": Color(0.6, 0.85, 1.0)})
-			combat.floaters.append({"pos": pilot.pos + Vector2(0, -40), "text": "ZAP", "col": Color(0.6, 0.85, 1.0), "t": 0.0})
+			combat.floaters.append({"pos": pp + Vector2(0, -40), "text": "ZAP", "col": Color(0.6, 0.85, 1.0), "t": 0.0})
 			Audio.play("shield_down", "shock conduit", -6.0)
 		elif kd == "searchlight":
 			var lp := (d["pos"] as Vector2)
-			var rel := pilot.pos - lp
+			var rel := pp - lp
 			var ang := float(d.get("ang", 0.0))
-			var seen := rel.length() < 150.0 and absf(angle_difference(Vector2(rel.x, rel.y / 0.6).angle(), ang)) < 0.3 and not combat.pilot_hidden()
-			d["seen"] = seen
+			var seen: bool = rel.length() < 150.0 and absf(angle_difference(Vector2(rel.x, rel.y / 0.6).angle(), ang)) < 0.3 and not combat.hidden_of(s)
+			d["seen"] = bool(d["seen"]) or seen
 			if seen and not bool(d.get("raised", false)):
 				d["raised"] = true                              # 0.7.53.11: caught in the light – the guards come
-				_say_toast("Caught in the searchlight: they know you are here!", 2.5)
+				_say_to(s, "Caught in the searchlight: they know you are here!", 2.5)
 				Audio.play("warn", "searchlight", -2.0)
 				for f in combat.alive():
 					combat._wake(f)
-		elif kd == "steam" and not _haz_t.has(i) and (d["pos"] as Vector2).distance_to(pilot.pos) < 16.0 \
+		elif kd == "steam" and not _haz_t.has(i) and (d["pos"] as Vector2).distance_to(pp) < 16.0 \
 				and fposmod(Time.get_ticks_msec() * 0.001 + float(int(d.get("seed", 0)) % 9), 4.0) < 1.2:
 			_haz_t[i] = 1.0
 			if not Commands.suit_god:
-				combat._hurt_pilot(12.0, "kinetic")
-			combat.floaters.append({"pos": pilot.pos + Vector2(0, -40), "text": "steam!", "col": Color(0.9, 0.95, 1.0), "t": 0.0})
-		elif kd == "loose_rock" and String(d["state"]) == "shut" and (d["pos"] as Vector2).distance_to(pilot.pos) < 14.0 and not combat.sneaking:
+				_hurt_as(s, 12.0, "kinetic")
+			combat.floaters.append({"pos": pp + Vector2(0, -40), "text": "steam!", "col": Color(0.9, 0.95, 1.0), "t": 0.0})
+		elif kd == "loose_rock" and String(d["state"]) == "shut" and (d["pos"] as Vector2).distance_to(pp) < 14.0 and not combat.sneaking_of(s):
 			d["state"] = "falling"                         # 0.7.53.7: a crack, dust – then the rock comes down
 			_fuses[i] = 0.7
-			_say_toast("A crack overhead. Move!", 1.2)
+			_say_to(s, "A crack overhead. Move!", 1.2)
 			Audio.play("warn", "rockfall", -4.0)
-		elif kd == "gas" and (d["pos"] as Vector2).distance_to(pilot.pos) < float(d.get("r", 30.0)):
-			if GameState.gear.helmet != "always" and GameState.gear.combat_t <= 0.0 and not Commands.suit_god:
-				combat._hurt_pilot(4.0 * delta, "kinetic")
-				if not _haz_t.has(-1 - i):
-					_haz_t[-1 - i] = 4.0
-					_say_toast("Toxic gas! Put your helmet on (Gear: helmet always) or get out of it.", 2.5)
+		elif kd == "gas" and (d["pos"] as Vector2).distance_to(pp) < float(d.get("r", 30.0)):
+			var gq = GameState.gear_of(s)
+			if gq.helmet != "always" and gq.combat_t <= 0.0 and not Commands.suit_god:
+				_hurt_as(s, 4.0 * delta, "kinetic")
+				var gk := -1 - i - 100000 * s
+				if not _haz_t.has(gk):
+					_haz_t[gk] = 4.0
+					_say_to(s, "Toxic gas! Put your helmet on (Gear: helmet always) or get out of it.", 2.5)
 
 
 ## 0.7.53.9 (Luz): the reactor restarted – it spins up, the lights come back on level by level.
@@ -1576,7 +1635,7 @@ func _socket_step(delta: float) -> void:
 	var sd: Dictionary = map.explore[_socket] if _socket < map.explore.size() else {}
 	var g = GameState.gear
 	var mx := float(g.totals()["energy"])
-	var stay: bool = not sd.is_empty() and Input.is_action_pressed("interact") and String(zone.get("kind", "")) == "socket" \
+	var stay: bool = not sd.is_empty() and _holds("interact") and String(zone.get("kind", "")) == "socket" \
 		and int(zone.get("i", -1)) == _socket and input_enabled and not _collapsed
 	if socket_hold_test:
 		stay = not sd.is_empty() and not _collapsed
@@ -1720,21 +1779,29 @@ func _cams_step(delta: float) -> void:
 			if String(d["state"]) != "on" or combat.emp_t > 0.0 or Commands.suit_god:
 				continue
 			var eye: Vector2 = (d["pos"] as Vector2) + Vector2(0, 4)
-			var rel := pilot.pos - eye
-			var flat := Vector2(rel.x, rel.y / 0.75)
-			var seen := flat.length() < ExploreNode.CAM_REACH and absf(angle_difference(flat.angle(), float(d.get("ang", PI * 0.5)))) < ExploreNode.CAM_HALF \
-				and not combat.pilot_hidden() and not bool(combat.sight(eye + Vector2(0, 10), pilot.pos)["blocked"])
+			var seen := false
+			var who := 0
+			for s in _pilots_up():                          # (either of you in its view)
+				var pq: Vector2 = pilot_w(s).pos
+				var rel := pq - eye
+				var flat := Vector2(rel.x, rel.y / 0.75)
+				if flat.length() < ExploreNode.CAM_REACH and absf(angle_difference(flat.angle(), float(d.get("ang", PI * 0.5)))) < ExploreNode.CAM_HALF \
+						and not combat.hidden_of(s) and not bool(combat.sight(eye + Vector2(0, 10), pq)["blocked"]):
+					if not seen:
+						who = s
+					seen = true
 			d["notice"] = clampf(float(d.get("notice", 0.0)) + (delta / CAM_NOTICE if seen else -delta * 0.5), 0.0, 1.0)
 			if float(d["notice"]) >= 1.0 and not bool(d.get("raised", false)):
 				d["raised"] = true
-				_say_toast("A camera has you. The alarm!", 2.5)
+				_say_to(who, "A camera has you. The alarm!", 2.5)
 				Audio.play("warn", "camera alarm", -2.0)
 				raise_alarm()
 		elif kd == "glyph_trap":
-			if String(d.get("state", "")) != "spent" and (d["pos"] as Vector2).distance_to(pilot.pos) < 10.0:
-				d["state"] = "spent"                       # 0.7.53.23 (Luz): a glyph flares under your feet
-				_say_toast("A glyph flares under your feet: a wave of force!", 2.5)
-				_dark_wave(d["pos"])
+			for s in _pilots_up():
+				if String(d.get("state", "")) != "spent" and (d["pos"] as Vector2).distance_to(pilot_w(s).pos) < 10.0:
+					d["state"] = "spent"                       # 0.7.53.23 (Luz): a glyph flares under your feet
+					_say_to(s, "A glyph flares under your feet: a wave of force!", 2.5)
+					_dark_wave(d["pos"])
 		elif kd == "laser_gate":
 			if beams_off and String(d["state"]) == "on":
 				d["state"] = "off"
@@ -1743,11 +1810,13 @@ func _cams_step(delta: float) -> void:
 			var a: Vector2 = d["pos"]
 			var ln := float(d.get("len", 3)) * GroundMap.TILE
 			var b: Vector2 = a + (Vector2(0, ln) if bool(d.get("vertical", true)) else Vector2(ln, 0))
-			if Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos) < 4.0:
-				d["state"] = "tripped"
-				_say_toast("You broke a light barrier. The alarm!", 2.5)
-				Audio.play("warn", "light barrier", -2.0)
-				raise_alarm()
+			for s in _pilots_up():
+				var pq2: Vector2 = pilot_w(s).pos
+				if String(d["state"]) == "on" and Geometry2D.get_closest_point_to_segment(pq2, a, b).distance_to(pq2) < 4.0:
+					d["state"] = "tripped"
+					_say_to(s, "You broke a light barrier. The alarm!", 2.5)
+					Audio.play("warn", "light barrier", -2.0)
+					raise_alarm()
 
 
 ## 53c (Luz): the rescued prisoner – a walker that follows you (along a path round walls), hurt by blasts.
@@ -1886,8 +1955,9 @@ func _fuses_step(delta: float) -> void:
 			"loose_rock":
 				d["state"] = "fallen"
 				combat.booms.append({"pos": d["pos"], "r": 22.0, "t": 0.0, "col": Color(0.6, 0.55, 0.5)})
-				if (d["pos"] as Vector2).distance_to(pilot.pos) < 18.0 and not Commands.suit_god:
-					combat._hurt_pilot(26.0, "kinetic")
+				for s in _pilots_up():
+					if (d["pos"] as Vector2).distance_to(pilot_w(s).pos) < 18.0 and not Commands.suit_god:
+						_hurt_as(s, 26.0, "kinetic")
 				for f in combat.alive():
 					if (f["w"] as Walker).pos.distance_to(d["pos"]) < 18.0:
 						combat._hurt_foe(f, 26.0, "kinetic")
@@ -2073,16 +2143,21 @@ func _wires_step(delta: float) -> void:
 		var a: Vector2 = d["pos"]
 		var ln := float(d.get("len", 3)) * GroundMap.TILE
 		var b: Vector2 = a + (Vector2(0, ln) if bool(d.get("vertical", true)) else Vector2(ln, 0))
-		var near_d := Geometry2D.get_closest_point_to_segment(pilot.pos, a, b).distance_to(pilot.pos)
-		d["near"] = near_d < GroundMap.TILE * 3.0           # (drawn brighter, a red glint, when you come close)
-		if near_d < GroundMap.TILE * 2.5 and not bool(d.get("warned", false)):
-			d["warned"] = true                          # 0.8.58.6 (Luz): a word before you walk into it
-			_say_toast("A tripwire ahead! Sneak over it (%s) or disarm it (%s)." % [Keybinds.key_text("foot_sneak"), Keybinds.key_text("interact")], 3.5)
-		if near_d < 4.0 and not combat.sneaking:
-			d["state"] = "fired"
-			_wires_t[i] = 0.6
-			_say_toast("Click! A tripwire!", 1.5)
-			Audio.play("warn", "tripwire", -2.0)
+		var near := false
+		for s in _pilots_up():                              # (either of you: each is warned in their own words, each can walk into it)
+			var pq: Vector2 = pilot_w(s).pos
+			var near_d := Geometry2D.get_closest_point_to_segment(pq, a, b).distance_to(pq)
+			near = near or near_d < GroundMap.TILE * 3.0
+			var wk := "warned" if s == 0 else "warned2"
+			if near_d < GroundMap.TILE * 2.5 and not bool(d.get(wk, false)):
+				d[wk] = true                            # 0.8.58.6 (Luz): a word before you walk into it
+				_say_to(s, "A tripwire ahead! Sneak over it (%s) or disarm it (%s)." % [Players.key_text(s, "foot_sneak"), Players.key_text(s, "interact")], 3.5)
+			if near_d < 4.0 and not combat.sneaking_of(s) and String(d["state"]) == "shut":
+				d["state"] = "fired"
+				_wires_t[i] = 0.6
+				_say_to(s, "Click! A tripwire!", 1.5)
+				Audio.play("warn", "tripwire", -2.0)
+		d["near"] = near                                    # (drawn brighter, a red glint, when one of you comes close)
 
 
 ## Package 58, part 6: the foes of the hangar's simulation (kinds "kind@tier"), set before go_level("sim").
@@ -2115,10 +2190,35 @@ var _col_intro: Dictionary = {}         # part 4: the entrance before a fight: {
 var _col_fight: Dictionary = {}         # … the fight: {state: count / fight / over, t, won}
 var col_lost := false                   # … you are out of the fight (shot down in the hologram, or you gave up)
 # split screen, stage 1: a match for two
-var col_down := false                   # you are down and the second player can bring you back
+var col_down := false                   # you are down and the other pilot can bring you back (the use key held beside you)
 var col_down_t := 0.0
-var col_revive_k := 0.0                 # how far the second player is with it (0 … 1)
+## (Luz, 25 Nov 2026) the second player is a pilot as you are. `seat_now` says whose turn it is while this frame's
+## work runs: 0 the first player (always, but between seat_to(1) and seat_to(0)). In the second player's turn
+## `pilot`, `zone`, `_seat` and the vars in `_side` are theirs, GameState's pilot, gear and purse are theirs, the
+## fight's own vars are theirs (GroundCombat.swap_vars()) and the controller asked is theirs: so the code written for
+## "the pilot" runs for them as it is.
+var seat_now := 0
+var _side := {"col_lost": false, "col_down": false, "col_down_t": 0.0, "_revive": -1.0, "_tab_held": -1.0, "_team_held": -1.0, "_drone_held": [-1.0, -1.0],
+	"_wheel_stick": Vector2.ZERO, "_col_vel": Vector2.ZERO, "_socket": -1}
+var _pad_keep: Array = []
+var _down_shown := false                # the line "you are down" stands at the foot of your half
+var two_busy := false                   # a window of the second player's own is up over their half (main keeps it): they stand
+var _two_busy_t := 0.0                  # … and a moment after it shuts (the button that shut it is not a step or a dodge)
+var combat_hud2: CombatHud = null       # the second player's fight display, the same class as yours, over their half
 var _split := {}                        # the picture in two halves while it is ({} one picture)
+var two: Walker = null                  # stage 3: the second player's figure (in their own turn: the first player's, see seat_to())
+var two_zone: Dictionary = {}           # … what they stand at
+var two_seat: Dictionary = {}           # … the seat they sit on ({} none)
+var _two_stand := Vector2.ZERO
+var two_acting := false                 # … a window of their own is up: they stand in the pilot's place until it shuts
+var _two_idle := 0
+## What the second player does in their own name, with their own credits, Coins and gear (a window opens; they stand
+## in the pilot's place while it is up). Everything else they use as one of the two of you: a door takes both, a
+## table seats both.
+const TWO_OWN := ["service", "souvenir", "gas_exchange", "ctr_cashier", "ctr_slot", "ctr_bets", "crew", "charge"]
+var _two_warned := {}
+var _log2: RichTextLabel = null         # the second player's own list of what happens (bottom right of their half, as yours)
+var _log2_buf: Array = []               # … its lines, kept while the picture is one
 var _col_label: Label = null            # … a word across the picture
 var _col_note: Label = null             # part 5: … and a line at its foot (you are out, your team fights on)
 var _col_vel := Vector2.ZERO            # … how you slide on ice
@@ -3055,6 +3155,7 @@ func _apply_day(d: float, force: bool = false) -> void:
 
 
 func _process(delta: float) -> void:
+	_two_keep(delta)                                     # split screen, stage 3: the second player is there, the picture in two
 	if _col_white > 0.0 or (_col_cover != null and _col_walk.is_empty() and int(_col_intro.get("phase", -1)) != 5):
 		_col_white_step(delta)                           # package 62a, part 3: out of the white into the arena
 	if not _col_fight.is_empty():
@@ -3117,23 +3218,11 @@ func _process(delta: float) -> void:
 		_stair_step(delta)                               # package 64e: up or down the stairs, by yourself
 	elif not _col_intro.is_empty():
 		_col_intro_step(delta)                           # … part 4: the entrance before a fight
-	elif input_enabled and talk == null and _lift_menu == null and minigame == null and not background_locked():
-		var dir := Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down")
+	elif input_enabled and not col_down and talk == null and _lift_menu == null and minigame == null and not background_locked():
+		var dir: Vector2 = Players.move(0)                  # (split screen: your own device only)
 		if combat != null and combat.wheel_open:
 			dir = Vector2.ZERO                              # (Luz) the command wheel open: the sticks point into it, you stand
-		if not _seat.is_empty():
-			if dir.length() > 0.3:
-				_stand_up()
-		else:
-			var run := (Input.is_action_pressed("foot_run") or Pad.run_held())
-			if combat != null and combat.sneaking:
-				run = false                                 # 0.7.52.21: sneaking – half speed, no running
-			if level == "zcolvr":
-				dir = _col_move(dir, delta)                 # package 62a, part 5: ice you slide on, undergrowth that holds you back
-			if level == "zcolsv" and survivor != null and is_instance_valid(survivor):
-				pilot.step(survivor.move(dir), delta, survivor.speed())      # … part 7: Survivor: one pace for all, the dodge, what lies on the ground
-			elif combat == null or not combat.dodging():
-				pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run) * (0.5 if combat != null and combat.sneaking else 1.0) * _wade())      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
+		_pilot_walk(dir, delta)
 	else:
 		pilot.moving = false
 	if combat != null and not _collapsed and _touch < 0.0 and _ride.is_empty():
@@ -3146,7 +3235,7 @@ func _process(delta: float) -> void:
 		_hostage_step(delta)
 		_cams_step(delta)
 		_reinforce_step(delta)
-		combat.step(delta * (WHEEL_SLOW if combat.wheel_open else 1.0), Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down") if input_enabled and not background_locked() and not combat.wheel_open else Vector2.ZERO)     # (Luz) the wheel open: the sticks point into it, nobody walks
+		combat.step(delta * (WHEEL_SLOW if (combat.wheel_open or (combat.two_in and bool(combat._other["wheel_open"]))) else 1.0), Vector2.ZERO)     # (Luz) the wheel open: the sticks point into it, nobody walks
 		_team_keys(delta)
 		if _tab_held >= 0.0:
 			var was := _tab_held
@@ -3165,6 +3254,10 @@ func _process(delta: float) -> void:
 		var helm: bool = pilot_look()["helmet"]
 		if helm != bool(pilot.look.get("helmet", false)):
 			pilot.look = pilot_look()                    # 0.7.51.10: the helmet closes for the fight
+		if combat.all_down:                              # split screen: both of you are down: you come to in the clinic
+			combat.all_down = false
+			_both_down()
+			return
 	_doors(delta)
 	if level == "zcasino":
 		_ctr_doors(delta)
@@ -3240,8 +3333,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			talk.close()
 		return
-	if not input_enabled or pilot == null:
+	if not input_enabled or pilot == null or col_down:
 		return
+	if Players.split and (event is InputEventKey or event is InputEventMouseButton) and not Players.on_keys(0):
+		return                                         # (split screen: the keyboard is the second player's: asked in their own step)
 	if combat != null and _ride.is_empty() and _touch < 0.0 and not _collapsed:
 		if event.is_action_pressed("foot_tactics", false, true):
 			get_viewport().set_input_as_handled()
@@ -3280,18 +3375,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if event.is_action_released("foot_team", false) and _team_held >= 0.0:
 			get_viewport().set_input_as_handled()
-			if combat.wheel_open:
-				var pick := GroundCombat.wheel_pick(wheel_centre(), wheel_point(), 46.0, combat.wheel_fields())
-				combat.wheel_open = false
-				_wheel_stick = Vector2.ZERO
-				if pick != "":
-					var who = null if combat.team_sel >= combat.allies.size() else combat.allies[combat.team_sel]
-					_say_toast(combat.order(who, pick), 2.5)
-			else:
-				combat.team_sel = (combat.team_sel + 1) % (combat.allies.size() + 1)
-				if combat.team_sel < combat.allies.size() and combat.allies[combat.team_sel].has("p2"):
-					combat.team_sel = (combat.team_sel + 1) % (combat.allies.size() + 1)      # (split screen: nobody you give orders to)
-				_say_toast("Orders to: %s" % ("all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])), 1.5)
+			_team_release()
 			_team_held = -1.0
 			return
 		# 0.7.52.20: the use key held beside a member down brings them back
@@ -3334,7 +3418,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if event.is_action_pressed("foot_dodge", false, true):
 			get_viewport().set_input_as_handled()
-			combat.dodge(Input.get_vector("walk_left", "walk_right", "walk_up", "walk_down"))
+			combat.dodge(Players.move(0))
 			return
 		if event.is_action_pressed("foot_swap", false, true):
 			get_viewport().set_input_as_handled()
@@ -3365,7 +3449,159 @@ func mouse_art() -> Vector2:
 	if Pad.using_pad and pilot != null and is_instance_valid(pilot):
 		# package 80: with the controller the "mouse" is ahead of you along the right stick (the grenade's aim)
 		return Pad.aim_point(pilot.pos, [Vector2(0, 1), Vector2(0, -1), Vector2(-1, 0), Vector2(1, 0)][clampi(pilot.dir, 0, 3)])
-	return (get_viewport().get_mouse_position() - _world.position) / (GroundMap.SCALE * zoom)
+	return _art_at(get_viewport().get_mouse_position())
+
+
+## Where a point of the screen is on the map (art px), in the half of the pilot whose turn it is.
+func _art_at(p: Vector2) -> Vector2:
+	if seat_now == 1 and not _split.is_empty():
+		var fb: Control = _split["fb"]
+		return (p - fb.position - fb.size * 0.5 + (_split["cam"] as Camera2D).position - _world.position) / (GroundMap.SCALE * zoom)
+	return (p - _world.position) / (GroundMap.SCALE * zoom)
+
+
+## … and where a point of the map is in that half (in the half's own coordinates).
+func _half_pos(art: Vector2) -> Vector2:
+	var q: Vector2 = _world.position + art * GroundMap.SCALE * zoom
+	if seat_now == 1 and not _split.is_empty():
+		return q - (_split["cam"] as Camera2D).position + (_split["fb"] as Control).size * 0.5
+	return q
+
+
+# ---------------------------------------------------------------- split screen: whose turn it is
+
+## Whose turn it is changes: for the code that runs until it changes back, "the pilot" is that player: their figure,
+## where they stand and sit, what they hold down, their gear and purse, their part of the fight, their controller.
+## Always in pairs within one piece of work: seat_to(1) … seat_to(0). (A window of the second player's own keeps
+## GameState on them in both turns, as before.)
+func seat_to(s: int) -> void:
+	if s == seat_now or two == null or not is_instance_valid(two) or pilot == null:
+		return
+	seat_now = s
+	var w: Walker = pilot
+	pilot = two
+	two = w
+	var z: Dictionary = zone
+	zone = two_zone
+	two_zone = z
+	var st: Dictionary = _seat
+	_seat = two_seat
+	two_seat = st
+	var sp: Vector2 = _stand_pos
+	_stand_pos = _two_stand
+	_two_stand = sp
+	for k in _side:
+		var val = get(k)
+		set(k, _side[k])
+		_side[k] = val
+	if combat != null and combat.two_in:
+		combat.swap_vars()
+	GameState.act_as(1 if (s == 1 or two_acting) else 0, true)
+	if s == 1:
+		_pad_keep = [Pad.device, Pad.using_pad]
+		Pad.device = Players.pad_of(1)
+		Pad.using_pad = Players.pad_of(1) >= 0
+	elif not _pad_keep.is_empty():
+		Pad.device = int(_pad_keep[0])
+		Pad.using_pad = bool(_pad_keep[1])
+		_pad_keep = []
+
+
+## The figure of pilot s in this place (null: none).
+func pilot_w(s: int) -> Walker:
+	if s == seat_now:
+		return pilot
+	return two if (two != null and is_instance_valid(two) and combat != null and combat.two_in) else null
+
+
+## Is pilot s down (or out of the hologram's fight)?
+func down_of(s: int) -> bool:
+	if s == seat_now:
+		return col_down or (String(level) == "zcolvr" and col_lost)
+	return bool(_side["col_down"]) or (String(level) == "zcolvr" and bool(_side["col_lost"]))
+
+
+## The pilots a danger of this place can catch: those here and on their feet, by their seats.
+func _pilots_up() -> Array:
+	var out: Array = []
+	for s in (combat.seats() if combat != null else [0]):
+		if pilot_w(s) != null and not down_of(s):
+			out.append(s)
+	return out
+
+
+## A word for pilot s (into their own list).
+func _say_to(s: int, t: String, secs: float = 4.0) -> void:
+	if combat != null:
+		combat.with_seat(s, _say_toast.bind(t, secs))
+	else:
+		_say_toast(t, secs)
+
+
+## A danger of the place hurts pilot s.
+func _hurt_as(s: int, dmg: float, dtype: String) -> void:
+	combat.with_seat(s, Callable(combat, "_hurt_pilot").bind(dmg, dtype))
+
+
+## The key or button of the pilot whose turn it is, in words.
+func key_of(action: String) -> String:
+	return Players.key_text(seat_now, action)
+
+
+## Is that key held by the pilot whose turn it is?
+func _holds(action: String) -> bool:
+	return Players.pressed(seat_now, action) if Players.split else Input.is_action_pressed(action)
+
+
+## Does the pilot whose turn it is run?
+func runs() -> bool:
+	if Players.split:
+		if Players.on_keys(seat_now):
+			return Players.pressed(seat_now, "foot_run")
+		return Pad.run_full and Players.move(seat_now).length() > 0.92
+	return Input.is_action_pressed("foot_run") or Pad.run_held()
+
+
+## Is the pilot whose turn it is on their feet and in the fight?
+func pilot_up() -> bool:
+	return not col_down and not _collapsed and not (String(level) == "zcolvr" and col_lost)
+
+
+## … and the other pilot? (False without one.)
+func partner_up() -> bool:
+	return two != null and is_instance_valid(two) and combat != null and combat.two_in and not bool(_side["col_down"]) and not _collapsed \
+		and not (String(level) == "zcolvr" and bool(_side["col_lost"]))
+
+
+## The pilot's step from where their device points (for whoever's turn it is).
+func _pilot_walk(dir: Vector2, delta: float) -> void:
+	if not _seat.is_empty():
+		if dir.length() > 0.3:
+			_stand_up()
+		return
+	var run := runs()
+	if combat != null and combat.sneaking:
+		run = false                                 # 0.7.52.21: sneaking – half speed, no running
+	if level == "zcolvr":
+		dir = _col_move(dir, delta)                 # package 62a, part 5: ice you slide on, undergrowth that holds you back
+	if level == "zcolsv" and survivor != null and is_instance_valid(survivor):
+		pilot.step(survivor.move(dir), delta, survivor.speed())      # … part 7: Survivor: one pace for all, the dodge, what lies on the ground
+	elif combat == null or not combat.dodging():
+		pilot.step(dir, delta, (1.6 if run else 1.0) * GameState.gear.speed_mult(run) * (0.5 if combat != null and combat.sneaking else 1.0) * _wade())      # 0.7.51.3: the suit's weight, a stimulant, a sprint booster
+
+
+## The team key let go: the wheel's order is given, or (a tap) whom the orders go to is the next one.
+func _team_release() -> void:
+	if combat.wheel_open:
+		var pick := GroundCombat.wheel_pick(wheel_centre(), wheel_point(), 46.0, combat.wheel_fields())
+		combat.wheel_open = false
+		_wheel_stick = Vector2.ZERO
+		if pick != "":
+			var who = null if combat.team_sel >= combat.allies.size() else combat.allies[combat.team_sel]
+			_say_toast(combat.order(who, pick), 2.5)
+	else:
+		combat.team_sel = (combat.team_sel + 1) % (combat.allies.size() + 1)
+		_say_toast("Orders to: %s" % ("all" if combat.team_sel >= combat.allies.size() else String(combat.allies[combat.team_sel]["name"])), 1.5)
 
 
 ## 0.7.51.3: a belt place on its number key.
@@ -5272,7 +5508,7 @@ func wheel_point() -> Vector2:
 		if st.length() > 0.45:
 			_wheel_stick = st                            # the last way it was pushed holds until the wheel closes
 		return c + _wheel_stick.normalized() * 110.0 if _wheel_stick != Vector2.ZERO else c
-	return get_viewport().get_mouse_position()
+	return get_viewport().get_mouse_position() - ((_split["fb"] as Control).position if (seat_now == 1 and not _split.is_empty()) else Vector2.ZERO)
 
 
 var _wheel_stick := Vector2.ZERO
@@ -5286,7 +5522,7 @@ func _team_keys(delta: float) -> void:
 			Audio.play("ui_open", "command wheel", -8.0)
 	if _revive >= 0.0:
 		var a = combat.reviving
-		if a == null or not Input.is_action_pressed("interact") or combat.revive_near() != a:
+		if a == null or not _holds("interact") or combat.revive_near() != a:
 			_revive = -1.0
 			combat.reviving = null
 			combat.revive_k = 0.0
@@ -5303,6 +5539,8 @@ func _team_keys(delta: float) -> void:
 
 ## Where the command wheel sits on the screen: round you.
 func wheel_centre() -> Vector2:
+	if seat_now == 1 and not _split.is_empty():
+		return _half_pos(pilot.pos) + Vector2(0, -40)      # (the second player's wheel: in their half)
 	return pilot.get_global_transform_with_canvas().origin + Vector2(0, -40)
 
 
@@ -6305,11 +6543,7 @@ func _col_fight_start() -> void:
 			al["stations"] = map.get_meta("col_stations", [])
 			al["station_cool"] = ColosseumData.STATION_COOL
 			ti += 1
-	col_down = false
-	col_revive_k = 0.0
-	if Players.split and GameState.has_pilot2():         # split screen, stage 1: the second player fights beside you, in a half of their own
-		combat.spawn_p2(true)
-		_split_open()
+	col_down = false                                     # (split screen: the second player comes in as a pilot of the fight, see _two_keep())
 	var hz0: Array = map.get_meta("col_hazards", [])
 	if not hz0.is_empty():
 		_say_toast("%s, %s. %s" % [String(map.get_meta("col_vr_name", "")), String({"open": "an open field", "canyon": "a canyon", "fortress": "a fortress", "lanes": "three lanes"}.get(
@@ -6362,11 +6596,7 @@ func _col_fight_step(delta: float) -> void:
 			if t > 0.9:
 				_col_big("")
 			_col_hazard_step(delta)
-			if col_down:                                      # split screen: you lie there until the second player brings you back
-				col_down_t += delta
-				if combat == null or not combat.p2_up() or col_down_t >= GroundCombat.CrewData.DOWN_TIME:
-					col_down = false                          # (nobody left to do it, or too late: out)
-					col_lost = true
+			_col_down_step(delta)                         # split screen: who is down lies there until the other brings them back
 			if combat != null and combat.alive().is_empty():
 				_col_fight_over(true)
 			elif col_down:
@@ -6384,8 +6614,8 @@ func _col_fight_step(delta: float) -> void:
 					pilot.down = true
 					pilot.moving = false
 					pilot.aim = Vector2.INF
-					if combat.p2_up():
-						_col_line("You are out. %s fights on." % String(combat.p2()["name"]))
+					if partner_up():
+						_col_line("You are out. %s fights on." % String(combat.partner()["name"]))
 					else:
 						_col_line("You are out. Your team fights on.      [%s] end it here: the rest is worked out" % Keybinds.key_text("interact"))
 				else:
@@ -6400,7 +6630,7 @@ func _col_fight_step(delta: float) -> void:
 				_col_fight_over(false)
 			else:
 				story_cam = (up[0]["w"] as Walker).pos            # the picture stays with your team
-				if combat.p2_up():
+				if partner_up():
 					pass                                         # (split screen: the second player plays it out)
 				elif t > 0.6 and (Input.is_action_just_pressed("interact") or Input.is_action_just_pressed("ui_accept")):
 					_col_fight_sim()
@@ -6526,6 +6756,7 @@ func _col_fight_over(won: bool) -> void:
 	_col_fight = {"state": "over", "t": 0.0, "won": won}
 	col_lost = not won
 	col_down = false
+	_side["col_down"] = false
 	_split_close()
 	input_enabled = false
 	pilot.moving = false
@@ -6538,43 +6769,407 @@ func _col_fight_over(won: bool) -> void:
 
 # ---------------------------------------------------------------- split screen, stage 1: a match for two
 
-## May the second player act right now? (While the fight runs: not in the count, not once it is over.)
+## May the second player act right now? (In a match: while the fight runs, not in the count, not once it is over.
+## Elsewhere: whenever the place is not in a scene of its own and no window is up.)
 func p2_may_act() -> bool:
-	return not _col_fight.is_empty() and String(_col_fight.get("state", "")) in ["fight", "watch"] and talk == null and minigame == null
+	if talk != null or minigame != null or _lift_menu != null:
+		return false
+	if two_busy or _two_busy_t > 0.0:
+		return false
+	if not _col_fight.is_empty():
+		return String(_col_fight.get("state", "")) in ["fight", "watch"]
+	return wants_two() and not _two_scene()
+
+
+# ---------------------------------------------------------------- split screen, stage 3: two on the ground everywhere
+
+## Is the second player with you in this place? (Survivor has its own second figure in one picture.)
+func wants_two() -> bool:
+	return Players.split and GameState.has_pilot2() and String(level) != "zcolsv" and pilot != null and map != null
+
+
+## A scene the game plays by itself, or a ride: one picture, the second player waits.
+func _two_scene() -> bool:
+	if String(level) == "zcolvr":
+		return _col_fight.is_empty() or String(_col_fight.get("state", "")) == "over"
+	return story_cam != Vector2.INF or not _ride.is_empty() or not _stair.is_empty() or not _clift.is_empty() or not _col_walk.is_empty() or not _col_intro.is_empty() \
+		or not _col_scene.is_empty() or _collapsed or _sleeping or _touch >= 0.0 or not pilot.visible
+
+
+## The second player's figure in this place (null: none).
+func p2_walker() -> Walker:
+	return two if two != null and is_instance_valid(two) else null
+
+
+## The second player presses their use key: the seat, the door, the table or the counter they stand at. A counter
+## of their own (TWO_OWN) is theirs alone: they step into the pilot's place until its window shuts.
+func two_use() -> bool:
+	if two == null or not is_instance_valid(two) or two_acting:
+		return false
+	if not two_seat.is_empty():
+		_two_stand_up()
+		return true
+	var z: Dictionary = two_zone
+	if z.is_empty() or String(z.get("closed", "")) != "":
+		return false
+	var kind := String(z.get("kind", ""))
+	if kind == "seat":
+		_two_stand = two.pos
+		two_seat = z
+		two.pos = z["seat"]
+		two.position = two.pos * GroundMap.SCALE
+		two.dir = int(z.get("dir", 0))
+		two.sitting = true
+		two.moving = false
+		return true
+	if kind == "story":
+		two_say("The story's talks are the first player's for now.")
+		return false
+	var own: bool = kind in TWO_OWN
+	if own:
+		GameState.act_as(1)
+		Players.act_seat = 1
+		Pad._pick_device()
+		two_acting = true
+		_two_idle = 0
+	var keep: Dictionary = zone
+	zone = z
+	var ok: bool = use()
+	if is_instance_valid(self) and zone == z:
+		zone = keep
+	return ok
+
+
+## Their window is shut: the first player is the pilot again.
+func _two_done() -> void:
+	two_acting = false
+	_two_idle = 0
+	GameState.act_as(0)
+	Players.act_seat = 0
+	Pad._pick_device()
+	if two != null and is_instance_valid(two):
+		two.look = _two_look()                             # (what they bought and put on shows)
+		two.queue_redraw()
+
+
+func _two_stand_up() -> void:
+	two_seat = {}
+	if two != null and is_instance_valid(two):
+		two.sitting = false
+		two.pos = _two_stand
+		two.position = two.pos * GroundMap.SCALE
+
+
+## What their use key does where they stand, in words (their key, not yours).
+func two_prompt() -> String:
+	if two_acting or two_zone.is_empty():
+		return ""
+	var key := _split_key("interact")
+	if String(two_zone.get("kind", "")) == "seat":
+		return ("[%s] Stand up" % key) if not two_seat.is_empty() else "[%s] %s" % [key, String(two_zone.get("title", "Sit down"))]
+	return _prompt_text(two_zone).replace("[%s]" % Keybinds.key_text("interact"), "[%s]" % key).replace("[hold %s]" % Keybinds.key_text("interact"), "[hold %s]" % key)
+
+
+## A place of their belt on their own key: what your key does with yours (a medkit, a cell, a stimulant …), done in
+## their name with what they carry.
+func two_belt(n: int) -> void:
+	if two == null or not is_instance_valid(two) or two_acting:
+		return
+	var g2 = GameState.gear_of(1)
+	var b = g2.belt[n] if n < g2.belt.size() else {}
+	if b is Dictionary and String((b as Dictionary).get("id", "")).begins_with("tl_"):
+		two_say("The tools on the belt work for the first player only for now.")
+		return
+	var keep: Dictionary = zone
+	GameState.act_as(1)
+	zone = two_zone
+	use_belt(n)
+	zone = keep
+	GameState.act_as(0)
+
+
+## The suit outside, for them as for you: energy, air, what gets through, the warnings.
+func _two_env(delta: float, scene: bool) -> void:
+	var h2 = _split.get("suit2")
+	var ind: bool = env.is_empty() or String(two_zone.get("kind", "")) in ["service", "crew", "seat", "jukebox"]
+	if h2 != null and is_instance_valid(h2):
+		h2.env = env
+		h2.indoors = ind
+	if env.is_empty() or ind or scene or _touch >= 0.0 or not _ride.is_empty() or _collapsed or two_acting:
+		if h2 != null and is_instance_valid(h2):
+			h2.exposure = 0.0
+		return
+	var g2 = GameState.gear_of(1)
+	var h0: float = g2.health
+	var mv2: Vector2 = Players.move(1)
+	var r: Dictionary = g2.env_step(delta, env, (mv2.length() > 0.85) if not Players.on_keys(1) else Players.pressed(1, "foot_run"))
+	if Commands.suit_god:
+		g2.health = h0
+	if h2 != null and is_instance_valid(h2):
+		h2.exposure = float(r["exposure"])
+	var t: Dictionary = g2.totals()
+	for wq in [["energy", g2.energy / maxf(float(t["energy"]), 1.0), "Suit energy low: find a supply point or use an energy cell."],
+			["oxygen", g2.oxygen / maxf(float(t["oxygen"]), 1.0) if not bool(env.get("breathable", true)) else 1.0, "Oxygen low: back to the drone, a supply point or a cartridge."],
+			["health", g2.health / ChibiArt.GearData.HEALTH, "You are badly hurt: a medkit, or get under a roof."]]:
+		var kq := String(wq[0])
+		if float(wq[1]) < 0.25 and not _two_warned.has(kq):
+			_two_warned[kq] = true
+			two_say(String(wq[2]), Color(1.0, 0.6, 0.4))
+			Audio.play("ui_error", "suit warning, second player")
+		elif float(wq[1]) > 0.4:
+			_two_warned.erase(kq)
+	if g2.health <= 0.0:
+		g2.health = 1.0                                    # (not built yet: their collapse and their waking in the clinic)
+
+
+## Their looks on the ground: their own pilot's, in what they wear.
+func _two_look() -> Dictionary:
+	var lk: Dictionary = (GameState.pilot_of(1).get("look", ChibiArt.PilotArt.default_look()) as Dictionary).duplicate()
+	lk["suit"] = ChibiArt.GearData.family(String(GameState.gear_of(1).suit))
+	lk["helmet"] = needs_helmet() or GameState.gear_of(1).helmet == "always" or GameState.gear_of(1).combat_t > 0.0      # (as yours)
+	return lk
+
+
+## Each frame: the second player's figure is there where it should be, walks by their device, and the picture is in
+## two halves while both of you are free to go where you like.
+func _two_keep(delta: float) -> void:
+	_two_busy_t = 0.2 if two_busy else maxf(0.0, _two_busy_t - delta)
+	if two != null and not is_instance_valid(two):
+		two = null
+	if not wants_two():
+		if two != null:
+			if combat != null:
+				combat.two_leave()
+			two.queue_free()
+			two = null
+		return
+	if two == null and _sorted != null and is_instance_valid(_sorted):
+		var at: Vector2 = pilot.pos + Vector2(14.0, 6.0)
+		for off in [Vector2(14, 6), Vector2(-14, 6), Vector2(0, 14), Vector2(0, -14), Vector2(22, 0), Vector2(-22, 0)]:
+			if map.free_at(pilot.pos + off, 4.0):
+				at = pilot.pos + off
+				break
+		two = Walker.new()
+		two.setup(map, _two_look(), at if map.free_at(at, 4.0) else pilot.pos, true)
+		two.stays = true
+		_sorted.add_child(two)
+	if two == null:
+		return
+	if combat != null and not combat.two_in:
+		combat.two_join()                                 # weapons are allowed here: they are a pilot of the fight, as you are
+	if two_acting:                                        # their own window: shut again, and you are the pilot once more
+		var up: bool = talk != null or talk_menu != null or minigame != null or _lift_menu != null or not input_enabled
+		_two_idle = 0 if up else _two_idle + 1
+		if _two_idle >= 3:
+			_two_done()
+	var scene := _two_scene()
+	two.visible = not scene and pilot.visible
+	if combat != null:
+		seat_to(1)
+		var both: bool = _two_fight(delta, scene)          # their own step, by the code that is yours
+		seat_to(0)
+		if both:
+			two_use()                                      # (a door, a table: what takes both of you, outside their turn)
+			return
+	else:
+		two_zone = {}
+		if not scene and p2_may_act():
+			var mv: Vector2 = Players.move(1)
+			var moved := false
+			if not two_seat.is_empty():
+				two_zone = two_seat
+				if mv.length() > 0.3:
+					_two_stand_up()
+				mv = Vector2.ZERO
+			else:
+				two_zone = map.zone_at(two.pos)
+				if String(two_zone.get("kind", "")) == "label":
+					two_zone = {}
+			if Players.just_pressed(1, "interact"):
+				two_use()
+				return
+			for bn in 4:                                    # their belt on their own keys, as yours
+				if Players.just_pressed(1, "foot_belt_%d" % (bn + 1)):
+					two_belt(bn)
+			if mv.length() > 0.15:
+				var run: bool = mv.length() > 0.85 if not Players.on_keys(1) else Players.pressed(1, "foot_run")
+				moved = two.step(mv.limit_length(1.0), delta, (1.6 if run else 1.0) * GameState.gear_of(1).speed_mult(run))
+			if not moved:
+				two.moving = false
+		else:
+			two.moving = false
+	if not _collapsed:
+		GameState.gear_of(1).health_step(delta)           # (their body mends slowly, as yours)
+	_two_env(delta, scene)
+	if scene:
+		_split_close()
+	elif _split.is_empty():
+		_split_open()
+
+
+## The second player's own step where weapons are allowed. It runs in their turn (seat_to(1)): "the pilot" is them,
+## so what stands here is the first player's own code: the walk, the fight's keys, the belt, the use key. Asked from
+## their device each frame, where the first player's keys come in as events. True when their use key is for something
+## that takes both of you (a door, a table): the view does that outside their turn.
+func _two_fight(delta: float, scene: bool) -> bool:
+	zone = _seat if not _seat.is_empty() else map.zone_at(pilot.pos)
+	if String(zone.get("kind", "")) == "label" or scene:
+		zone = _seat
+	var can: bool = not scene and p2_may_act() and not two_acting and not _collapsed and not col_down and not (String(level) == "zcolvr" and col_lost) \
+		and _touch < 0.0 and _ride.is_empty()
+	if not can:
+		pilot.moving = false
+		_tab_held = -1.0
+		_team_held = -1.0
+		_revive = -1.0
+		_drone_held = [-1.0, -1.0]
+		combat.gr_hold = -1
+		combat.wheel_open = false
+		combat.reviving = null
+		combat.revive_k = 0.0
+		return false
+	var dir: Vector2 = Players.move(1)
+	if combat.wheel_open:
+		dir = Vector2.ZERO
+	_pilot_walk(dir, delta)
+	_socket_step(delta)
+	var used := false
+	# the tactical view: a tap switches it (your sight, the target's sight), held: off
+	if Players.just_pressed(1, "foot_tactics"):
+		_tab_held = 0.0
+	if Players.just_released(1, "foot_tactics"):
+		if _tab_held >= 0.0 and _tab_held < TAB_HOLD:
+			combat.cycle_tactics()
+		_tab_held = -1.0
+	if _tab_held >= 0.0:
+		var was := _tab_held
+		_tab_held += delta
+		if was < TAB_HOLD and _tab_held >= TAB_HOLD and combat.tactics != 0:
+			combat.tactics = 0
+			Audio.play("ui_close", "tactical view off", -6.0)
+	if Players.just_pressed(1, "foot_target_near"):
+		combat.nearest_target()
+	if Players.just_pressed(1, "foot_sneak"):
+		_say_toast(combat.toggle_sneak(), 2.5)
+	# the team: a tap picks whom the orders go to, held: the command wheel
+	if Players.just_pressed(1, "foot_team"):
+		if not combat.allies.is_empty():
+			_team_held = 0.0
+		else:
+			_say_toast("Nobody came along: pick your ground team in the Pilot window (Gear).", 2.5)
+	if Players.just_released(1, "foot_team") and _team_held >= 0.0:
+		_team_release()
+		_team_held = -1.0
+	# the use key held beside someone of your side who is down brings them back
+	if Players.just_pressed(1, "interact") and combat.revive_near() != null:
+		_revive = 0.0
+		combat.reviving = combat.revive_near()
+		used = true
+	for di in 2:
+		var act := "foot_drone" if di == 0 else "foot_drone_2"
+		if Players.just_pressed(1, act):
+			if combat.drone_kamikaze_up(di):
+				_drone_held[di] = 0.0
+			else:
+				_say_toast(combat.drone_command(di), 2.0)
+		elif Players.just_released(1, act) and float(_drone_held[di]) >= 0.0:
+			_drone_held[di] = -1.0
+			_say_toast(combat.drone_command(di), 2.0)       # a tap: away at the target
+		if float(_drone_held[di]) >= 0.0:
+			_drone_held[di] = float(_drone_held[di]) + delta
+			if float(_drone_held[di]) >= TAB_HOLD:
+				_drone_held[di] = -1.0
+				var rmsg: String = combat.drone_recall(di)
+				if rmsg != "":
+					_say_toast(rmsg, 2.0)
+	if Players.just_pressed(1, "foot_grenade"):
+		if not combat.grenade_down():
+			_say_toast("No grenade in your grenade places.", 2.0)
+	if Players.just_released(1, "foot_grenade") and combat.gr_hold >= 0:
+		var gmsg: String = combat.grenade_up()
+		if gmsg != "":
+			_say_toast(gmsg, 1.5)
+	if Players.just_pressed(1, "foot_target"):
+		combat.next_target()
+	if Players.just_pressed(1, "foot_dodge"):
+		combat.dodge(Players.move(1))
+	if Players.just_pressed(1, "foot_swap"):
+		_say_toast(combat.swap_weapon(), 2.0)
+	_team_keys(delta)
+	var helm: bool = pilot_look()["helmet"]
+	if helm != bool(pilot.look.get("helmet", false)) or bool(pilot_look().get("arm_up", false)) != bool(pilot.look.get("arm_up", false)):
+		pilot.look = pilot_look()                         # the helmet closes for the fight, the laser arm comes up
+	for n in mini(4, GameState.gear.belt.size()):         # the belt on its own keys
+		if Players.just_pressed(1, "foot_belt_%d" % (n + 1)):
+			var b = GameState.gear.belt[n]
+			var bid := String((b as Dictionary).get("id", "")) if b is Dictionary else ""
+			if bid.begins_with("tl_") and not bid.begins_with("tl_cloak"):
+				_say_toast("The scanner and the torch work for the first player only for now.", 2.5)
+			else:
+				use_belt(n)
+	if Players.just_pressed(1, "interact") and not used:
+		if String(zone.get("kind", "")) in ["col_charge", "charge", "socket"]:
+			use()                                          # (theirs alone, done on the spot: a charging point, a supply point, a socket)
+		elif not zone.is_empty() or not _seat.is_empty():
+			return true
+	return false
+
+
+## Split screen, in the hologram: who is down lies there until the other pilot brings them back, for so long; after
+## that, or with nobody left to do it, they are out.
+func _col_down_step(delta: float) -> void:
+	var limit: float = GroundCombat.CrewData.DOWN_TIME
+	if col_down:
+		col_down_t += delta
+		if combat == null or not partner_up() or col_down_t >= limit:
+			col_down = false
+			col_lost = true
+	if bool(_side["col_down"]):
+		_side["col_down_t"] = float(_side["col_down_t"]) + delta
+		if combat == null or not pilot_up() or float(_side["col_down_t"]) >= limit:
+			_side["col_down"] = false
+			_side["col_lost"] = true
+			two_say("You are out.%s" % ("" if not pilot_up() else "  %s fights on." % GameState.pilot_name.get_slice(" ", 0)), Color(1.0, 0.6, 0.4))
+
+
+## Split screen, outside the hologram: both of you are down. You come to in the clinic, as one who went down alone.
+func _both_down() -> void:
+	col_down = false
+	_side["col_down"] = false
+	pilot.down = false
+	if two != null and is_instance_valid(two):
+		two.down = false
+	GameState.gear_of(1).fall()                           # (their body as the clinic leaves yours)
+	_collapse("fight")
 
 
 ## You are down in the hologram and the second player still stands: you lie there until they bring you back.
 func col_down_start() -> void:
 	col_down = true
 	col_down_t = 0.0
-	col_revive_k = 0.0
-	input_enabled = false
+	_revive = -1.0
 	pilot.down = true
 	pilot.moving = false
 	pilot.aim = Vector2.INF
-	var p2a = combat.p2()
-	_say_toast("You are down: %s can bring you back (%d s)." % [String(p2a["name"]) if p2a != null else "your partner", int(GroundCombat.CrewData.DOWN_TIME)], 3.5)
-	Audio.play("hit_hull", "split screen: the first player is down", -4.0)
+	if combat != null:
+		combat.gr_hold = -1
+		combat.reviving = null
+		combat.revive_k = 0.0
+	var pn = combat.partner() if combat != null else null
+	var who := String(pn["name"]) if pn != null and String(pn["name"]) != "" else "your partner"
+	_say_toast(("You are down: %s can bring you back (%d s)." % [who, int(GroundCombat.CrewData.DOWN_TIME)]) if String(level) == "zcolvr" else "You are down: %s can bring you back." % who, 3.5)
+	Audio.play("hit_hull", "split screen: a pilot is down", -4.0)
 
 
-## The second player holds the use key beside you.
-func col_revive_hold(delta: float) -> void:
-	col_revive_k = clampf(col_revive_k + delta / GroundCombat.CrewData.REVIVE_TIME, 0.0, 1.0)
-	if col_revive_k >= 1.0:
-		col_revive()
-
-
-## Back on your feet with a third of your body.
+## Back on your feet with a third of your body (the other pilot held their use key beside you).
 func col_revive() -> void:
 	if not col_down:
 		return
 	col_down = false
-	col_revive_k = 0.0
-	input_enabled = true
 	pilot.down = false
 	GameState.gear.health = maxf(GameState.gear.health, float(ChibiArt.GearData.HEALTH) * 0.35)
 	_say_toast("You are back on your feet.", 2.0)
-	Audio.play("module_on", "split screen: the first player is back up", -4.0)
+	Audio.play("module_on", "split screen: a pilot is back up", -4.0)
 
 
 func split_open() -> bool:
@@ -6589,7 +7184,7 @@ func _split_half() -> float:
 ## The picture parts in two: the world moves into a viewport of its own for the left half (yours, as it always was),
 ## and a second viewport looks at the same world for the right half, its camera on the second player.
 func _split_open() -> void:
-	if not _split.is_empty() or combat == null or combat.p2() == null:
+	if not _split.is_empty() or p2_walker() == null:
 		return
 	var at := _world.get_index()
 	var fa := SubViewportContainer.new()
@@ -6599,6 +7194,7 @@ func _split_open() -> void:
 	va.transparent_bg = true
 	va.handle_input_locally = false
 	va.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	va.canvas_cull_mask = 1 | 2                             # (what only you see of the fight: your lock brackets, your tactical view)
 	fa.add_child(va)
 	add_child(fa)
 	move_child(fa, at)
@@ -6611,6 +7207,7 @@ func _split_open() -> void:
 	vb.transparent_bg = false
 	vb.handle_input_locally = false
 	vb.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	vb.canvas_cull_mask = 1 | 4                             # (… and what only they see)
 	fb.add_child(vb)
 	add_child(fb)
 	move_child(fb, fa.get_index() + 1)
@@ -6628,8 +7225,68 @@ func _split_open() -> void:
 	hud.z_index = 40
 	add_child(hud)
 	move_child(hud, line.get_index() + 1)
-	hud.draw.connect(_split_hud_draw.bind(hud))
-	_split = {"fa": fa, "va": va, "fb": fb, "vb": vb, "cam": cam, "line": line, "hud": hud}
+	# (Luz, 25 Nov 2026) the same display as yours, laid out for them: the very same parts, fed with what is theirs
+	var plate2 := ColorRect.new()
+	plate2.color = Color(0.0, 0.0, 0.03, 0.55)
+	plate2.position = Vector2(14, 12)
+	plate2.size = Vector2(540, 56)
+	plate2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(plate2)
+	var title2 := UI.label("", 18, UI.NEON_CYAN)
+	title2.position = Vector2(24, 18)
+	hud.add_child(title2)
+	var hint2 := UI.label("", 12, UI.TEXT_DIM)
+	hint2.position = Vector2(24, 46)
+	hud.add_child(hint2)
+	var suit2 := SuitHud.new()
+	suit2.seat = 1
+	hud.add_child(suit2)
+	combat_hud2 = CombatHud.new()                          # the fight on their screen: your display's own class, fed with their fight
+	combat_hud2.seat = 1
+	combat_hud2.suit_hud = suit2
+	combat_hud2.combat = combat
+	hud.add_child(combat_hud2)
+	var note2 := Label.new()                                # a line at the foot of their half, as the Colosseum writes one in yours
+	note2.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	note2.offset_top = -190.0
+	note2.offset_bottom = -140.0
+	note2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	note2.add_theme_font_size_override("font_size", 24)
+	note2.add_theme_color_override("font_color", Color(1.0, 0.95, 0.7))
+	note2.add_theme_color_override("font_outline_color", Color(0.05, 0.04, 0.1))
+	note2.add_theme_constant_override("outline_size", 8)
+	hud.add_child(note2)
+	var prompt2 := UI.label("", 18, UI.GOLD)
+	prompt2.add_theme_constant_override("outline_size", 7)
+	prompt2.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05, 0.9))
+	prompt2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	prompt2.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	prompt2.offset_top = -90
+	prompt2.offset_bottom = -60
+	prompt2.offset_left = -500
+	prompt2.offset_right = 500
+	hud.add_child(prompt2)
+	var log_panel2 := UI.panel(Color(0.03, 0.05, 0.09, 0.8))      # their list of what happens, where yours stands in your half
+	log_panel2.anchor_left = 1
+	log_panel2.anchor_right = 1
+	log_panel2.anchor_top = 1
+	log_panel2.anchor_bottom = 1
+	log_panel2.offset_left = -470
+	log_panel2.offset_right = -10
+	log_panel2.offset_top = -195
+	log_panel2.offset_bottom = -10
+	log_panel2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(log_panel2)
+	_log2 = RichTextLabel.new()
+	_log2.bbcode_enabled = true
+	_log2.scroll_following = true
+	_log2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_log2.add_theme_font_size_override("normal_font_size", 12)
+	log_panel2.add_child(_log2)
+	for ln2 in _log2_buf:
+		_log2.append_text(String(ln2))
+	_split = {"fa": fa, "va": va, "fb": fb, "vb": vb, "cam": cam, "line": line, "hud": hud, "plate2": plate2, "title2": title2, "hint2": hint2, "suit2": suit2, "prompt2": prompt2, "note2": note2}
 	_cam_c = Vector2.INF
 	_split_step()
 
@@ -6648,6 +7305,8 @@ func _split_close() -> void:
 		move_child(_world, at)
 	for k in ["fa", "fb", "line", "hud"]:
 		(sp[k] as Node).queue_free()
+	_log2 = null
+	combat_hud2 = null
 	_ui.anchor_right = 1.0
 	_ui.offset_right = 0.0
 	_cam_c = Vector2.INF
@@ -6657,8 +7316,8 @@ func _split_close() -> void:
 func _split_step() -> void:
 	if _split.is_empty():
 		return
-	var p2a = combat.p2() if combat != null else null
-	if p2a == null or not is_instance_valid(p2a["w"]):
+	var p2w := p2_walker()
+	if p2w == null:
 		_split_close()
 		return
 	var vs := get_viewport().get_visible_rect().size
@@ -6676,11 +7335,35 @@ func _split_step() -> void:
 	hud.position = fb.position
 	hud.size = fb.size
 	hud.queue_redraw()
+	# their display's parts are yours one for one, on foot and in a fight
+	(_split["title2"] as Label).text = _title.text
+	(_split["hint2"] as Label).text = _hint_for(1)
+	(_split["suit2"] as Control).visible = self.hud.visible
+	if combat_hud2 != null and is_instance_valid(combat_hud2):
+		combat_hud2.combat = combat
+		combat_hud2.visible = combat_hud.visible
+	(_split["prompt2"] as Label).text = two_prompt() if (talk == null and talk_menu == null and _lift_menu == null and not bool(_side["col_down"])) else ""
+	# a line at the foot of each half for who is down or out, in the same words for both
+	var first := GameState.pilot_name.get_slice(" ", 0)
+	var second := String(GameState.pilot_of(1).get("name", "Player 2")).get_slice(" ", 0)
+	var out2: bool = String(level) == "zcolvr" and bool(_side["col_lost"]) and String(_col_fight.get("state", "")) in ["fight", "watch"]
+	var n2 := ""
+	if bool(_side["col_down"]):
+		n2 = "You are down: %s can bring you back." % first
+	elif out2:
+		n2 = "You are out. %s" % ("%s fights on." % first if pilot_up() else "Your side fights on.")
+	(_split["note2"] as Label).text = n2
+	if col_down != _down_shown:
+		_down_shown = col_down
+		if col_down:
+			_col_line("You are down: %s can bring you back." % second)
+		elif not (String(level) == "zcolvr" and col_lost):
+			_col_line("")
 	_ui.anchor_right = 0.0                                # what is drawn over your picture keeps to your half
 	_ui.offset_right = half
 	# the camera: what your half shows of you, theirs shows of them (the world is moved and scaled for your half; the
 	# second camera looks at the same moved world)
-	var w: Walker = p2a["w"]
+	var w: Walker = p2w
 	var mp := map.size_px() * GroundMap.SCALE * zoom
 	var c := _world.position + (w.position + Vector2(0, -24)) * zoom
 	var hv := Vector2(half, vs.y) * 0.5
@@ -6695,198 +7378,9 @@ func _split_step() -> void:
 	(_split["cam"] as Camera2D).position = c.round()
 
 
-## What the second player sees over their half: the same display you have over yours, in their colour: the suit's bars
-## top left with the dodge under them, their target top centre, the fight top right, the belt bottom left, the weapons
-## and grenades as tiles along the bottom, and a word in the middle when the use key does something.
+## The second player's key or button for an action, in words.
 func _split_key(action: String) -> String:
-	return Keybinds.key_text(action) if Players.on_keys(1) else Pad.binding_text(Pad.binding("ground", action))
-
-
-func _split_hud_draw(hud: Control) -> void:
-	if combat == null:
-		return
-	var a = combat.p2()
-	if a == null:
-		return
-	var GD = ChibiArt.GearData
-	var GI = load("res://scripts/ui/gear_icons.gd")
-	var font := ThemeDB.fallback_font
-	var pink := Color(1.0, 0.45, 0.85)
-	var dim := Color(0.7, 0.72, 0.76)
-	var vs: Vector2 = hud.size
-	var st: Dictionary = a["st"]
-	var mx: Dictionary = a["mx"]
-	var up: bool = not a["down"] and not a["dead"]
-	# ---- top left: who, and the suit's bars
-	var title := "P2  %s" % String(GameState.pilot2.get("name", a["name"]))
-	hud.draw_rect(Rect2(10.0, 10.0, 404.0, 42.0), Color(0.03, 0.04, 0.08, 0.88))
-	hud.draw_rect(Rect2(10.0, 10.0, 4.0, 42.0), pink)
-	hud.draw_string(font, Vector2(22.0, 30.0), title, HORIZONTAL_ALIGNMENT_LEFT, 380.0, 17, pink)
-	hud.draw_string(font, Vector2(22.0, 46.0), "%s walk  •  %s next target  •  %s dodge  •  %s other weapon" % ["W A S D" if Players.on_keys(1) else "stick", _split_key("foot_target"), _split_key("foot_dodge"), _split_key("foot_swap")],
-		HORIZONTAL_ALIGNMENT_LEFT, 388.0, 11, dim)
-	var y := 74.0
-	var rows: Array = [["Health", float(st["health"]), float(mx["health"]), Color(1.0, 0.35, 0.35)], ["Shield", float(st["shield"]), float(mx["shield"]), Color(0.35, 0.85, 1.0)],
-		["Armour", float(st["armor"]), float(mx["armor"]), Color(1.0, 0.8, 0.3)], ["Energy", float(a.get("energy", 0.0)), float(a.get("energy_max", 0.0)), Color(1.0, 0.85, 0.3)],
-		["Ammo", float(a.get("ammo", 0)), float(a.get("ammo_max", 0)), Color(0.75, 0.75, 0.7)]]
-	for rw in rows:
-		hud.draw_rect(Rect2(14.0, y - 13.0, 296.0, 18.0), Color(0.0, 0.0, 0.03, 0.55))
-		hud.draw_string(font, Vector2(20.0, y), String(rw[0]), HORIZONTAL_ALIGNMENT_LEFT, 60.0, 12, Color(0.85, 0.88, 0.92))
-		hud.draw_rect(Rect2(84.0, y - 9.0, 150.0, 9.0), Color(0.12, 0.12, 0.15))
-		if float(rw[2]) > 0.0:
-			hud.draw_rect(Rect2(84.0, y - 9.0, 150.0 * clampf(float(rw[1]) / float(rw[2]), 0.0, 1.0), 9.0), rw[3])
-		hud.draw_string(font, Vector2(242.0, y), "%d" % int(ceil(float(rw[1]))), HORIZONTAL_ALIGNMENT_LEFT, 60.0, 12, rw[3])
-		y += 22.0
-	# out of energy or rounds: a line of its own, where your cover line stands
-	y += 2.0
-	if not combat.foe_power(a) and up:
-		var ot := "OUT OF ENERGY OR ROUNDS: a charging point"
-		hud.draw_rect(Rect2(14.0, y, font.get_string_size(ot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0, 20.0), Color(0.06, 0.0, 0.0, 0.7))
-		hud.draw_string(font, Vector2(21.0, y + 14.0), ot, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1.0, 0.5, 0.4))
-		y += 24.0
-	# the dodge: ready, or coming back
-	var dt := "%s  dodge" % _split_key("foot_dodge")
-	var dw := font.get_string_size(dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-	hud.draw_rect(Rect2(14.0, y, dw + 40.0, 20.0), Color(0.0, 0.0, 0.03, 0.55))
-	hud.draw_string(font, Vector2(21.0, y + 14.0), dt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.85, 0.88, 0.92))
-	var dk := 1.0 - clampf(float(a.get("dodge_cd", 0.0)) / GroundCombat.P2_DODGE_COOL, 0.0, 1.0)
-	var dc := Vector2(14.0 + dw + 26.0, y + 10.0)
-	if dk >= 1.0:
-		hud.draw_circle(dc, 5.0, Color(0.45, 1.0, 0.6))
-	else:
-		hud.draw_arc(dc, 5.0, 0.0, TAU, 16, Color(0.45, 1.0, 0.6, 0.5), 1.5)
-		hud.draw_arc(dc, 5.0, -PI / 2, -PI / 2 + TAU * dk, 16, Color(0.45, 1.0, 0.6), 2.5)
-	# ---- top centre: their target, as your locked target is shown
-	var tgt = a.get("cur")
-	if tgt != null and not tgt["dead"] and up:
-		var red := Color(1.0, 0.35, 0.3)
-		var r := Rect2(Vector2(vs.x * 0.5 - 95.0, 12.0), Vector2(190.0, 62.0))
-		hud.draw_rect(r, Color(0.03, 0.04, 0.08, 0.88))
-		hud.draw_rect(r, red, false, 2.0)
-		var tcol: Color = GroundCombat.FoeData.TIERS[String(tgt.get("tier", "green"))]["col"]
-		hud.draw_circle(r.position + Vector2(r.size.x - 12.0, 12.0), 5.0, tcol)
-		hud.draw_string(font, r.position + Vector2(8.0, 17.0), String(tgt["name"]).left(24), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.95, 0.95, 0.95))
-		var dm: float = (a["w"] as Walker).pos.distance_to((tgt["w"] as Walker).pos) / 15.0
-		var ch: float = combat._chance_between(a, tgt) if not combat.sight((a["w"] as Walker).pos, (tgt["w"] as Walker).pos)["blocked"] else 0.0
-		hud.draw_string(font, r.position + Vector2(8.0, 33.0), "%d m  •  %s  •  %s" % [int(round(dm)), ("hit %d%%" % int(round(ch * 100.0))) if ch > 0.0 else "no shot",
-			String(GD.base(String(tgt["weapon"])).get("name", ""))], HORIZONTAL_ALIGNMENT_LEFT, 176.0, 11, dim)
-		var k := 0
-		for layer in ["shield", "armor", "health"]:
-			hud.draw_rect(Rect2(r.position + Vector2(8.0, 40.0 + k * 7.0), Vector2(174.0, 5.0)), Color(0.12, 0.12, 0.15))
-			hud.draw_rect(Rect2(r.position + Vector2(8.0, 40.0 + k * 7.0), Vector2(174.0 * clampf(float(tgt["st"][layer]) / maxf(float(tgt["mx"][layer]), 0.001), 0.0, 1.0), 5.0)),
-				[Color(0.35, 0.65, 1.0), Color(1.0, 0.8, 0.3), Color(0.9, 0.3, 0.3)][k])
-			k += 1
-	# ---- top right: the fight
-	if combat.fight:
-		var aware: Array = combat.alive().filter(func(f): return f["aware"])
-		var fr := Rect2(Vector2(vs.x - 230.0, 12.0), Vector2(216.0, 62.0))
-		hud.draw_rect(fr, Color(0.03, 0.04, 0.08, 0.88))
-		hud.draw_rect(fr, Color(1.0, 0.75, 0.2, 0.8), false, 2.0)
-		hud.draw_string(font, fr.position + Vector2(10.0, 18.0), "HOSTILES – %d" % aware.size(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1.0, 0.8, 0.3))
-		var near = null
-		var nd := INF
-		for f2 in aware:
-			var dd: float = (a["w"] as Walker).pos.distance_to((f2["w"] as Walker).pos)
-			if dd < nd and f2 != tgt:
-				nd = dd
-				near = f2
-		var l2 := ("%s nearest, %d m" % [String(near["name"]), int(nd / 15.0)]) if near != null else ("%d down" % combat.kills if combat.kills > 0 else "the last one is yours")
-		hud.draw_string(font, fr.position + Vector2(10.0, 36.0), l2.left(34), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1.0, 0.75, 0.4))
-		hud.draw_string(font, fr.position + Vector2(10.0, 53.0), "%s: the next target" % _split_key("foot_target"), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, dim)
-	# ---- bottom left: the belt on its places
-	var bx := 14.0
-	var by := vs.y - 82.0
-	var bt: Array = a.get("belt", [])
-	for bi in bt.size():
-		var bp: Dictionary = bt[bi]
-		var br := Rect2(Vector2(bx, by), Vector2(74.0, 72.0))
-		var bkey: String = _split_key("foot_belt_%d" % (bi + 1)) if bi < 4 else str(bi + 1)
-		if bp.is_empty() or int(bp.get("n", 0)) <= 0:
-			SuitHud.tile(hud, br, null, bkey, "empty", "", Color(0.5, 0.55, 0.6, 0.35), -1.0, Color.WHITE)
-		else:
-			SuitHud.tile(hud, br, GI.icon(String(bp["id"])), bkey, String(GD.base(String(bp["id"])).get("name", "")), ("×%d" % int(bp["n"])) if int(bp["n"]) > 1 else "",
-				Color(0.55, 0.9, 0.45, 0.6), -1.0, Color.WHITE)
-		bx += 80.0
-	# ---- along the bottom: the weapons (the one in hand framed), a little apart the grenades
-	var ws: Array = a.get("weapons", [])
-	var grs: Array = (a.get("grenades", []) as Array).filter(func(g0): return not (g0 as Dictionary).is_empty())
-	var tile := Vector2(74.0, 72.0)
-	var width: float = (ws.size() + grs.size()) * (tile.x + 6.0) - 6.0 + (22.0 if (not ws.is_empty() and not grs.is_empty()) else 0.0)
-	var tx: float = maxf(vs.x * 0.5 - width * 0.5, bx + 20.0)
-	var ty: float = vs.y - tile.y - 10.0
-	var dtc := {"optical": Color(0.45, 0.85, 1.0), "kinetic": Color(1.0, 0.8, 0.35), "explosive": Color(1.0, 0.55, 0.25)}
-	if not ws.is_empty():
-		_split_label(hud, Vector2(tx, ty - 4.0), "%s  weapon" % _split_key("foot_swap"))
-	for wi in ws.size():
-		var wid := String(ws[wi])
-		var wst: Dictionary = GD.stats(wid)
-		var act: bool = wi == int(a.get("wi", 0))
-		var sub: String = ("%.1f en" % float(wst["energy"])) if wst.has("energy") else ("%d rd" % int(a.get("ammo", 0)))
-		var barv: float = (float(a.get("energy", 0.0)) / maxf(float(a.get("energy_max", 1.0)), 1.0)) if wst.has("energy") else (float(a.get("ammo", 0)) / maxf(float(a.get("ammo_max", 1)), 1.0))
-		SuitHud.tile(hud, Rect2(Vector2(tx, ty), tile), GI.icon(wid), "", String(wst["name"]), sub, pink if act else Color(0.5, 0.55, 0.6, 0.5), barv, dtc.get(String(wst.get("dtype", "kinetic")), Color.WHITE))
-		tx += tile.x + 6.0
-	if not grs.is_empty():
-		tx += 16.0
-		_split_label(hud, Vector2(tx, ty - 4.0), "%s  grenade" % _split_key("foot_grenade"))
-		var first := true
-		for gg in grs:
-			var gn := int(gg.get("n", 0))
-			SuitHud.tile(hud, Rect2(Vector2(tx, ty), tile), GI.icon(String(gg["id"])), "", String(GD.base(String(gg["id"])).get("name", "")), "×%d" % gn,
-				Color(1.0, 0.45, 0.4) if (first and gn > 0) else Color(0.5, 0.55, 0.6, 0.5), -1.0, Color.WHITE)
-			first = first and gn <= 0
-			tx += tile.x + 6.0
-	var did := String(a.get("drone_id", ""))
-	if did != "":
-		tx += 16.0
-		var dst: Dictionary = GD.stats(did)
-		var dd: Dictionary = a.get("drone", {})
-		var dsub := "rebuilt in %d s" % int(ceil(float(a.get("drone_rebuild", 0.0))))
-		var dbar := -1.0
-		if not dd.is_empty():
-			match String(dd["kind"]):
-				"laser":
-					dsub = "OVERHEATED" if bool(dd["over"]) else "firing at the target"
-					dbar = 1.0 - clampf(float(dd["heat"]) / maxf(float(dst.get("heat_max", 1.0)), 0.01), 0.0, 1.0)
-				"kinetic":
-					dsub = "reloading" if String(dd["state"]) == "p2reload" else "%d rd" % int(dd["ammo"])
-					dbar = float(dd["ammo"]) / maxf(float(dst.get("mag", 1)), 1.0)
-				_:
-					dsub = "diving" if String(dd["state"]) == "dive" else "%s: dive" % _split_key("foot_drone")
-		_split_label(hud, Vector2(tx, ty - 4.0), "drone")
-		SuitHud.tile(hud, Rect2(Vector2(tx, ty), tile), GI.icon(did), "", String(dst.get("name", "")), dsub, Color(0.45, 0.85, 1.0, 0.8) if not dd.is_empty() else Color(0.5, 0.55, 0.6, 0.5),
-			dbar, Color(1.0, 0.6, 0.25))
-		tx += tile.x + 6.0
-	# ---- the word in the middle: down, out, a charging point, or what the use key does
-	var use_key: String = _split_key("interact")
-	var word := ""
-	var wcol := Color(1.0, 0.6, 0.3)
-	if a["dead"]:
-		word = "YOU ARE OUT"
-	elif a["down"]:
-		word = "DOWN: %s can bring you back (%d s)" % [GameState.pilot_name.get_slice(" ", 0), int(ceil(GroundCombat.CrewData.DOWN_TIME - float(a["down_t"])))]
-	elif col_down:
-		var near_me: bool = (a["w"] as Walker).pos.distance_to(pilot.pos) <= GroundCombat.P2_REACH
-		word = ("Hold %s: bring %s back" % [use_key, GameState.pilot_name.get_slice(" ", 0)]) if near_me else ("%s is down: go to them (%d s)" % [GameState.pilot_name.get_slice(" ", 0), int(ceil(GroundCombat.CrewData.DOWN_TIME - col_down_t))])
-		wcol = Color(0.45, 1.0, 0.6) if near_me else wcol
-	else:
-		var psd: Dictionary = combat.p2_station(a)
-		if not psd.is_empty():
-			word = ("%s: charge" % use_key) if float(psd["cool"]) <= 0.0 else ("Drawn dry: %d s" % int(ceil(float(psd["cool"]))))
-			wcol = Color(0.4, 0.9, 1.0)
-	if word != "":
-		var wsz := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, 20)
-		var wp := Vector2((vs.x - wsz.x) * 0.5, vs.y * 0.3)
-		hud.draw_rect(Rect2(wp.x - 14.0, wp.y - 24.0, wsz.x + 28.0, 36.0), Color(0.02, 0.02, 0.05, 0.78))
-		hud.draw_string(font, wp, word, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, wcol)
-		if col_down and col_revive_k > 0.0:
-			hud.draw_rect(Rect2(wp.x - 14.0, wp.y + 14.0, (wsz.x + 28.0) * col_revive_k, 5.0), Color(0.45, 1.0, 0.6))
-
-
-## A small label on a dark plate, its bottom left at p (as the display over your half has them).
-func _split_label(hud: Control, at: Vector2, t: String) -> void:
-	var font := ThemeDB.fallback_font
-	var w := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	hud.draw_rect(Rect2(at + Vector2(-3.0, -13.0), Vector2(w + 6.0, 16.0)), Color(0.0, 0.0, 0.03, 0.7))
-	hud.draw_string(font, at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.82, 0.85, 0.9))
+	return Players.key_text(1, action)
 
 
 ## The picture after the fight is closed: back into the lobby (into your own gear), and on a win, if you want, straight
@@ -7889,7 +8383,25 @@ func log_event(text: String, col: Color = Color(0.85, 0.9, 1.0)) -> void:
 	if _log == null or text == "":
 		return
 	var tm := Time.get_time_string_from_system().substr(0, 5)
-	_log.append_text("[color=#8090a0]%s[/color] [color=#%s]%s[/color]\n" % [tm, col.to_html(false), text])
+	var line := "[color=#8090a0]%s[/color] [color=#%s]%s[/color]\n" % [tm, col.to_html(false), text]
+	if GameState.acting == 1 and GameState.has_pilot2():      # (split screen: what happens to the second player stands in their own list)
+		_log2_add(line)
+		return
+	_log.append_text(line)
+
+
+func _log2_add(line: String) -> void:
+	_log2_buf.append(line)
+	if _log2_buf.size() > 60:
+		_log2_buf.pop_front()
+	if _log2 != null and is_instance_valid(_log2):
+		_log2.append_text(line)
+
+
+## A word for the second player: into their own list.
+func two_say(text: String, col: Color = Color(1.0, 0.85, 0.5)) -> void:
+	var tm := Time.get_time_string_from_system().substr(0, 5)
+	_log2_add("[color=#8090a0]%s[/color] [color=#%s]%s[/color]\n" % [tm, col.to_html(false), text])
 
 
 const DRINKS := [

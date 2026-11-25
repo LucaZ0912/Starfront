@@ -242,8 +242,8 @@ func _apply_axes() -> void:
 func _pick_device() -> void:
 	var pads := Input.get_connected_joypads()
 	device = pads[0] if not pads.is_empty() else -1
-	if Players.split:                            # split screen: the first player's own controller, or none (the keyboard)
-		device = Players.pad_of(0) if Players.pad_of(0) in pads else -1
+	if Players.split:                            # split screen: the controller of whose windows these are (the first player's, mostly), or none (the keyboard)
+		device = Players.pad_of(Players.act_seat) if Players.pad_of(Players.act_seat) in pads else -1
 	kind = ""
 	if device >= 0:
 		var nm := Input.get_joy_name(device).to_lower()
@@ -389,8 +389,8 @@ func aim_point(from: Vector2, facing: Vector2) -> Vector2:
 # ---------------------------------------------------------------- each frame
 
 func _input(event: InputEvent) -> void:
-	if Players.split and not Players.owns(0, event):
-		return                                    # split screen: the second player's device is not this one's business
+	if Players.split and not Players.owns(Players.act_seat, event):
+		return                                    # split screen: the other player's device is not this one's business
 	if event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf(event.axis_value) > 0.5):
 		if not using_pad:
 			using_pad = true
@@ -647,12 +647,15 @@ func _special(ctx: String, id: String, m) -> void:
 			if menu != null and menu.has_method("tour_confirm"):
 				menu.tour_confirm()                                 # package 58: the guided tour goes on
 				return
-			var focus := get_viewport().gui_get_focus_owner()
-			if menu != null and (focus == null or not (menu == focus or menu.is_ancestor_of(focus))):
+			var focus: Control = MenuNav.current(menu) if menu != null else get_viewport().gui_get_focus_owner()
+			if menu != null and focus == null:
 				MenuNav.step(menu, Vector2.DOWN)                 # nothing highlighted yet: the first
 				return
-			MenuNav._last_menu = menu
-			MenuNav._last_pos = MenuNav._vrect(focus).get_center() if focus != null else Vector2.INF
+			MenuNav.keep(menu, focus)
+			if menu != null and MenuNav.is_soft(menu):          # (split screen: a window in your half keeps a highlight of its own)
+				MenuNav.press(menu)
+				get_tree().create_timer(0.06, true).timeout.connect(func(): MenuNav.restore(menu))
+				return
 			var ev := InputEventAction.new()
 			ev.action = "ui_accept"
 			ev.pressed = true
@@ -718,12 +721,12 @@ func _menu_scroll(delta: float) -> void:
 	var r := right_stick()
 	if absf(r.y) < 0.1:
 		return
-	var f := get_viewport().gui_get_focus_owner()
+	var menu := MenuNav.active_menu()
+	var f: Control = MenuNav.current(menu) if menu != null else get_viewport().gui_get_focus_owner()
 	var n: Node = f
 	while n != null and not (n is ScrollContainer):
 		n = n.get_parent()
 	if n == null:
-		var menu := MenuNav.active_menu()
 		if menu != null:
 			for c in menu.find_children("*", "ScrollContainer", true, false):
 				if (c as Control).is_visible_in_tree():
@@ -828,7 +831,11 @@ func _open_wheel(which: String, btn: String) -> void:
 	wheel.title = glyph(btn) + " held"
 	if which == "drones":
 		wheel.title = glyph(btn) + " drones"
-	_wheel_layer.add_child(wheel)
+	var mw := _main()
+	if mw != null and mw.has_method("halves_on") and mw.halves_on():
+		mw.win_show(0, wheel)                            # split screen: the wheel is in your half, as your windows are
+	else:
+		_wheel_layer.add_child(wheel)
 	_wheel_btn = btn
 
 
@@ -866,6 +873,11 @@ func _close_wheel(do_it: bool) -> void:
 	if wheel == null:
 		return
 	var choice: String = wheel.chosen() if do_it else ""
+	if wheel.get_parent() != _wheel_layer:
+		wheel.queue_free()
+		var mw := _main()
+		if mw != null and mw.has_method("win_hide"):
+			mw.win_hide(0)
 	_wheel_layer.queue_free()
 	_wheel_layer = null
 	wheel = null

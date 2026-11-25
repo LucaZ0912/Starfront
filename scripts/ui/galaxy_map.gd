@@ -13,6 +13,7 @@ var info: RichTextLabel
 var fleet_box: VBoxContainer
 var course_btn: Button
 var view_btn: Button
+var seat := 0                       # split screen: whose map this is (0 the first player, 1 the second: it stands in their half)
 var selected_system := -1
 var hover_system := -1
 var planned_path: Array = []
@@ -88,7 +89,7 @@ func _ready() -> void:
 	var ob := UI.hbox(6)
 	ob.position = Vector2(8, 8)
 	map.add_child(ob)
-	_terr_btn = _overlay_button("Territory [%s]" % Keybinds.key_text("map_territory"), show_territory,
+	_terr_btn = _overlay_button("Territory" if _k("map_territory") == "" else "Territory [%s]" % _k("map_territory"), show_territory,
 		"Faction territories (striped = contested) and coats of arms at the capitals", func(on: bool): set_territory(on))
 	ob.add_child(_terr_btn)
 	_traffic_btn = _overlay_button("Convoys", show_traffic, "Trade convoys under way (coloured by faction)", func(on: bool):
@@ -107,7 +108,7 @@ func _ready() -> void:
 	title_label = UI.label("Galaxy Map", 20, UI.ACCENT)
 	head.add_child(title_label)
 	head.add_child(UI.spacer())
-	head.add_child(UI.button("Close [%s]" % Keybinds.key_text("galaxy_map"), close))
+	head.add_child(UI.button("Close [%s]" % (_k("menu_back") if (Players.split and not Players.on_keys(seat)) else _k("galaxy_map")), close))
 	sv.add_child(head)
 	info = RichTextLabel.new()
 	info.bbcode_enabled = true
@@ -235,7 +236,16 @@ func _view_selected() -> void:
 		view_system.emit(selected_system)
 
 
+## The key or button of this map's player for an action, in words.
+func _k(action: String) -> String:
+	return Players.win_key(seat, action)
+
+
 func open(p_transit: bool = false) -> void:
+	GameState.with_seat(seat, _open.bind(p_transit))       # (in the name of the player whose map it is)
+
+
+func _open(p_transit: bool) -> void:
 	transit_mode = p_transit
 	visible = true
 	title_label.text = "Hyperspace: Star Map" if transit_mode else "Galaxy Map"
@@ -266,6 +276,10 @@ func _process(delta: float) -> void:
 
 
 func refresh() -> void:
+	GameState.with_seat(seat, _refresh)
+
+
+func _refresh() -> void:
 	_plan()
 	_update_info()
 	_rebuild_fleet()
@@ -402,6 +416,10 @@ static func territory_texture() -> Texture2D:
 
 
 func _draw_map() -> void:
+	GameState.with_seat(seat, _draw_map_do)              # (drawn in its player's name: their ships, their course)
+
+
+func _draw_map_do() -> void:
 	var font := ThemeDB.fallback_font
 	var cls_cols := [Color(0.4, 0.6, 1.0, 0.6), Color(1.0, 0.75, 0.3, 0.6), Color(1.0, 0.35, 0.35, 0.6)]
 	var overview := is_overview()
@@ -930,6 +948,12 @@ func _update_info() -> void:
 			t += "[color=%s]%s: %d jumps, fuel %.0f / %.0f[/color]\n" % [col, f.ship_name, path.size(), fuel, f.fuel]
 	info.text = t
 	view_btn.disabled = not _has_own_ships(selected_system)
+	if seat == 1:
+		# split screen: the second player does not fly yet (their ship comes along with the first player's): the map is
+		# theirs to read, a course is not theirs to set
+		course_btn.disabled = true
+		course_btn.text = "Set course: when you fly yourself"
+		view_btn.disabled = true
 
 
 ## Controlling faction(s) of a system in their colours (for RichTextLabels).

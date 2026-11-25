@@ -62,8 +62,8 @@ func save_game(slot: String, label: String = "") -> String:
 		"version": VERSION,
 		"meta": {
 			"label": label if label != "" else slot.capitalize(),
-			"pilot": GameState.pilot_name, "credits": GameState.credits,
-			"pilot2": String(GameState.pilot2.get("name", "")),
+			"pilot": String(GameState.pilot_of(0).get("name", GameState.pilot_name)), "credits": GameState.credits_of(0),
+			"pilot2": String(GameState.pilot_of(1).get("name", "")) if GameState.has_pilot2() else "",
 			"ship": f.ship_name if f != null else "–",
 			"location": f.location_text() if f != null else "–",
 			"play_time": GameState.play_time,

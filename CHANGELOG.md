@@ -3,6 +3,239 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.21 – 2026-11-25
+
+**Package 75, split screen: the narrow layout of the windows, for half a picture of 1920 × 1080 (Luz: start it).**
+- **Every page fits the half now.** In a picture narrower than 1200 the pilot window and the ship's menu lay
+  themselves out for it: the same pages in the same pattern, made to fit. Before, 12 of their 17 pages ran out of a
+  half of 958 × 1080 to the right; now none does.
+- **What changes in a narrow picture:** the windows' margins are smaller; a line of text too long for the half
+  wraps; the skills stand in one column and the perks in two; the pilot's four cards of numbers stand two by two;
+  the journal's pages, its list and its tiles are narrower; the collection's list of kinds is narrower; the
+  standings' columns are a little narrower; the ship's two info cards stand one under the other; the fire groups'
+  side panel and number buttons are smaller. The gear page and the ship's fitting keep their two columns (the suit
+  or the module on the left, the tiles on the right, four in a row), and the page scrolls.
+- **A wide picture is as it was:** at 1717 × 1438 and at 1920 × 1080 nothing has moved.
+- **A tool to look and to measure:** the smoke test group `winlook` lays every page of the three windows out for a
+  picture of a given size, saves each as a picture and says which run out of it (`--only=winlook`, in a window,
+  `WINLOOK_SIZES="958x1080,638x800"`). It is not part of the full run.
+- **Found with it, not changed** (they are about the Steam Deck's own screen, one player, not about the split
+  picture): at 1280 × 800 three pages of the pilot window run out to the right in the wide layout (journal, codex,
+  standings), and the galaxy map and the fire groups are a little too tall. Half a Steam Deck picture (638 × 800)
+  still fits almost nothing; that one waits for its own decision, as agreed.
+- Run with it: `split12`, `split13` and the single player's `pilot`, `tree`, `gear`, `gear_page`, `skills`,
+  `collection`, `modules`, `power`, `firegroups79`, `pad80`, `q58`, `review5`, `intro56e`, `w58d`, `w58f`: none
+  failed. No full run. The narrow pages were looked at as pictures of 958 × 1080, not in a split picture on a
+  1920 × 1080 screen, and not walked through with a controller.
+
+## alpha 0.8.75.20 – 2026-11-25
+
+**Package 75, split screen: the second player's own ship menu and galaxy map (Luz: carry on like this).**
+- **Their ship's menu** opens over their half from their window wheel or their key: Info, Modules (fitting, power
+  management, fire groups), Ship, Inventory, for the ship they fly. It is the first player's menu's own class and
+  works in their name: a module taken off goes into their storage at the station, not into yours. Both of you can
+  have your ship's menu up at once, each with their own ship. Until they fly themselves, their ship stands where
+  the first player's stands (the same system, the same hangar).
+- **Their galaxy map** opens over their half: theirs to read (systems, economies, factions, their ships in the
+  list). It reads their controller itself as the first player's map does: the right stick moves it, the left stick
+  picks a system, the shoulder buttons zoom. A course is not theirs to set while they do not fly themselves: the
+  button says so.
+- **One window of theirs at a time:** another takes its place. With a window up, Options tapped shuts it (with
+  none up it pauses, for both).
+- The words in their windows name their own buttons; an action their controller has no button for is written
+  without one.
+- **Not yet** (the list is in the Steckbrief): the narrow layout for the pages that do not fit half a picture of
+  1920 × 1080; a course of their own (with flying, stage 4); the station's window and the help for them; the
+  windows of counters, talks and games on foot are as before.
+- Smoke test group `split13` (5 checks). With it run: `split9`, `split12`, and the single player's `modules`,
+  `power`, `firegroups79`, `pad80`, `pilot`, `gear_page`, `axiom`, `cluster40`, `economy42`, `makers`,
+  `resources`: none failed. No full run. Nothing tried with two real controllers; the second player at the
+  keyboard has no check of its own.
+
+## alpha 0.8.75.19 – 2026-11-25
+
+**Package 75, split screen: a window stands in the half of the player who opened it (Luz: the windows only in
+their own half; pause, saving and loading always hold both).**
+- **A window in your half, the other plays on.** While the picture is in two halves, the pilot window, the ship's
+  menu and the galaxy map of the first player open over the first player's half and lay themselves out for it.
+  The first player stands while one is up; the second player goes on walking, fighting, using things.
+- **The second player's own pilot window.** It opens over their half with their pilot in it: Pilot, Skills, Perks,
+  Skill tree, Gear (their suit, weapons, belt, pockets, their ship's locker), Journal, Acquaintances. What they
+  press in it is done in their name (what they put on shows on their figure at once). Both of you can have your
+  window up at the same time. At the keyboard they open it with the window's key; with a controller they hold
+  Options: the window wheel comes up in their half, the same wheel the first player's controller has.
+- **Their buttons walk their window:** the D-pad or the stick moves the highlight, confirm presses it, back shuts
+  the window, the shoulder buttons turn the pages, the right stick scrolls. Each window in a half has a highlight
+  of its own, so one player's steps do not move the other's. The words in their window name their own buttons
+  (close, the grenade's button, the belt's buttons on its tiles).
+- **The mouse** reaches into the half of the player at the keyboard only.
+- **Pause is for both.** Options tapped by the second player (with no window of theirs up) pauses the game for both
+  of you; the pause menu, with saving and loading in it, is then theirs to walk. The first player's pause as
+  before.
+- **When the picture is one again** (a scene, a ride), the first player's open window is over the whole of it as it
+  always was, and the second player's is shut.
+- **Seen on the way:** a controller's shoulder buttons had no effect on the pages of a window; they turn them now
+  (for the first player too).
+- **Not yet** (the list is in the Steckbrief): the second player's own ship's menu and galaxy map (their wheel and
+  their keys say so); a narrow layout for the pages that do not fit half a picture of 1920 × 1080 (Gear, the ship's
+  Modules and Inventory: they run out of the half there, on a wide screen they fit); the windows of counters,
+  talks and games on foot are as before.
+- Smoke test group `split12` (6 checks). With it run: all thirteen split screen groups and the single player's
+  `pilot`, `tree`, `gear`, `gear_page`, `skills`, `stationwin`, `w58a`, `pad80`, `hackpad`: none failed. No full
+  run. Nothing tried with two real controllers or with a real mouse in a half; the second player at the keyboard
+  (their window's key) goes the same way through the code but has no check of its own.
+
+## alpha 0.8.75.18 – 2026-11-25
+
+**Package 75, split screen: the dangers of a place are for both pilots (Luz).**
+- **Turrets** turn to the pilot they can see (in reach, not cloaked, nothing high between), of two to the nearer one.
+  Their shots are at that pilot and hurt their suit, and the word "A turret has you" stands in that player's list.
+  A turret's target can be locked by either of you and is gone for both when the turret is switched off.
+- **Trip wires** warn each of you once, in your own keys, and go off under whoever walks into them. Whoever sneaks
+  steps over.
+- **Cameras, searchlights and light barriers** notice either of you; the cloaked one they do not see.
+- **Live conduits, bursts of steam, toxic gas, loose rock and glyph traps** catch whoever stands there: the shock,
+  the burn, the falling rock hit that pilot's suit, the gas asks for that pilot's helmet, and the warning is theirs.
+- **A pilot who is down is left alone** by all of it.
+- A lock on someone the other pilot brought down goes from your display as one you brought down yourself does.
+- **Still the first player's only** (the list is in the Steckbrief): a rescued prisoner follows the first player;
+  the zoom key; the scanner and the cutting torch on the belt; a box, a door, a give-up at the gate go through the
+  first player's window; the clinic's bill.
+- Smoke test group `split11` (5 checks: turret, trip wire, conduit and glyph, camera, a pilot down). With it run:
+  `split1`, `split3`, `split8`, `split9`, `split10` and the single player's `sewer`, `wreck`, `corp`, `darkones`,
+  `relay58`, `foot_vault`, `foot_explore`, `foot_combat`, `foot_team`, `foot_sneak`, `colfight62a`: none failed.
+  (One check of `split3` counted frames where it should have counted time and failed once on a fast run: it waits
+  by the clock now.) No full run. Nothing tried with two real controllers. Searchlight, steam, gas, loose rock and
+  light barrier go the same way through the code as what is tested, but have no check of their own for two.
+
+## alpha 0.8.75.17 – 2026-11-25
+
+**Package 75, split screen: the real fight for the second player (Luz: carry on with the real fight).**
+- **A second pilot, not a helper.** Wherever weapons are allowed, and in the Colosseum's matches, the second player
+  is a pilot of the fight as the first one is. The simpler fighter that stood in for them is gone, and so is the
+  display drawn by hand over their half. The first player's own code runs for them: target locks with their lock
+  time (up to three, the next one and the nearest one on their keys, a click with the mouse if the keyboard is
+  theirs), the weapon that fires by itself on their own energy and rounds, cover and its ring, dodge charges that
+  come back, the grenade aimed while its key is held and thrown when it is let go, both drones from their back on
+  their keys (the kamikaze called back by holding), the arm laser and the blade, sneaking, the short cloak, the
+  tactical view, the command wheel for a ground team of their own.
+- **The same display over their half:** the fight display's own class, fed with their fight: their locked targets
+  top centre, the hostiles top right, the cover line, the dodge charges, the tiles of weapons, grenades and drones
+  along the bottom, all with their own keys or buttons. The lock brackets and the tactical view are seen in the
+  half of the pilot they belong to only.
+- **The others treat both of you as pilots:** each of them deals with the pilot nearer to it who is still up; a
+  shot or a blow at the second player is one at a pilot (their cover, their skills, their dodge, their suit).
+  Blasts, the EMP grenade and burning ground reach both.
+- **Down and back up:** a pilot who goes down while the other stands lies where they fell, and the other brings
+  them back with the use key held beside them, the way a member of a team is brought back. In the hologram there
+  are 45 seconds for it, then they are out; outside it no clock runs. With both down in the hologram the match is
+  lost; outside it you both come to in the clinic. A line at the foot of each half says who is down or out, and
+  each of you has the other as a card under the suit's bars.
+- **In the Colosseum** the second player wears the house's gear in their own fit as a suit of their own (their own
+  gear waits for after the fight, as yours does).
+- **Seen on the way:** the first player's keys no longer listen to a keyboard that is the second player's; the line
+  of keys under the title names the belt's buttons for a controller instead of "1–4" and leaves out the click.
+- **Where their side still differs from yours** (the whole list is in the Steckbrief): the dangers of a place
+  (turrets, trip wires, cameras, searchlights, traps) react to the first player only; the zoom key is one for the
+  picture and the first player's; the scanner and the cutting torch on the belt work for the first player only; a
+  box, a door, a give-up at the gate still go through the first player's window; the view cones while sneaking,
+  the grenade's arc and the cover ring are seen in both halves; the clinic's bill is the first player's. Outside
+  the fight as before: no windows of their own (pilot, inventory, ship, map), missions, reputation and collection
+  not yet apart, one place for both, a window stops both, they cannot fly.
+- Smoke test groups `split1` and `split3` written anew for the second pilot, new group `split10` (the fight for
+  two outside the hologram). All eleven split screen groups: none failed; the single player's fight and match
+  groups (`foot_combat`, `foot_tactics`, `foot_drones`, `foot_team`, `foot_sneak`, `foot_cloak`, `foot_explore`,
+  `colfight62a`, `colteam62a`, `colorder62a`): none failed. No full run. Nothing tried with two real controllers;
+  that the second player's skills grow by what they do in a fight follows from the code and is not tested.
+
+## alpha 0.8.75.16 – 2026-11-25
+
+**Package 75, split screen: the second player's side made of the same parts as the first player's (Luz: they need
+exactly what the first player has, the same display laid out for them, the same rules at every place).**
+- **On foot their half is yours, one for one:** the plate with the place's name, the line of keys in their own
+  words, the suit's own display (health, shield, armour, energy, rounds, oxygen and hazards outside, the belt as
+  tiles) fed with their suit, the word at the bottom for what their use key does, and a list of what happens of
+  their own at the bottom right. These are the game's own parts, not a drawing of them. The copy drawn by hand in
+  0.8.75.15 is gone, and with it the weapon tile it showed inside a station, where your display shows none.
+- **The same rules on foot:** outside, their suit lives on its energy and air as yours does, with the same
+  warnings (in their own list); their belt works on their own keys (a medkit, a cell, a stimulant) on them; a
+  supply point fills their suit; a crew member looking for a post talks to them for their own ship; their helmet
+  goes on by the same rule as yours.
+- **The keys' names** come from one place for both players (`Players.key_text`): the keyboard's for whoever sits
+  there, the controller's for the other.
+- **Where their side still differs from yours** (the whole list is in the Steckbrief): in a fight they are still
+  a simpler fighter with a display drawn for them (no target locks with their time, no cover, no dodge charges,
+  no tactical view, no aimed throw, one plain drone); they cannot collapse and wake in the clinic (their health
+  stops at 1); the tools on the belt (scanner, cloak, torch) and a power socket do not work for them; they cannot
+  open the pilot's window, the inventory, the ship's menu or the map by themselves; a door takes both; a window
+  stops both; the story's talks are the first player's; they earn no experience; they cannot fly.
+- Smoke test group `split9` (7 checks); all ten split screen groups together: 55 checks, none failed. No full
+  run.
+
+## alpha 0.8.75.15 – 2026-11-25
+
+**Package 75, split screen, stage 3, third part: a fleet and a storage of the second player's own, and their whole
+display on foot.**
+- **Ships of their own:** a new second pilot begins with a Dragonfly of their own, the »Wingmate«, at the station
+  of your start system. At the hangar, the shipyard and the outfitter they see, buy, fit and sell their own ships
+  with their own credits; yours are not touched.
+- **A storage of their own:** what they buy and put away at a station lies in their storage there, not in yours.
+- **Their ship comes along with yours** until they fly by themselves (stage 4): wherever your ship is docked,
+  theirs is docked too, so that every counter works for them where you both stand.
+- **Their whole display on foot** (it was a small box): top left their name and keys, health, shield, armour,
+  energy and rounds as bars, their credits and Coins; bottom left their belt as tiles with their keys; along the
+  bottom their weapons and grenades; above them what their use key does where they stand.
+- **The save** keeps both fleets and both storages apart, the first player's first.
+- **Not yet:** crew, missions, standing with the factions and the codex are the game's, for both. The second
+  player's skills and perks work while a window of their own is up (their ship's figures there are theirs) but
+  they earn no experience yet. They cannot fly their ship yet.
+- Smoke test group `split9` (6 checks now); `split8` and `split9` together in a window: 11 checks, none failed.
+  No full run.
+
+## alpha 0.8.75.14 – 2026-11-25
+
+**Package 75, split screen, stage 3, second part: the second player uses things by themselves.**
+- **A word in their half** says what their use key does where they stand, with their key, where yours stands in
+  your half.
+- **Seats:** their key sits them down, a step stands them up. You stay where you are.
+- **Doors, lifts, trains, tables:** their key uses them as yours does. A door or a lift still takes both of you
+  (going apart is not built), and a table seats both as in stage 2.
+- **Counters of their own** (the station's services, the cashier, the slot machines, the betting counter, the
+  souvenir stand, the gas works): the window opens for them. While it is up they stand in the pilot's place:
+  their name, their gear, their credits and their Coins, and their device steers the window. Once it shuts you
+  are the pilot again. The save is always written the right way round.
+- **A talk of the story or with a crew member looking for a post** is the first player's: the second player is
+  told so.
+- **Not yet, and it shows:** ships, modules in storage and the storage itself are still the first player's. At
+  the hangar, the shipyard, the outfitter and the market the second player pays with their own credits, but what
+  they see and buy there is the one fleet and the one storage. Their own fleet and storage are the next step
+  (Luz: they shall own everything as the first player does). Where weapons are allowed their use key still only
+  charges and brings you back. A window stops both of you.
+- Smoke test group `split9` (4 checks); all ten split screen groups together: 52 checks, none failed. No full
+  run.
+
+## alpha 0.8.75.13 – 2026-11-25
+
+**Package 75, split screen, stage 3, first part: two on the ground everywhere.**
+- **The second player is with you wherever you walk:** hangars, cities, stations, lobbies, every place on foot.
+  A figure of their own in their own pilot's looks and what they wear, walked by their own device.
+- **The picture is in two halves** everywhere on foot, each with its own camera; your display keeps to your half,
+  theirs shows who they are, their keys, their credits and their Coins.
+- **Through every door with you:** you change the place, and they stand beside you again there.
+- **Where weapons are allowed** (landing sites, dungeons, the simulation) they are a fighter in what they carry
+  themselves, as in a match; shot down there they lie until you bring them back.
+- **One picture** while the game plays a scene by itself (a story's camera, a lift or a capsule ride, the
+  stairs, the walk into the arena, sleeping, a collapse); with a window up they stand still. Survivor keeps its
+  one picture.
+- **Not yet:** the second player cannot use anything by themselves (no door, no seat, no shop, no talk, no
+  table); they cannot go to another place than you; a window of yours stops them. That is the next part.
+- **Noted (Luz):** the second player shall own everything as the first does (ships, modules, gear, storage) and
+  have skills, perks and a skill tree of their own. Their pilot's places for these are in the save; earning,
+  spending and their effect are still to build.
+- Smoke test group `split8` (5 checks); all nine split screen groups together: 48 checks, none failed. No full
+  run. One windowed run of `split8` ended right after its start without a word; three more ran through. Not
+  looked into.
+
 ## alpha 0.8.75.12 – 2026-11-25
 
 **Package 75, split screen: the second player's own money (Luz: they shall act for themselves in full).** This

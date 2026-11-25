@@ -14,6 +14,7 @@ const KBM := "kbm"
 
 var split := false                  # a split screen game is running (a matter of the session, not of the save)
 var devices: Array = [KBM, ""]      # the device of each player ("" none)
+var act_seat := 0                   # whose device the menus and windows listen to (0; 1 while the second player has a window of their own up)
 var sim := {}                       # the smoke test presses for a player: "<player>:<action>" -> true, "<player>:move" -> Vector2
 var _now := [{}, {}]                # action -> held this frame, per player
 var _was := [{}, {}]                # ... and the frame before
@@ -101,6 +102,7 @@ func stop_split() -> void:
 
 
 func _reset_state() -> void:
+	act_seat = 0
 	_now = [{}, {}]
 	_was = [{}, {}]
 	sim = {}
@@ -123,6 +125,46 @@ func owns(player: int, event: InputEvent) -> bool:
 	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
 		return event.device == pad_of(player)
 	return on_keys(player)
+
+
+## What a player presses for an action, in words for the screen: the key at the keyboard, the button on their
+## controller. (Without split screen: what the game has always written.)
+func key_text(player: int, action: String, ctx: String = "ground") -> String:
+	if not split:
+		return Keybinds.key_text(action)
+	if on_keys(player):
+		for d in Keybinds.binds.get(action, []):
+			if not (d as Dictionary).is_empty():
+				return Keybinds.desc_text(d)
+		return ""
+	if action in ["walk_up", "walk_left", "walk_down", "walk_right"]:
+		return {"walk_up": "L stick", "walk_left": "", "walk_down": "", "walk_right": ""}[action]
+	if action == "foot_run":
+		return "stick all the way"
+	return Pad.binding_text(Pad.binding(ctx, action))
+
+
+## … as a window of theirs writes it: at the keyboard the key; on a controller the menu's button for it if the menu
+## has one (confirm, back, the pages), else the game's own.
+func win_key(player: int, action: String) -> String:
+	if not split or on_keys(player):
+		return key_text(player, action)
+	var pid := String({"menu_up": "pad_up", "menu_down": "pad_down", "menu_left": "pad_left", "menu_right": "pad_right"}.get(action, action))
+	if not Pad.binding("menu", pid).is_empty():
+		return key_text(player, pid, "menu")
+	for ctx in ["ground", "space"]:
+		if not Pad.binding(ctx, action).is_empty():
+			return key_text(player, action, ctx)
+	return ""
+
+
+## Is this controller button (by its name: "cross", "l1" …) held by this player? For windows that read the
+## controller themselves (the galaxy map).
+func button(player: int, name: String) -> bool:
+	if sim.has("%d:btn:%s" % [player, name]):
+		return bool(sim["%d:btn:%s" % [player, name]])
+	var dev := pad_of(player) if split else Pad.device
+	return dev >= 0 and _btn(dev, name)
 
 
 # ---------------------------------------------------------------- asking for a player's input

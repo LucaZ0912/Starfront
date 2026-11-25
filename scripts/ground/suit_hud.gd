@@ -6,6 +6,7 @@ extends Control
 
 const GearData = preload("res://data/gear.gd")
 const GearIcons = preload("res://scripts/ui/gear_icons.gd")
+var seat := 0                            # split screen: whose suit this shows (0 the first player, 1 the second: the same display, theirs)
 var env: Dictionary = {}                # {} = indoors / a safe place
 var indoors := false
 var exposure := 0.0
@@ -37,7 +38,7 @@ func _bar(p: Vector2, w: float, label: String, v: float, mx: float, col: Color, 
 
 
 func _draw() -> void:
-	var g = GameState.gear
+	var g = GameState.gear_of(seat)
 	var t: Dictionary = g.totals()
 	var font := ThemeDB.fallback_font
 	var x := 14.0
@@ -93,9 +94,9 @@ func _draw() -> void:
 		var p: Dictionary = g.belt[i]
 		var r := Rect2(Vector2(bx, by), Vector2(74, 72))
 		if p.is_empty():
-			tile(self, r, null, Keybinds.key_text("foot_belt_%d" % (i + 1)) if i < 4 else str(i + 1), "empty", "", Color(0.5, 0.55, 0.6, 0.35), -1.0, Color.WHITE)
+			tile(self, r, null, Players.key_text(seat, "foot_belt_%d" % (i + 1)) if i < 4 else str(i + 1), "empty", "", Color(0.5, 0.55, 0.6, 0.35), -1.0, Color.WHITE)
 		else:
-			tile(self, r, GearIcons.icon(String(p["id"])), Keybinds.key_text("foot_belt_%d" % (i + 1)) if i < 4 else str(i + 1),
+			tile(self, r, GearIcons.icon(String(p["id"])), Players.key_text(seat, "foot_belt_%d" % (i + 1)) if i < 4 else str(i + 1),
 				String(GearData.base(String(p["id"])).get("name", "")), ("×%d" % int(p["n"])) if int(p["n"]) > 1 else "", Color(0.55, 0.9, 0.45, 0.6), -1.0, Color.WHITE)
 		bx += 80
 	var by2 := by + 24
