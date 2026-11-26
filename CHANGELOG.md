@@ -3,6 +3,64 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.48 – 2026-11-26
+
+**Package 75, split screen, stage 5C, the rest: a system's world is kept when it changes hands, a fall on foot goes
+by the single player's rule, and the notorious pirates know both systems.**
+- **The world of a system is kept.** It was built anew whenever you arrived somewhere (the traffic began afresh,
+  a fight was over, the second player's list was empty again).
+  - **You jump out of the system you share:** its world, as it is, becomes the second player's own: the same ships
+    in it, their ship where it flies, their HUD with its list.
+  - **You jump into the system they are in:** their world, as it is, becomes the one you share: your ship arrives in
+    it, their ship, their HUD and what goes on there stay as they were.
+  - **You jump anywhere else:** their own world is not touched at all (it was built anew on each of your arrivals).
+- **A fall on foot, for each of you alone as for a single player** (it replaces my readings of 0.8.75.40, which were
+  for a game that showed one system): the nearest city with a clinic in the system you are in; with none, you are
+  flown with your ship to the station you docked at last, wherever it is, and wake there. The other is not touched.
+  The second player then gets their view of that system, stands on its deck and wakes in its clinic.
+- **Notorious pirates:** a captain stays while either player is in its system (it was: only the first player's).
+  Its ships were in the second player's world already.
+- **A wormhole jump is the second player's too** (a ship that can): into any system in reach, in their half. Looking
+  into another system on the map ("View system") stays the first player's.
+- **Tried now in a system of their own:** a patrol contract of theirs comes to life in their world, not in yours,
+  and counts for their ship.
+- **Found on the way:** the planets' and stations' labels were not drawn in a view of the second player's own while
+  the shared view had two looks (one switch for all views); each asks its own view now.
+- **Still open, said outright:**
+  - The world that changes hands keeps its ships and its traffic; what the first player had out there themselves
+    (wingmen) goes with them. A way down to a planet in progress at that very moment is not carried over.
+  - The story is the first player's.
+  - Two systems at once: not measured (42 to 60 frames a second in the pictures on this machine).
+  - Not tried: two real controllers, a save written to the disk and read again.
+- Smoke tests: `split31` proves the hand-over both ways (the same view, a ship of its traffic, their ship and their
+  HUD are the very same objects; pictures `split31_uebergabe.png`, `split31_wieder_zusammen.png`); `split19` walks
+  the new rule for a fall (11 checks); `split33` has the contract and the wormhole (6 checks).
+
+## alpha 0.8.75.47 – 2026-11-26
+
+**Package 75, split screen, stage 5C, first part: a jump is in the half of who jumps, and the world of a system of
+one's own is theirs.**
+- **Your jump is in your half:** the tunnel and the star map stand over your half, and the second player plays on
+  meanwhile, in the system you leave or in their own. (It was over the whole picture, and their world waited.)
+- **The second player's jump is the same jump, in their half:** the tunnel, their star map with the jump on it, and
+  "Arrival" at the end. (It was a dark half with a line of text.)
+- **In a system of their own the world is alive for them, and what happens there is theirs** (tried now): a pirate
+  there goes for their ship and hurts it, their kill moves their own numbers and standing, shot down there the
+  offer and the window are theirs and they come to at the station they docked at last, in whichever system it is.
+- **The save keeps the system each of you is in** (tried now): read again, the second player has their own view of
+  their system and their ship is where it was.
+- The story's guard at a ship's end (the story takes over, no game over) is the first player's alone.
+- **Still open in stage 5 at this update (built in 0.8.75.48):** the other's surroundings were built anew on your
+  arrivals, a fall on foot went by the rules of 0.8.75.40, a notorious captain stayed for the first player only.
+  - Not tried in a system of their own: contracts and what the traffic does for them, a wormhole, a save written
+    to the disk and read, two real controllers. Two systems at once: not measured (the pictures show 48 to 60
+    frames a second on this machine).
+- **Found on the way, my own slip:** a patch cut 2000 lines out of `main.gd` (its end mark stood far below); seen at
+  once by the line count, put back from the last commit, nothing of it is in this update.
+- Smoke test group `split33` (4 checks: the fight, the kill, the save, the loss); `split31` asks for the tunnel and
+  the map in the jumping player's half and that the other flies on meanwhile (6 checks, with the pictures
+  `split31_sprung.png` and `split31_dein_sprung.png`).
+
 ## alpha 0.8.75.46 – 2026-11-26
 
 **Package 75, split screen, stage 5B: in a system of their own the second player does what they do in yours.**

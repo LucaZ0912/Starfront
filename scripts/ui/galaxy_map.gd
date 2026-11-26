@@ -950,10 +950,8 @@ func _update_info() -> void:
 	view_btn.disabled = not _has_own_ships(selected_system)
 	if seat == 1:
 		# split screen, stage 4E: their own course is theirs to set (rule 11 of space). Looking into another system
-		# and the wormhole jump stay the first player's until the game shows two systems (stage 5)
+		# stays the first player's (stage 5: the wormhole jump is theirs too)
 		view_btn.disabled = true
-		if wormhole_btn != null:
-			wormhole_btn.disabled = true
 
 
 ## Controlling faction(s) of a system in their colours (for RichTextLabels).

@@ -227,7 +227,7 @@ func _news(text: String, kind: String = "world", sid: int = -1) -> void:
 
 
 ## Cluster simulation, called by GameState every frame while a game runs.
-func update(player_system: int) -> void:
+func update(player_system: int, also_system: int = -1) -> void:
 	var now := GameState.play_time
 	for c in captains:
 		if not c["alive"]:
@@ -247,7 +247,7 @@ func update(player_system: int) -> void:
 		_update_raid(c, now, player_system)
 		if now < float(c["next_move"]) or not (c["raid"] as Dictionary).is_empty():
 			continue
-		if int(c["system"]) == player_system:
+		if int(c["system"]) == player_system or int(c["system"]) == also_system:
 			c["next_move"] = now + 30.0
 			continue                 # it does not vanish while the pilot is in its system
 		var options: Array = []

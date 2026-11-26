@@ -659,8 +659,8 @@ func _draw() -> void:
 				draw_arc(Vector2.ZERO, radius + 8.0, -PI / 2.0, -PI / 2.0 + TAU * float(data["salvage"]) / 100.0, 32, Color(0.6, 1.0, 0.6), 4.0)
 		"descent":
 			_draw_descent()
-	if not eye_labels:
-		_draw_sized(self, label_scale, show_labels)
+	if not (eye_labels and view != null and view.eyes_two):
+		_draw_sized(self, label_scale, show_labels)      # (one look: its own labels; stage 5: the other view may have two)
 
 
 const SIZED_KINDS := ["station", "haven", "gate", "structure", "descent", "anomaly", "beacon"]

@@ -1505,8 +1505,8 @@ func net_worth() -> int:
 
 
 func on_player_ship_lost(f: ShipFitting) -> void:
-	if f.uid == active_uid and story_guard.is_valid() and bool(story_guard.call(f)):
-		return                                       # package 58: the story takes over (no game over)
+	if acting == 0 and f.uid == active_uid and story_guard.is_valid() and bool(story_guard.call(f)):
+		return                                       # package 58: the story takes over (no game over); the story is the first player's
 	fleet.erase(f)
 	jobs = jobs.filter(func(j): return String(j.get("kind", "")) != "ship" or int(j.get("uid", 0)) != f.uid)   # review K4
 	log_msg("%s was destroyed!" % f.ship_name, COL_BAD)
@@ -3354,7 +3354,7 @@ func _process(delta: float) -> void:
 		wing_tick()                              # package 33
 		if has_pilot2() and not wingmen2.is_empty():
 			with_seat(1 - acting, wing_tick)         # (the other player's own contracts run out for them)
-	notorious.update(current_system)
+	notorious.update(current_system, current_system2 if has_pilot2() else -1)      # (stage 5: the system either player is in)
 	news.update()
 	senate.update()                              # package 39a
 	curia.update()                               # package 39b

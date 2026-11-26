@@ -481,6 +481,75 @@ func _eyes_begin() -> void:
 		eyes_hook.call(true)
 
 
+# ---------------------------------------------------------------- stage 5C: a world changes hands
+##
+## The world of a system is kept when one of the two players leaves it and the other stays, and when the first player
+## arrives in a system the second one has a view of: the view goes on as it is (its ships, its traffic, a fight in
+## progress), only whose looks it has changes.
+##
+## What of a look is its player's (their ship, zoom, level, selection, wingmen, market, interdictor's game …) and what
+## is the look's own (its camera, its sky, its layers and labels, its place on the screen).
+const LOOK_OWN := ["camera", "background", "sky", "body_layer", "bodies", "overlay", "debris_layer", "_zfx_layer",
+	"eye_size", "eye_origin", "eye_rect", "eye_zoom", "_min_zoom"]
+
+
+## The two looks exchange what is their players': the first look shows what the second showed, and the other way.
+func _swap_looks_state() -> void:
+	if not eyes_two:
+		return
+	var cam_o: Camera2D = _eye_other["camera"]
+	var cp: Vector2 = camera.position
+	camera.position = cam_o.position
+	cam_o.position = cp
+	for k in EYE_VARS:
+		if k in LOOK_OWN:
+			continue
+		var mine = get(k)
+		set(k, _eye_other[k])
+		_eye_other[k] = mine
+	_set_zoom(_zoom)
+	in_eye(1 - eye, func(): _set_zoom(_zoom))
+
+
+## The first player has left this system and the second one stays: the view becomes the second player's own, with one
+## look, theirs as it was (main puts it into their half).
+func become_own(seat: int) -> void:
+	if eyes_two:
+		eye_as(0)
+		_own_in()                                        # (the first player's wingmen and the like: kept in their contracts, out again where they arrive)
+		_swap_looks_state()
+		var hook := eyes_hook
+		eyes_hook = Callable()                           # (main sees to the HUDs itself)
+		_eyes_end()
+		eyes_hook = hook
+	owner_seat = seat
+	two_wanted = false
+
+
+## The first player arrives in the system this view is the second player's own of: it becomes the view both share,
+## with two looks: the first one new, the second the look there was.
+func become_shared() -> void:
+	owner_seat = 0
+	two_wanted = true
+	if eyes_two:
+		return
+	var hook := eyes_hook
+	eyes_hook = Callable()
+	_eyes_begin()
+	eyes_hook = hook
+	_swap_looks_state()
+
+
+## The view stands in another picture now (a half of its own, or the whole one again): its camera and its zoom's
+## limits for it.
+func refit() -> void:
+	if not eyes_two:
+		camera.make_current()
+		var vs := get_viewport_rect().size
+		_min_zoom = minf(vs.x, vs.y) / (Universe.SYSTEM_RADIUS * 2.3)
+	_set_zoom(_zoom)
+
+
 ## One look again: the second player's ship goes in (it stands where yours stands, as before), the halves go.
 func _eyes_end() -> void:
 	if not eyes_two:

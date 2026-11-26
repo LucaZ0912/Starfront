@@ -467,6 +467,17 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- 0.8.75.48 (stage 5C, the rest): `SystemView.become_own(seat)` / `become_shared()` / `_swap_looks_state()`
+  (`LOOK_OWN`: what of a look is the look's own; the rest is its player's and changes sides) and `refit()`; main
+  `ADOPT`, `load_system()` decides `keep_old` / `take_theirs`, `_view_hand_over()` (the shared view becomes
+  `view2` in a `WorldHalf`, `hud_e1` becomes `hud_v2`) and `_view2_take_over()` (the other way round). `load_system()`
+  no longer drops `view2`. `_fall_place(seat)` gives the clinic city of their system or their last station with
+  `"_sys"`; `_wake2` (they wake once their deck there stands). `notorious.update(system, also_system)`.
+  `Celestial` draws by twins only while its own view has two looks.
+- 0.8.75.47 (stage 5C, first part): main no longer takes the looks away during the first player's jump
+  (`two_wanted`), `transit_fx` is one of the things of the first player's half (`_halves_step()`), `transit_fx2`
+  and `galaxy2.open(true)` for the second player's jump (`_hyper2_show()`), `_in_jump()` (the jump of who acts).
+  `GameState.on_player_ship_lost()` asks the story's guard for the first player only.
 - 0.8.75.46 (stage 5B): main `_seat_turn(seat)`: what main does for the second player while they have a view of
   their own begins with `if _seat_turn(seat): GameState.with_seat(1, <itself>); return` (window actions, their
   station window and deck, service windows, every step of the way down to a planet and up, the city's take-off
