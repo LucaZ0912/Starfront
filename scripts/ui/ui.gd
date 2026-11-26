@@ -61,7 +61,7 @@ static func wrap_label(text: String, size: int = 13, color: Color = TEXT_DIM, wi
 
 ## For a window laid out for a narrow picture (half of a split screen): every line of text under `root` that is wider
 ## than `max_w` wraps instead of pushing the window out of the picture.
-const NARROW_W := 1200.0
+const NARROW_W := 1300.0
 static func wrap_long(root: Node, max_w: float = 340.0, min_w: float = 180.0) -> void:
 	for lb in root.find_children("*", "Label", true, false):
 		var l := lb as Label

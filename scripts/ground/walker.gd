@@ -155,6 +155,48 @@ func _process(delta: float) -> void:
 		_stream(delta)
 	elif npc and not sitting and not stays and marker == "":
 		_wander(delta)
+	_redraw_step()
+
+
+var _sig := -1                      # what the picture drawn last was made of
+var _sig_look: Dictionary = {}
+var _sig_slung := ""
+var _sig_anim := false
+var _sig_next := 0.0
+var _sig_sv := false
+
+
+## The frame rate (0.8.75.50, Luz: 20 to 60 pictures a second on the Steam Deck): a figure was drawn anew every frame,
+## also one standing or sitting still. It is drawn anew when what its picture is made of changes (the step of its
+## walk, the way it faces, sitting, down, sneaking, behind the scanner, a guard's lamp), every frame while something
+## of it moves by the clock (you, a dancer, a creature, a weapon in the hands, a drink, the umbrella, a bubble, a
+## mark over the head, the Survivor rig's lights), and four times a second in any case (for what is set from
+## outside and not asked here).
+func _redraw_step() -> void:
+	var anim: bool = not npc or dancing or creature != "" or aim != Vector2.INF or drink_t > 0.0 or umbrella > 0.0 or bubble_t > 0.0 or marker != "" or _sig_sv
+	var sig: int = dir
+	if moving:
+		sig |= (1 + int(_walk * 7.0) % 2) << 2
+	if sitting:
+		sig |= 32
+		sig ^= hash(pos) << 12
+	if down:
+		sig |= 64
+	if crouch:
+		sig |= 128
+	if xray:
+		sig |= 256
+	if guard and fposmod(_t * 1.3 + pos.x * 0.01, 2.0) < 1.4:
+		sig |= 512
+	if not (anim or _sig_anim or sig != _sig or _t >= _sig_next or slung != _sig_slung or not is_same(look, _sig_look)):
+		return
+	if _t >= _sig_next:
+		_sig_next = _t + 0.25
+		_sig_sv = ChibiArt.sv_tier(look) >= 1 or String(look.get("suit", "")) == "suit_survivor"
+	_sig = sig
+	_sig_anim = anim
+	_sig_look = look
+	_sig_slung = slung
 	queue_redraw()
 
 

@@ -2414,6 +2414,7 @@ func close_deck(open_window: bool = true, leave: bool = false) -> void:
 		ground.queue_free()
 	ground = null
 	_ground_place()
+	_cover_step()                                        # (space is seen again from this frame on)
 	if open_window:
 		open_station()
 	_update_input()
@@ -3164,6 +3165,7 @@ func _process(delta: float) -> void:
 	_apart_step()                                        # split screen: the two of you in different places
 	_halves_step()                                       # split screen: each player's windows over their half
 	_space_step()                                        # split screen: two looks at the one space
+	_cover_step()                                        # (the frame rate: space and its HUD rest under a ground view)
 	if loading == null:
 		return
 	_loading_t += delta
@@ -3176,6 +3178,21 @@ func _process(delta: float) -> void:
 		var tw := create_tween()
 		tw.tween_property(lay.get_child(0), "modulate:a", 0.0, 0.35)
 		tw.tween_callback(lay.queue_free)
+
+
+## The frame rate (0.8.75.50, Luz: 20 to 60 pictures a second on the Steam Deck): a single player on foot sees nothing
+## of space and nothing of the ship's HUD, the ground view lies over the whole picture. Both were drawn underneath all
+## the same, and the HUD worked out its whole display each frame. While it is so, the space view's picture and the HUD
+## rest; the world itself goes on. Not with two players: there a half may show space beside a ground view.
+func _cover_step() -> void:
+	var on: bool = ground != null and is_instance_valid(ground) and ground.get_parent() == self and ground.visible \
+			and not (Players.split and GameState.has_pilot2()) and not _v2() and ghalves.is_empty()
+	var v1 = view1 if (view1 != null and is_instance_valid(view1)) else view
+	if v1 != null and is_instance_valid(v1):
+		v1.set_covered(on)
+	var h1 = hud_p1 if (hud_p1 != null and is_instance_valid(hud_p1)) else hud
+	if h1 != null and is_instance_valid(h1):
+		h1.covered = on
 
 
 ## Split screen in space, stage 4 (Luz: each player flies their own ship, each half shows its player's ship with the

@@ -920,9 +920,19 @@ func location_text() -> String:
 const PASSIVE_TOOLS := ["scanner"]
 
 
+var _active: Array = []
+var _active_for: Dictionary = {}          # the stats the list was made from (a new dictionary whenever they are worked out anew)
+var _auto: Dictionary = {}
+var _auto_for: Dictionary = {}
+
+
+## (The frame rate, 0.8.75.50: the list is made once for a state of the ship, not at every call; every ship asked for
+## it several times each physics step, the HUD seventeen times a frame. Nobody may change what they get.)
 func active_modules() -> Array:
-	var out: Array = []
 	var s := stats()
+	if is_same(s, _active_for) and not s.is_empty():
+		return _active
+	var out: Array = []
 	for w in s["weapons"]:
 		out.append({"slot": w["slot"], "kind": "weapon", "data": w})
 	for pd in s["pd"]:
@@ -934,6 +944,8 @@ func active_modules() -> Array:
 			out.append({"slot": t["slot"], "kind": "tool", "data": t})
 	for a in s["actives"]:
 		out.append({"slot": a["slot"], "kind": "self", "data": a})
+	_active = out
+	_active_for = s
 	return out
 
 
@@ -945,6 +957,9 @@ const FIRE_GROUPS := 8
 ## Fire groups by kind (until set by hand): each kind of weapon its own group 1–3, the built-in auto mode 4, tools 5,
 ## active modules 6, point defence and mine launchers 7.
 func fire_groups_auto() -> Dictionary:
+	var s0 := stats()
+	if is_same(s0, _auto_for) and not s0.is_empty():
+		return _auto
 	var out := {}
 	var wids: Array = []
 	for e in active_modules():
@@ -961,6 +976,8 @@ func fire_groups_auto() -> Dictionary:
 				out[slot] = [5]
 			_:
 				out[slot] = [7]
+	_auto = out
+	_auto_for = s0
 	return out
 
 
@@ -985,7 +1002,7 @@ func group_slots(g: int) -> Array:
 ## Puts a module into a group or takes it out (the first change by hand starts from the groups by kind).
 func set_fire_group(slot: String, g: int, on: bool) -> void:
 	if not fg_custom:
-		fire_groups = fire_groups_auto()
+		fire_groups = fire_groups_auto().duplicate(true)     # (a copy: the groups by kind are kept as worked out, see active_modules())
 		fg_custom = true
 	var gs: Array = fire_groups.get(slot, [])
 	if on and not gs.has(g):

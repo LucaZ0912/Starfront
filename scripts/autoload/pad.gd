@@ -1105,4 +1105,14 @@ func _update_hint(ctx: String) -> void:
 	var hn = _hint.get_node("Hint")
 	hn.combo = "left" if _down.get("left", false) else ("right" if _down.get("right", false) else "")
 	hn.list = list_mode
-	hn.queue_redraw()
+	# (the frame rate, 0.8.75.52: the row of hints was drawn anew every frame, some twenty texts measured and written,
+	# with two players as the second player for theirs. It is drawn anew when what it shows changes, and twice a second
+	# in any case: a binding set anew, a HUD laid out anew.)
+	var m9 = _main()
+	var nar9: bool = m9 != null and "hud" in m9 and m9.hud != null and is_instance_valid(m9.hud) and m9.hud.has_method("narrow") and m9.hud.narrow()
+	var sig9 := "%s|%s|%s|%s|%s|%s" % [hn.combo, list_mode, _on_map(), kind, hn.get_viewport_rect().size, nar9]
+	var now9 := Time.get_ticks_msec()
+	if sig9 != String(hn.get_meta("sig", "")) or now9 >= int(hn.get_meta("due", 0)):
+		hn.set_meta("sig", sig9)
+		hn.set_meta("due", now9 + 500)
+		hn.queue_redraw()

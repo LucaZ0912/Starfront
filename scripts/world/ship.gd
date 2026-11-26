@@ -977,11 +977,20 @@ func _valid(t) -> bool:
 	return t != null and is_instance_valid(t) and t.is_targetable()
 
 
+## (The frame rate, 0.8.75.52: every ship asks this twice a second about every other ship. The cheap question first:
+## is it nearer than the best so far; only then whether it is an enemy, in sight and not under a station's guns, which
+## with two players means being the other player for a moment. And only the ships of this world: with two systems at
+## once the ships of both are in the one group.)
 func _nearest_hostile(max_range: float):
 	var best = null
-	var bd := max_range
+	var bd2 := max_range * max_range
 	for n in get_tree().get_nodes_in_group("ships"):
-		if n == self or not n.is_targetable() or not hostile(self, n):
+		if n == self or n.view != view:
+			continue
+		var d2 := position.distance_squared_to(n.position)
+		if d2 >= bd2:
+			continue
+		if not n.is_targetable() or not hostile(self, n):
 			continue
 		if ignore_drones and n.is_drone:
 			continue
@@ -989,10 +998,8 @@ func _nearest_hostile(max_range: float):
 			continue
 		if _protected(n):
 			continue
-		var d := position.distance_to(n.position)
-		if d < bd:
-			bd = d
-			best = n
+		bd2 = d2
+		best = n
 	return best
 
 

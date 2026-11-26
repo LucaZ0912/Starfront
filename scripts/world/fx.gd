@@ -307,7 +307,28 @@ func _draw() -> void:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+## The frame rate (0.8.75.51, Luz from the Steam Deck: a warp stutters): each spark was a circle of its own, worked out
+## point by point, up to 480 of them every frame for the trail's 3.6 seconds; at the end of a warp a frame cost three
+## times a usual one. A spark is the picture of a disc now, made once: the same dot, one square to draw.
+static var _dot_tex: ImageTexture = null
+
+
+static func _dot() -> ImageTexture:
+	if _dot_tex == null:
+		var n := 32
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		img.fill(Color(1, 1, 1, 0))
+		var c := Vector2(n, n) * 0.5
+		for y in n:
+			for x in n:
+				if Vector2(x + 0.5, y + 0.5).distance_to(c) <= n * 0.5:
+					img.set_pixel(x, y, Color.WHITE)
+		_dot_tex = ImageTexture.create_from_image(img)
+	return _dot_tex
+
+
 func _draw_glitter() -> void:
+	var dot := _dot()
 	var age := max_life - life
 	var flare := clampf(1.0 - age / 0.5, 0.0, 1.0)            # everything flares up at the start
 	var z := maxf(get_viewport().get_canvas_transform().get_scale().x, 0.0001)
@@ -332,7 +353,7 @@ func _draw_glitter() -> void:
 		var p := Vector2(sp.x, sp.y)
 		var big := 1.25 - 0.55 * sp.z                              # bigger at the ship
 		var d := maxf((1.6 + 1.5 * flare) * px * big, 0.8)
-		draw_circle(p, d, Color(color.lerp(Color.WHITE, tw), al))
+		draw_texture_rect(dot, Rect2(p.x - d, p.y - d, d * 2.0, d * 2.0), false, Color(color.lerp(Color.WHITE, tw), al))
 		if tw > 0.6 or flare > 0.3:
 			var r := px * big * (2.0 + 5.0 * maxf(tw, flare))
 			var c := Color(1, 1, 1, al * maxf(tw, flare))

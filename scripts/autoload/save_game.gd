@@ -19,7 +19,7 @@ const MENU_SCENE := "res://scenes/menu.tscn"
 const GAME_SCENE := "res://scenes/main.tscn"
 
 var pending: Dictionary = {}     # {"mode": "new", "pilot", "seed"} or {"mode": "load", "slot"}
-var settings := {"fullscreen": false, "volume": 0.8, "autosave": true, "map_territory": true, "map_traffic": true,
+var settings := {"fullscreen": OS.has_feature("demo"), "volume": 0.8, "autosave": true, "map_territory": true, "map_traffic": true,
 	"vol_music": 0.6, "vol_ambience": 0.7, "vol_sfx": 0.8,           # package 28a: volume per channel
 	"show_fps": true}                                                # 0.6.35.15: frames per second in the top bar
 

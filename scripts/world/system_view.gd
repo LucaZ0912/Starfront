@@ -285,9 +285,19 @@ func seat_of(ship) -> int:
 
 
 ## It is this player's look's turn: the EYE_VARS are theirs, and so is "the pilot" (GameState).
+static var prof_eye = null          # (a measurement, smoke test perf49: who asks for the other look, how often; null: nothing is counted)
+
+
 func eye_as(seat: int) -> void:
 	if not eyes_two or seat == eye or seat < 0 or seat > 1:
 		return
+	if prof_eye != null and seat != 0:
+		var st: Array = get_stack()
+		var who := ""
+		for i in range(1, mini(st.size(), 5)):
+			if not String(st[i]["function"]) in ["in_eye", "eye_as"]:
+				who += "%s:%d < " % [st[i]["function"], st[i]["line"]]
+		prof_eye[who] = int(prof_eye.get(who, 0)) + 1
 	for k in EYE_VARS:
 		var mine = get(k)
 		var theirs = _eye_other[k]
@@ -653,6 +663,22 @@ func _setup_background(bg: SpaceBackground) -> void:
 	bg.setup(float(system_id) * 1.37 + 0.5, float(system_id) * 0.137, 0.8)
 	if Universe.is_veil(system_id):
 		bg.veil(Universe.systems[system_id]["pos"] - Universe.MAP_SIZE * 0.5)     # package 40c
+
+
+## The frame rate (0.8.75.50): while a ground view lies over the whole picture (a single player on foot) nothing of
+## space is seen, and all of it was drawn underneath all the same. Main says when it is so: the picture is off then.
+## The world itself goes on (the ships fly, the stations turn, a convoy arrives).
+var covered := false
+
+
+func set_covered(on: bool) -> void:
+	if on == covered:
+		return
+	covered = on
+	visible = not on
+	for cl in [background, sky, _zfx_layer]:
+		if cl != null and is_instance_valid(cl):
+			(cl as CanvasLayer).visible = not on
 
 
 func build(p_system: int) -> void:
@@ -1147,19 +1173,26 @@ func _spawn_celestials() -> void:
 
 
 ## Package 31a: escape pods of this system as objects in space (GameState.pods is the truth).
+var _pods_here := 0                # (how many pods this view shows: with none, and none wanted, there is nothing to look through)
+
+
 func _sync_pods() -> void:
 	var want := {}
 	for pod in GameState.pods:
 		if int(pod["system"]) == system_id:
 			want[String(pod["id"])] = pod
+	if want.is_empty() and _pods_here <= 0:
+		return                                           # (the frame rate, 0.8.75.51: it went through every body of the system, rocks too, twice a second)
 	for c in celestials.duplicate():
 		if is_instance_valid(c) and c.kind == "pod" and not want.has(String(c.data["id"])):
 			celestials.erase(c)
 			by_id.erase(String(c.data["id"]))
 			c.queue_free()
+			_pods_here -= 1
 	for pid in want:
 		if not by_id.has(pid) or not is_instance_valid(by_id[pid]):
 			_add_celestial("pod", {"id": pid, "name": "Escape pod", "pos": want[pid]["pos"]})
+			_pods_here += 1
 
 
 # ---------------------------------------------------------------- Wingmen (package 33)
@@ -2038,20 +2071,14 @@ func _process(delta: float) -> void:
 		_sync_platform()
 		if eyes_two:
 			in_eye(1, _slow_look)                # (stage 4: the second player's own market, wingmen and platform ship)
-		_return_rocks()                      # 0.6.35.5
 		_hazard_tick(0.5)                    # package 40d
 	_look_step(delta)
 	if eyes_two:
-		in_eye(1, _look_step.bind(delta))
+		in_eye(1, _look_other.bind(delta))             # (the second look's whole part of the frame in one go)
 	_looks_done()
-	_cull_timer -= delta
-	if _cull_timer <= 0.0:
-		_cull_timer = 0.2
-		_cull_asteroids()
+	_cull_step(delta)                        # (the rocks near the camera shown, mined ones back: a slice of them a frame)
 	_update_defence(delta)
 	_update_interdict()
-	if eyes_two:
-		in_eye(1, _update_interdict)             # (the second player's own interdictor's game)
 	_update_notorious(delta)
 	_update_raid(delta)
 	_update_cme(delta)                                  # package 37
@@ -2065,11 +2092,18 @@ func _process(delta: float) -> void:
 				_fill_spot(spot, false)
 	_look_zoom(delta)
 	if eyes_two:
-		in_eye(1, _look_zoom.bind(delta))
 		if _eye_mirror != null and is_instance_valid(_eye_mirror):
 			_eye_mirror.position = camera.position
 			_eye_mirror.offset = camera.offset
 			_eye_mirror.zoom = camera.zoom
+
+
+## The frame rate (0.8.75.52): to be the second look costs a tenth of a millisecond each time, and the view was it three
+## times a frame, for the camera, for the interdictor's game and for the zoom. Once now, for all three.
+func _look_other(delta: float) -> void:
+	_look_step(delta)
+	_update_interdict()                                  # (the second player's own interdictor's game)
+	_look_zoom(delta)
 
 
 ## A look's part of a frame: its camera, what it shows of the world, the sky, what is under the mouse.
@@ -3359,7 +3393,9 @@ func apply_route() -> void:
 func _update_hover() -> void:
 	var text := ""
 	hovered = null
-	if input_enabled:
+	# (the frame rate, 0.8.75.51: what is under the mouse was looked for ten times a second among every body of the
+	# system, also while the controller is played: then nothing is under the mouse)
+	if input_enabled and not Pad.using_pad:
 		var p := pick(_screen_to_world(_mouse()))
 		if not p.is_empty():
 			if p["kind"] == "body":
@@ -3593,6 +3629,60 @@ func _cull_asteroids() -> void:
 		if vis != a.visible:
 			a.visible = vis
 			a.set_process(vis)                           # package 35: hidden rocks cost nothing
+	_cull_colossi(looks)
+
+
+## The frame rate (0.8.75.51, Luz from the Steam Deck: a warp stutters). Five times a second every rock of the system
+## was looked at in one frame (is it near a camera: shown, else hidden), twice a second every rock once more (is a
+## mined one due back), and Centauria's system has 3800 of them. Every rock is still looked at five times a second,
+## for both things, but a slice of them each frame instead of all in one.
+var _cull_at := 0
+var _cull_first := true
+var _cull_looks: Array = []
+var _cull_looks_t := 0.0
+
+
+func _cull_step(delta: float) -> void:
+	if _cull_first:
+		_cull_first = false
+		_cull_asteroids()                               # (a view just made: all of them at once, as before)
+		return
+	# (two looks: to ask the second look where its camera is means to be that look for a moment, and that costs as
+	# much as the whole slice; it is asked ten times a second, the edge kept round a camera allows for that)
+	_cull_looks_t -= delta
+	if not eyes_two:
+		_cull_looks = [_cull_look()]
+	elif _cull_looks.size() != 2 or _cull_looks_t <= 0.0:
+		_cull_looks_t = 0.1
+		_cull_looks = [_cull_look(), in_eye(1, _cull_look)]
+	else:
+		_cull_looks[0] = _cull_look()
+	var looks: Array = _cull_looks
+	var n := asteroid_nodes.size()
+	var todo := mini(n, int(ceil(float(n) * delta / 0.2)))
+	var now: float = GameState.play_time
+	for k in todo:
+		_cull_at = (_cull_at + 1) % n
+		var a = asteroid_nodes[_cull_at]
+		if not is_instance_valid(a):
+			continue
+		var vis := false
+		for lk in looks:
+			var d: Vector2 = a.position - (lk[2] as Vector2)
+			if bool(lk[0]) and absf(d.x) < (lk[1] as Vector2).x and absf(d.y) < (lk[1] as Vector2).y and float(a.radius) >= float(lk[3]):
+				vis = true
+		if vis != a.visible:
+			a.visible = vis
+			a.set_process(vis)                           # package 35: hidden rocks cost nothing
+		if a.data.has("gone") and a._break_t < 0.0 and now >= float(a.data.get("respawn_at", 0.0)):
+			a.restore()                                  # 0.6.35.5 (see _return_rocks())
+	_cull_timer -= delta
+	if _cull_timer <= 0.0:
+		_cull_timer = 0.2
+		_cull_colossi(looks)
+
+
+func _cull_colossi(looks: Array) -> void:
 	for co in colossi:
 		var cvis := false
 		for lk2 in looks:
@@ -3672,6 +3762,102 @@ func _draw_map_pick(o: Node2D, px: float) -> void:
 		o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+## The frame rate (0.8.75.52, Luz: the Steam Deck). In the Orbit and System views every orbit (a circle of 180 points
+## each), the belts, the system's edge, every mark and every name was drawn anew each frame, though none of it moves;
+## those two views cost twice a frame of the combat view. They are a picture of their own under each look's overlay
+## now ("Still"), drawn anew when the zoom, the change between the views or the number of places changes, and twice a
+## second in any case (a place revealed, a body moved on).
+func _map_still_step(o: Node2D, z: float, map_a: float) -> void:
+	var st: Node2D = o.get_node_or_null("Still")
+	if st == null:
+		st = Node2D.new()
+		st.name = "Still"
+		st.show_behind_parent = true
+		st.visibility_layer = o.visibility_layer
+		o.add_child(st)
+		st.draw.connect(_draw_map_still.bind(st, o))
+	var sig: Array = [z, snappedf(map_a, 0.02), Universe.warp_targets(system_id).size()]
+	var now := Time.get_ticks_msec()
+	if st.get_meta("sig", null) != sig or now >= int(st.get_meta("due", 0)):
+		st.set_meta("sig", sig)
+		st.set_meta("due", now + 500)
+		st.queue_redraw()
+
+
+func _draw_map_still(st: Node2D, o: Node2D) -> void:
+	if eyes_two and o != overlay:
+		in_eye(1 - eye, _draw_map_still_now.bind(st))      # (the other look's map: its zoom, its names)
+	else:
+		_draw_map_still_now(st)
+
+
+func _draw_map_still_now(o: Node2D) -> void:
+	var z := camera.zoom.x
+	var px := 1.0 / z
+	var font := ThemeDB.fallback_font
+	var map_a := map_alpha()
+	if map_a > 0.01:
+		_draw_belts_map(o, px, map_a)                  # package 35
+		# Orbits and system boundary
+		for p in layout["planets"]:
+			o.draw_arc(Vector2.ZERO, float(p["orbit"]), 0.0, TAU, 180, Color(0.4, 0.6, 0.9, 0.2 * map_a), 1.5 * px)
+		# package 36: moon orbits round their planet, once they are big enough on screen
+		for m in layout.get("moons", []):
+			if float(m["orbit"]) / px > 12.0:
+				var pl: Dictionary = layout["planets"][int(m["planet"])]
+				o.draw_arc(pl["pos"], float(m["orbit"]), 0.0, TAU, 96, Color(0.4, 0.6, 0.9, 0.14 * map_a), 1.0 * px)
+		# 0.6.36.5: station orbits round their planet or moon
+		for st in layout["stations"]:
+			if st.has("orbit") and float(st["orbit"]) / px > 12.0:
+				var par := Universe.body_by_id(layout, String(st.get("anchor", "")))
+				if not par.is_empty():
+					o.draw_arc(par["pos"], float(st["orbit"]), 0.0, TAU, 72, Color(0.45, 0.85, 0.95, 0.16 * map_a), 1.0 * px)
+		o.draw_arc(Vector2.ZERO, Universe.SYSTEM_RADIUS, 0.0, TAU, 220, Color(0.3, 0.5, 0.8, 0.3 * map_a), 2.0 * px)
+		for t in Universe.warp_targets(system_id):
+			var pos: Vector2 = t["pos"]
+			var col := Color(0.85, 0.9, 1.0, map_a)
+			match String(t["kind"]):
+				"station":
+					col = Color(PixelArt.STATION_ACCENT.get(t["data"]["type"], Color.WHITE), map_a)
+					o.draw_rect(Rect2(pos - Vector2.ONE * 5.0 * px, Vector2.ONE * 10.0 * px), col)
+					o.draw_rect(Rect2(pos - Vector2.ONE * 5.0 * px, Vector2.ONE * 10.0 * px), Color(1, 1, 1, map_a), false, 1.5 * px)
+				"haven":
+					col = Color(1.0, 0.2, 0.25, map_a)
+					o.draw_set_transform(pos, PI * 0.25, Vector2(px, px))
+					o.draw_rect(Rect2(Vector2(-5, -5), Vector2(10, 10)), Color(0.25, 0.02, 0.04, map_a))
+					o.draw_rect(Rect2(Vector2(-5, -5), Vector2(10, 10)), col, false, 1.5)
+					o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				"gate":
+					col = Color(PixelArt.gate_color(int(t["data"]["class"])), map_a)
+					o.draw_arc(pos, 8.0 * px, 0.0, TAU, 20, col, 3.0 * px)
+				"field":
+					col = Color(FIELD_COLORS.get(String(t["data"].get("class", "")), Color(0.95, 0.78, 0.45)), map_a)
+					for i in 8:
+						var off := Vector2.from_angle(i * 0.8 + 0.3) * (5.0 + (i % 3) * 4.0) * px
+						o.draw_rect(Rect2(pos + off - Vector2.ONE * 1.5 * px, Vector2.ONE * 3.0 * px), col)
+				"anomaly":
+					col = Color(0.85, 0.5, 1.0, map_a)
+					var r := 8.0 * px
+					o.draw_polyline(PackedVector2Array([pos + Vector2(0, -r), pos + Vector2(r, 0), pos + Vector2(0, r), pos + Vector2(-r, 0), pos + Vector2(0, -r)]), col, 2.0 * px)
+			if t["kind"] in ["star", "planet"]:
+				col = Color(0.75, 0.85, 1.0, 0.85 * map_a)
+			if t["kind"] == "field" and t["data"].has("moon"):
+				var fm := Universe.body_by_id(layout, String(t["data"]["moon"]))
+				if not fm.is_empty() and float(fm["orbit"]) / px < 60.0:
+					continue                                   # package 36: a moon's field is named with its moon
+			if t["kind"] == "moon":
+				# package 36: moon names only once the moons stand apart from their planet on screen
+				if float(t["data"]["orbit"]) / px < 60.0:
+					continue
+				col = Color(0.7, 0.78, 0.9, 0.75 * map_a)
+			var label: String = t["name"]
+			var ly := 18.0 if t["kind"] == "field" and t["data"].has("moon") else 4.0     # below its moon's name
+			o.draw_set_transform(pos + Vector2(14.0, ly) * px, 0.0, Vector2(px, px))
+			o.draw_string(font, Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.8 * map_a))
+			o.draw_string(font, Vector2.ZERO, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+			o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_overlay() -> void:
 	var o := overlay
 	var z := camera.zoom.x
@@ -3710,67 +3896,13 @@ func _draw_overlay() -> void:
 	for hv in havens:
 		if is_instance_valid(hv) and (map_a > 0.01 or hv.position.distance_to(camera.position) < HAVEN_RANGE + view_r):
 			o.draw_arc(hv.position, HAVEN_RANGE, 0.0, TAU, 160, Color(1.0, 0.25, 0.25, 0.3 * map_a + 0.3 * sky_alpha()), 1.5 * px)
+	# (the frame rate, 0.8.75.52: the map's lines, marks and names stand still and are drawn in a picture of their own,
+	# anew only when they change: _draw_map_still(). What turns stays here: the arc in a gate's ring.)
+	_map_still_step(o, z, map_a)
 	if map_a > 0.01:
-		_draw_belts_map(o, px, map_a)                  # package 35
-		# Orbits and system boundary
-		for p in layout["planets"]:
-			o.draw_arc(Vector2.ZERO, float(p["orbit"]), 0.0, TAU, 180, Color(0.4, 0.6, 0.9, 0.2 * map_a), 1.5 * px)
-		# package 36: moon orbits round their planet, once they are big enough on screen
-		for m in layout.get("moons", []):
-			if float(m["orbit"]) / px > 12.0:
-				var pl: Dictionary = layout["planets"][int(m["planet"])]
-				o.draw_arc(pl["pos"], float(m["orbit"]), 0.0, TAU, 96, Color(0.4, 0.6, 0.9, 0.14 * map_a), 1.0 * px)
-		# 0.6.36.5: station orbits round their planet or moon
-		for st in layout["stations"]:
-			if st.has("orbit") and float(st["orbit"]) / px > 12.0:
-				var par := Universe.body_by_id(layout, String(st.get("anchor", "")))
-				if not par.is_empty():
-					o.draw_arc(par["pos"], float(st["orbit"]), 0.0, TAU, 72, Color(0.45, 0.85, 0.95, 0.16 * map_a), 1.0 * px)
-		o.draw_arc(Vector2.ZERO, Universe.SYSTEM_RADIUS, 0.0, TAU, 220, Color(0.3, 0.5, 0.8, 0.3 * map_a), 2.0 * px)
-		for t in Universe.warp_targets(system_id):
-			var pos: Vector2 = t["pos"]
-			var col := Color(0.85, 0.9, 1.0, map_a)
-			match String(t["kind"]):
-				"station":
-					col = Color(PixelArt.STATION_ACCENT.get(t["data"]["type"], Color.WHITE), map_a)
-					o.draw_rect(Rect2(pos - Vector2.ONE * 5.0 * px, Vector2.ONE * 10.0 * px), col)
-					o.draw_rect(Rect2(pos - Vector2.ONE * 5.0 * px, Vector2.ONE * 10.0 * px), Color(1, 1, 1, map_a), false, 1.5 * px)
-				"haven":
-					col = Color(1.0, 0.2, 0.25, map_a)
-					o.draw_set_transform(pos, PI * 0.25, Vector2(px, px))
-					o.draw_rect(Rect2(Vector2(-5, -5), Vector2(10, 10)), Color(0.25, 0.02, 0.04, map_a))
-					o.draw_rect(Rect2(Vector2(-5, -5), Vector2(10, 10)), col, false, 1.5)
-					o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-				"gate":
-					col = Color(PixelArt.gate_color(int(t["data"]["class"])), map_a)
-					o.draw_arc(pos, 8.0 * px, 0.0, TAU, 20, col, 3.0 * px)
-					o.draw_arc(pos, 4.0 * px, _t, _t + 2.0, 10, col, 2.0 * px)
-				"field":
-					col = Color(FIELD_COLORS.get(String(t["data"].get("class", "")), Color(0.95, 0.78, 0.45)), map_a)
-					for i in 8:
-						var off := Vector2.from_angle(i * 0.8 + 0.3) * (5.0 + (i % 3) * 4.0) * px
-						o.draw_rect(Rect2(pos + off - Vector2.ONE * 1.5 * px, Vector2.ONE * 3.0 * px), col)
-				"anomaly":
-					col = Color(0.85, 0.5, 1.0, map_a)
-					var r := 8.0 * px
-					o.draw_polyline(PackedVector2Array([pos + Vector2(0, -r), pos + Vector2(r, 0), pos + Vector2(0, r), pos + Vector2(-r, 0), pos + Vector2(0, -r)]), col, 2.0 * px)
-			if t["kind"] in ["star", "planet"]:
-				col = Color(0.75, 0.85, 1.0, 0.85 * map_a)
-			if t["kind"] == "field" and t["data"].has("moon"):
-				var fm := Universe.body_by_id(layout, String(t["data"]["moon"]))
-				if not fm.is_empty() and float(fm["orbit"]) / px < 60.0:
-					continue                                   # package 36: a moon's field is named with its moon
-			if t["kind"] == "moon":
-				# package 36: moon names only once the moons stand apart from their planet on screen
-				if float(t["data"]["orbit"]) / px < 60.0:
-					continue
-				col = Color(0.7, 0.78, 0.9, 0.75 * map_a)
-			var label: String = t["name"]
-			var ly := 18.0 if t["kind"] == "field" and t["data"].has("moon") else 4.0     # below its moon's name
-			o.draw_set_transform(pos + Vector2(14.0, ly) * px, 0.0, Vector2(px, px))
-			o.draw_string(font, Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.8 * map_a))
-			o.draw_string(font, Vector2.ZERO, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
-			o.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		for tg in Universe.warp_targets(system_id):
+			if String(tg["kind"]) == "gate":
+				o.draw_arc(tg["pos"], 4.0 * px, _t, _t + 2.0, 10, Color(PixelArt.gate_color(int(tg["data"]["class"])), map_a), 2.0 * px)
 	# Markers for recon and system map (fixed screen size)
 	var mark_a := clampf((0.2 - z) / 0.1, 0.0, 1.0)
 	if mark_a > 0.01 and player != null and is_instance_valid(player):

@@ -694,9 +694,13 @@ func _update_contacts() -> void:
 			ships.append(n)
 	ships.sort_custom(func(a, b): return pp.distance_squared_to(a.position) < pp.distance_squared_to(b.position))
 	_tab_btns["contacts"].text = "Contacts (%d)" % ships.size()
-	var sig := "J" if view.player_jammed() else ""
+	# (which ships there are, not their order: the list was made anew whenever two of them changed places, in a warp
+	# again and again; the rows are put in order below)
+	var uids: Array = []
 	for n2 in ships:
-		sig += str(n2.fit.uid) + ","
+		uids.append(int(n2.fit.uid))
+	uids.sort()
+	var sig := ("J" if view.player_jammed() else "") + str(uids)
 	if sig != _contact_sig:
 		_contact_sig = sig
 		UI.clear(contacts_box)
@@ -716,18 +720,34 @@ func _update_contacts() -> void:
 			b.pressed.connect(func(): view.select("ship:%d" % uid))
 			contacts_box.add_child(b)
 			_contact_rows[uid] = b
-	for n4 in ships:
-		var b2: Button = _contact_rows.get(n4.fit.uid)
-		if b2 == null:
-			continue
-		var role: String = {"pirate": "Pirate", "patrol": "Patrol", "civilian": "Civilian", "neutral": "Neutral"}.get(n4.faction, n4.faction)
-		var col := Color(1.0, 0.45, 0.4) if n4.faction == "pirate" else (FactionData.color_of(n4.fit.gov) if n4.fit.gov != "" else Color(0.8, 0.84, 0.9))
-		if n4.faction == "civilian":
-			col = col.lerp(Color(0.85, 0.88, 0.92), 0.55)
-		var warp_mark := "⇢ " if n4.in_warp() else "▲ "
-		b2.text = "%s%s  ·  %s  ·  %s" % [warp_mark, n4.display_name(), role, SystemView.fmt_dist(pp.distance_to(n4.position))]
-		b2.add_theme_color_override("font_color", col)
-		b2.tooltip_text = n4.info_text() + ("\nIn warp: a Warp Interdictor can pull it out." if n4.in_warp() else "")
+		for n4 in ships:
+			_contact_row(n4, pp)                              # (a list just made: every row's words at once)
+	var first := 1 if view.player_jammed() else 0       # (the line about the jammed radar stands before the rows)
+	for i5 in ships.size():
+		var b5 = _contact_rows.get(ships[i5].fit.uid)
+		if b5 != null and is_instance_valid(b5) and (b5 as Node).get_index() != first + i5:
+			contacts_box.move_child(b5, first + i5)
+	_ct_ships = ships                                   # (their words from here on row by row, see _lists_step())
+
+
+func _contact_row(n4, pp: Vector2) -> void:
+	var b2: Button = _contact_rows.get(n4.fit.uid)
+	if b2 == null or not is_instance_valid(b2):
+		return
+	var role: String = {"pirate": "Pirate", "patrol": "Patrol", "civilian": "Civilian", "neutral": "Neutral"}.get(n4.faction, n4.faction)
+	var col := Color(1.0, 0.45, 0.4) if n4.faction == "pirate" else (FactionData.color_of(n4.fit.gov) if n4.fit.gov != "" else Color(0.8, 0.84, 0.9))
+	if n4.faction == "civilian":
+		col = col.lerp(Color(0.85, 0.88, 0.92), 0.55)
+	var warp_mark := "⇢ " if n4.in_warp() else "▲ "
+	var txt := "%s%s  ·  %s  ·  %s" % [warp_mark, n4.display_name(), role, SystemView.fmt_dist(pp.distance_to(n4.position))]
+	if b2.text != txt:
+		b2.text = txt
+	if not b2.has_meta("col") or b2.get_meta("col") != col:
+		b2.set_meta("col", col)
+		b2.add_theme_color_override("font_color", col)   # (a colour set anew makes the button work out its look anew: only on a change)
+	var tip: String = n4.info_text() + ("\nIn warp: a Warp Interdictor can pull it out." if n4.in_warp() else "")
+	if b2.tooltip_text != tip:
+		b2.tooltip_text = tip
 
 
 func _overview_click(t: Dictionary) -> void:
@@ -820,20 +840,74 @@ func _mark(b: Button, on: bool) -> void:
 		b.remove_theme_color_override("font_color")
 
 
-func _update_overview() -> void:
+## The rows in their order by distance, twice a second. `all`: every row's words too (a list just made); else the
+## words come row by row, see _lists_step().
+func _update_overview(all: bool = true) -> void:
 	if view == null:
 		return
 	var pp := view._player_pos()
 	_overview_rows.sort_custom(func(a, b): return pp.distance_squared_to(a["target"]["pos"]) < pp.distance_squared_to(b["target"]["pos"]))
 	for i in _overview_rows.size():
 		var r: Dictionary = _overview_rows[i]
-		var t: Dictionary = r["target"]
 		var b: Button = r["button"]
-		overview_box.move_child(b, i)
-		var d := pp.distance_to(t["pos"])
-		b.text = "%s %s   ·  %s" % [KIND_ICONS.get(t["kind"], "•"), t["name"], SystemView.fmt_dist(d)]
-		b.tooltip_text = "Warp" if d > Universe.warp_min_for(t) else "Approach"
+		if b.get_index() != i:
+			overview_box.move_child(b, i)
+		if all:
+			_overview_row(r, pp)
 	_mark_selected()
+
+
+func _overview_row(r: Dictionary, pp: Vector2) -> void:
+	var t: Dictionary = r["target"]
+	var b: Button = r["button"]
+	var d := pp.distance_to(t["pos"])
+	var txt := "%s %s   ·  %s" % [KIND_ICONS.get(t["kind"], "•"), t["name"], SystemView.fmt_dist(d)]
+	if b.text != txt:
+		b.text = txt
+	var tip := "Warp" if d > Universe.warp_min_for(t) else "Approach"
+	if b.tooltip_text != tip:
+		b.tooltip_text = tip
+
+
+## The frame rate (0.8.75.51, Luz from the Steam Deck: in a warp the display jumps between 60 pictures a second and
+## fewer than 10). Twice a second every row of the list on the right got its distance anew, all in one frame; in a
+## warp every distance changes, so some thirty texts were set and drawn in that one frame, and that frame cost five
+## to ten times a usual one. Each row still gets its distance twice a second, but one row after another, a few a
+## frame. The contacts' rows the same way.
+var _ov_acc := 0.0
+var _ov_at := 0
+var _ct_acc := 0.0
+var _ct_at := 0
+var _ct_ships: Array = []
+var _lists_stale := true
+
+
+func _lists_step(delta: float) -> void:
+	if view == null or _ov_panel == null or not _ov_panel.visible:
+		_lists_stale = true
+		return
+	var pp: Vector2 = view._player_pos()
+	if overview_box != null and overview_box.visible:
+		var n := _overview_rows.size()
+		if _lists_stale:
+			for r0 in _overview_rows:
+				_overview_row(r0, pp)                          # (shown again after a while: all at once, once)
+		elif n > 0:
+			_ov_acc = minf(_ov_acc + delta * float(n) * 2.0, float(n))
+			while _ov_acc >= 1.0:
+				_ov_acc -= 1.0
+				_ov_at = (_ov_at + 1) % n
+				_overview_row(_overview_rows[_ov_at], pp)
+	elif contacts_box != null and contacts_box.visible:
+		var m := _ct_ships.size()
+		if m > 0:
+			_ct_acc = minf(_ct_acc + delta * float(m) * 2.0, float(m))
+			while _ct_acc >= 1.0:
+				_ct_acc -= 1.0
+				_ct_at = (_ct_at + 1) % m
+				if is_instance_valid(_ct_ships[_ct_at]):
+					_contact_row(_ct_ships[_ct_at], pp)
+	_lists_stale = false
 
 
 ## 0.6.35.15: the FPS display – updated four times a second; green, yellow below 50, red below 30.
@@ -903,6 +977,10 @@ func _update_cme_banner(delta: float) -> void:
 var _mid_mark: Control = null
 
 
+var _mid_sig := Vector3(-1, -1, -1)
+var _zone_col := Color(0, 0, 0, 0)
+
+
 func _draw_mid_mark() -> void:
 	_me(_draw_mid_mark_now)
 
@@ -922,10 +1000,25 @@ func _draw_mid_mark_now() -> void:
 var _hud_slow := 0.0
 
 
+## The frame rate (0.8.75.50): while a ground view lies over the whole picture (a single player on foot) nothing of
+## this HUD is seen. It was worked out and drawn underneath all the same. Main says when it is so: it rests then.
+var covered := false
+
+
 func _process(delta: float) -> void:
+	if _root != null and _root.visible == covered:
+		_root.visible = not covered
+	if covered:
+		return
 	_layout_step()
 	if _mid_mark != null:
-		_mid_mark.queue_redraw()
+		# (the frame rate, 0.8.75.52: the mark stands still in the picture's middle; it was drawn anew every frame, with two
+		# players as the other player for theirs. Drawn anew when it comes, goes, or the picture's size changes.)
+		var on9: bool = view != null and is_instance_valid(view) and view.cam_off_ship() and view.level < 2
+		var sig9 := Vector3(1.0 if on9 else 0.0, _mid_mark.size.x, _mid_mark.size.y)
+		if sig9 != _mid_sig:
+			_mid_sig = sig9
+			_mid_mark.queue_redraw()
 	_update_fps(delta)
 	_update_cme_banner(delta)
 	if hover_panel.visible:
@@ -939,12 +1032,13 @@ func _process(delta: float) -> void:
 	var f := GameState.active()
 	_update_zone_label()
 	_update_ticker(delta)
+	_lists_step(delta)
 	if codex_label != null and codex_label.text != "" and GameState.play_time >= _codex_until:
 		codex_label.text = ""
 	_ov_timer -= delta
 	if _ov_timer <= 0.0:
 		_ov_timer = 0.5
-		_update_overview()
+		_update_overview(false)
 		_update_contacts()
 		if _w.has("skills"):
 			# package 30: skill tree tiles ready to open, perk points to spend
@@ -1135,8 +1229,11 @@ func _update_zone_label() -> void:
 		var raid_txt := "☠ RAID ON %s · hull %d%% · turrets %d / %d · %d:%02d left" % [rl["st"].title().to_upper(), int(100.0 * float(rl["hp"]) / maxf(float(rl["hp_max"]), 1.0)), on, rl["turrets"].size(), int(left) / 60, int(left) % 60]
 		text = raid_txt if text == "" else raid_txt + "\n" + text
 		col = Color(1.0, 0.35, 0.3)
-	zone_label.text = text
-	zone_label.add_theme_color_override("font_color", col)
+	if zone_label.text != text:
+		zone_label.text = text
+	if col != _zone_col:
+		_zone_col = col                                 # (a colour set anew makes the label work out its look anew: only on a change)
+		zone_label.add_theme_color_override("font_color", col)
 
 
 func _set_bar(b: ProgressBar, v: float, vmax: float) -> void:
@@ -1903,10 +2000,25 @@ var _group_tiles := {}                  # package 79: fire group (1–8) -> its 
 
 ## Package 79 (Luz): the module bar by fire groups – a tile per group (1–8, its key), the modules in it switched
 ## together; modules in no group are not shown. `module_slots` keeps every module you switch on (in order).
+var _mods_c: Array = []
+var _groups_c: Dictionary = {}
+var _mods_fit = null
+var _mods_next := 0
+
+
 func _update_modules() -> void:
 	var p = view.player if view != null else null
 	var f := GameState.active()
-	var mods: Array = f.active_modules() if (f != null and p != null and is_instance_valid(p)) else []
+	var live: bool = f != null and p != null and is_instance_valid(p)
+	var now := Time.get_ticks_msec()
+	# (the frame rate, 0.8.75.50: which modules there are and in which groups was asked every frame, and it was nearly
+	# all this HUD cost. It is asked five times a second, and at once for another ship or after a change of the bar.)
+	if live and f == _mods_fit and now < _mods_next and _module_sig != "" and _module_sig != "-":
+		_update_module_tiles(p, _mods_c, _groups_c)
+		return
+	_mods_fit = f
+	_mods_next = now + 200
+	var mods: Array = f.active_modules() if live else []
 	var groups := {}
 	var sig := ""
 	for e in mods:
@@ -1914,6 +2026,8 @@ func _update_modules() -> void:
 	for g in ShipFitting.FIRE_GROUPS:
 		groups[g + 1] = f.group_slots(g + 1) if not mods.is_empty() else []
 		sig += "%d:%s;" % [g + 1, ",".join(PackedStringArray(groups[g + 1]))]
+	_mods_c = mods
+	_groups_c = groups
 	if sig != _module_sig:
 		_module_sig = sig
 		UI.clear(module_bar)
@@ -1928,6 +2042,11 @@ func _update_modules() -> void:
 		if any:
 			for g3 in ShipFitting.FIRE_GROUPS:
 				_make_group_tile(g3 + 1, groups[g3 + 1], mods)
+	_update_module_tiles(p, mods, groups)
+
+
+## Each frame: what the bar's tiles show (running, on which target, how far a cycle is).
+func _update_module_tiles(p, mods: Array, groups: Dictionary) -> void:
 	for g4 in _group_tiles:
 		var t: Dictionary = _group_tiles[g4]
 		var slots: Array = groups.get(g4, [])
@@ -1950,19 +2069,27 @@ func _update_modules() -> void:
 				state = st
 			prog = maxf(prog, p.cycle_progress(slot))
 			if not e1.is_empty() and e1["kind"] in ["weapon", "tool"]:
-				var tn := p.lock_number(String(p.module_target.get(slot, "")))
+				var tn: int = p.lock_number(String(p.module_target.get(slot, "")))
 				if tn > 0 and not tns.has(tn):
 					tns.append(tn)
-		var sb: StyleBoxFlat = t["style"]
-		var gc: Color = FIRE_COLORS[g4 - 1]
-		sb.border_color = STATE_COLORS[state] if on_any else Color(gc, 0.45)
-		sb.set_border_width_all(3 if on_any else 2)
-		sb.bg_color = Color(STATE_COLORS[state].darkened(0.8), 0.92) if on_any else Color(0.03, 0.04, 0.08, 0.9)
+		var look := "%s%d" % [state, int(on_any)]
+		if String(t.get("look", "")) != look:
+			# (a style box tells its button to draw itself anew at every value set, the same one too: only on a change)
+			t["look"] = look
+			var sb: StyleBoxFlat = t["style"]
+			var gc: Color = FIRE_COLORS[g4 - 1]
+			sb.border_color = STATE_COLORS[state] if on_any else Color(gc, 0.45)
+			sb.set_border_width_all(3 if on_any else 2)
+			sb.bg_color = Color(STATE_COLORS[state].darkened(0.8), 0.92) if on_any else Color(0.03, 0.04, 0.08, 0.9)
 		var bar: ProgressBar = t["bar"]
 		bar.max_value = 1.0
 		bar.value = prog if on_any else 0.0
-		tns.sort()
-		t["tgt"].text = " ".join(PackedStringArray(tns.map(func(n): return "T%d" % n)))
+		var tgt_text := ""
+		if not tns.is_empty():
+			tns.sort()
+			tgt_text = " ".join(PackedStringArray(tns.map(func(n): return "T%d" % n)))
+		if t["tgt"].text != tgt_text:
+			t["tgt"].text = tgt_text
 
 
 func _make_group_tile(g: int, slots: Array, mods: Array) -> void:

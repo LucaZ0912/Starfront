@@ -379,6 +379,9 @@ func _split_device_row(parent: Control, player: int, col: Color) -> void:
 		_build_split()))
 
 
+const SPLIT_MIN_W := 1600.0             # a picture narrower than this gets the word that split screen is made for a large screen
+
+
 func _build_split() -> void:
 	if split_root != null and is_instance_valid(split_root):
 		split_root.queue_free()
@@ -392,6 +395,10 @@ func _build_split() -> void:
 	# ---- the left half: the first player
 	var lb := _split_half(false, c1)
 	lb.add_child(UI.label("PLAYER 1", 26, c1))
+	var sw: float = get_viewport().get_visible_rect().size.x
+	if sw < SPLIT_MIN_W:
+		# (Luz, 26 Nov 2026: split screen is not meant for the Steam Deck's own screen; it is said, not forbidden)
+		lb.add_child(UI.wrap_label("Split screen is made for a large screen, a TV or a monitor. On this one each half is only %d pixels wide: texts get small and windows tight." % int(sw * 0.5), 14, UI.GOLD, 520))
 	_split_device_row(lb, 0, c1)
 	lb.add_child(UI.label("GAME", 14, c1))
 	var sc := ScrollContainer.new()

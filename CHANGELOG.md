@@ -3,6 +3,191 @@
 Versions follow **alpha Phase.Teil.Paket.laufende Nummer** (see Roadmap.md → Arbeitsweise & Übergabe).
 Every update gets its own entry, a commit and a git tag `v<version>`.
 
+## alpha 0.8.75.52 – 2026-11-26
+
+**The frame rate, third round (Luz: the split screen will be a load for the processor; of six things offered: "I
+would do 1, 2 and 3, the rest later"): being the other player for a moment, the ships' physics, and drawing only
+what changes. Nothing of it changes what is seen or how the game plays.**
+- **1, being the other player** (two players in space): the game is the second player for a moment many times a
+  frame, and each time costs 0.11 ms on this PC (the look's fifty values, the pilot's state, the controller's). The
+  switch itself has no single dear part, so what was done is fewer of them, ten a frame before, seven now:
+  - the space view was the second look three times a frame (camera, interdictor's game, zoom): once now;
+  - the controller's row of hints was drawn anew every frame, some twenty texts measured and written, as the second
+    player for theirs: it is drawn anew when what it shows changes, and twice a second in any case. **This row is
+    drawn for a single player with a controller too, so on the Steam Deck in every frame until now;** none of the
+    numbers of 0.8.75.50 and .51 had it in them (measured with the mouse);
+  - the mark in the picture's middle (the camera off the ship) was drawn anew every frame though it stands still;
+  - the no-fire zone's line set its colour anew every frame, which made the label work out its look every frame.
+- **2, the ships' physics:** measured part by part (`PERF49_ONLY=fight`): unlike the HUD it has no single dear
+  function. A ship's step costs 0.04 ms: its movement a third, the power plan (four times a second), the choice of a
+  target. One thing stood out: the search for the nearest enemy, twice a second for every ship, 0.2 to 0.4 ms each
+  time: it asked every other ship whether it is an enemy, in sight and not under a station's guns, and only then how
+  far it is. The distance is asked first now: now 0.02 to 0.05 ms. The same ship is found (a check compares both
+  ways). A fight with 40 pirates as a whole costs what it did (4.3 to 4.5 ms a frame): the search was a small part.
+  It also looks only at the ships of its own world now: with two systems at once the ships of both are in the one
+  group. **Found and not changed: 23 more places go through that group**, so with the two players in different
+  systems a ship of one world may count for something in the other.
+- **3, drawing only what changes:** in the Orbit and System views every orbit (a circle of 180 points each), the
+  belts, the system's edge, every mark and every name was drawn anew each frame. They are a picture of their own
+  under each look's overlay now, drawn anew when the zoom, the change between the views or the number of places
+  changes, and twice a second in any case. What moves is drawn each frame as before (brackets, radar, the arc in a
+  gate's ring).
+- **Before and after** (this PC, a frame in milliseconds): two players in the one system 5.7, now 5.0; two players
+  in two systems 8.4, now 8.0; the Orbit view 4.5, now 2.5 to 2.9; the System view 4.2, now 3.2 to 3.5.
+- **What the split screen still costs, measured:** a second look's own work and drawing, a second HUD, and with two
+  systems the ships of a second world, each stepped as often as the first's. That is the game for two; it is not
+  waste. Seven times a frame the game is still the other player.
+- **Not built, as agreed (later):** the mouse's look at everything under it only among what is seen, far ships
+  stepped more coarsely, a cap on physics steps caught up in one frame.
+- **Not known:** what arrives on the Steam Deck; nothing was measured there, and nothing with two real controllers.
+- Measuring: `PERF49_ONLY=split` (one player, two in one system, two in two systems; who asks to be the other
+  player and how often, by name when run with Godot's `-d`), a ship's step part by part in `PERF49_ONLY=fight`,
+  pictures of the views with `PERF49_SHOTS=1`.
+- **Looked at:** pictures of the Orbit and the System view after the change: orbits, belts, marks and names as
+  before.
+- **A new build:** `build/steamdeck/Spacefarer.pck` and `build/windows/Spacefarer.pck` packed anew; the Windows
+  build, started headless, passes `frame50` and `deck49`.
+- Smoke test group `frame50`: 9 checks now. Run in parts, none failed that did not fail before: `frame50`,
+  `archetypes`, `patrol_beat`, `law`, `notorious`, `wingmen`, `platform`, `pad80`, `controls`, `cam58`, `moons`,
+  `stars`, `scale`, `gates40`, `w58a`, `q58`, `arm58`, `faction_jobs`, `split0` to `split5`, `split23` to `split33`.
+  Failing as before: one check of `drones` (a key for "launch all"). No full run.
+
+## alpha 0.8.75.51 – 2026-11-26
+
+**The warp stutters (Luz, from the Steam Deck, after 0.8.75.50: "it runs better already; what stutters a lot is the
+warp, the display jumps between 60 pictures a second and fewer than 10 and back"). Measured frame by frame, then what
+made the dear frames taken apart; nothing of it changes what is seen or how the game plays.**
+- **Measured:** `perf49` flies a warp across the system and back (`PERF49_ONLY=warp`) and writes down every frame:
+  how many cost more than 4, 8, 16, 33 ms, the dearest ones with their parts, and on demand (`PERF49_WARPDIG=1`)
+  whose `_process` the time went into, what was said and what was drawn anew in that frame. A frame in a warp is
+  cheap on average (2 ms on this PC); several times a second a single frame cost 12 to 27 ms. On the Deck that is
+  the jump Luz sees (my estimate: three times that).
+- **The list on the right** was the biggest part: twice a second every row got its distance anew, all in one frame.
+  Standing still nothing changes; in a warp every distance does, so some thirty texts were set and drawn in that one
+  frame. Each row still gets its distance twice a second, but one row after another, a few a frame. The contacts'
+  rows the same way; that list was also made anew whenever two ships changed places in it, it is put in order now.
+- **Every rock of the system, four times over:** five times a second all 3800 rocks of Centauria's system were
+  looked at in one frame (near a camera: shown), twice a second all of them again (a mined one due back), twice a
+  second every body of the system for escape pods, and ten times a second every body for what is under the mouse.
+  The rocks are looked at a slice a frame now (every rock still five times a second, for both things); the pods'
+  look is left out while there is no pod here and none wanted; nothing is under the mouse while the controller is
+  played.
+- **The trail of sparks at the end of a warp:** each of its up to 480 sparks was a circle of its own, worked out
+  point by point, every frame for 3.6 seconds; arriving, a frame cost three to four times a usual one for two
+  seconds. A spark is the picture of a disc now, made once: the same dot, a square to draw.
+- **Before and after** (this PC, the same warp of 38 seconds, 11 million km): frames dearer than 8 ms: 271, now 11;
+  dearer than 16 ms: 7, now 0; the dearest frame of a usual second: 12 to 17 ms, now 5 to 7; the two seconds after
+  arriving: 7.5 ms a frame, now 3.7.
+- **Found and left:** the scanner finding an anomaly makes the list on the right anew, a single frame of 13 ms; a
+  ship of the traffic arriving costs a frame of 4 ms now and then.
+- **AMD FSR (Luz asked):** Godot 4.3 has FSR 1 and 2, but for a 3D picture and its Forward+ renderer only; this game
+  is 2D on the Compatibility renderer, where it does not apply. It would not help either: the time goes into scripts
+  on the processor, not into the graphics card.
+- **Not known:** what arrives on the Steam Deck; nothing was measured there.
+- **The split screen, measured for the first time** (`PERF49_ONLY=split`; this PC, a frame in milliseconds): one
+  player in space 1.9, two players in the one system 5.7, two players in two systems 8.4. What it goes into: the
+  space view's own work for the second look, both HUDs, the ships of a second world, and being the other player for
+  a moment (`SystemView.in_eye()`: 0.11 ms each time, many times a frame). Changed for it here only what this
+  update itself made dearer: the rocks' slice asked the second look where its camera is every frame; it asks ten
+  times a second now. The rest is not built: see the Roadmap.
+- **Looked at:** a picture of the trail of sparks a moment after a warp: as before.
+- **A new build:** `build/steamdeck/Spacefarer.pck` and `build/windows/Spacefarer.pck` packed anew; the Windows
+  build, started headless, passes `frame50` and `deck49`.
+- Smoke test group `frame50`: 7 checks now, and it leaves the ship as it found it (it left it docked at first, and
+  `boost` after it failed on that: the test's slip, not the game's). Run in parts, none failed: `frame50`, `rocks`,
+  `mining41`, `boost`, `warp36`, `jump_warning`, `gates40`, `pad80`, `controls`, `crew`, `gameover`, `wingmen`,
+  `cam58`, `hazards40d`, `stationwin`, `split0`, `split1`, `split23`, `split24`, `split25`. No full run.
+
+## alpha 0.8.75.50 – 2026-11-26
+
+**The frame rate (Luz, from the Steam Deck: 20 to 60 pictures a second in the game as a single player, 90 in the
+menus). Measured first, then three things changed that cost the most; none of them changes what is seen or how the
+game plays.**
+- **Measured, not guessed:** the smoke test group `perf49` (not part of the full run, in a window) takes a frame
+  apart in the places a single player is in: the scripts' physics step, their `_process`, the `_draw` functions, the
+  renderer; it can stop every script and hide every picture for a moment to see its share (`PERF49_DIG=1`), and it
+  times the HUD's functions one by one. Found: the time goes into scripts on the processor, not into the graphics
+  card. All numbers below are from this PC (i9-12900F), in milliseconds a frame; the Deck's processor is about three
+  times slower a core (my estimate, not measured).
+- **The ship's HUD:** one function, the module bar, was 93 % of what the HUD cost: it asked the ship seventeen times
+  a frame which modules there are and in which fire groups, and set the tiles' styles anew each frame, which made
+  every tile draw itself anew. Which modules and groups there are is asked five times a second now (at once for
+  another ship), a style is set only when it changes. The HUD's frame: 1.0 ms before, 0.06 ms now.
+- **The list of a ship's modules is kept** (`ShipFitting.active_modules()`, `fire_groups_auto()`): made once for a
+  state of the ship, not at every call. Every ship asked for it several times each physics step. A fight with 40
+  pirates: the ships' physics 1.2 ms before, 0.8 ms now.
+- **People on foot:** every figure was drawn anew every frame, also one standing or sitting still. A figure is drawn
+  anew when its picture changes (the step of its walk, the way it faces, sitting, down, sneaking, a guard's lamp),
+  every frame while something of it moves by the clock (you, a dancer, a creature, a weapon in the hands, a drink,
+  the umbrella, a bubble, a mark, the Survivor rig's lights), and four times a second in any case.
+- **Space rests under the ground view:** a single player on foot sees nothing of space and nothing of the ship's
+  HUD, and both were worked out and drawn underneath all the same (on a station's deck 400 draw calls, 80 now). The
+  space view's picture is off and the HUD rests while the ground view lies over the whole picture; the world itself
+  goes on (the ships fly, a convoy arrives). Not with two players: there a half may show space beside a ground view.
+- **Before and after** (this PC, a frame in milliseconds): space in the combat view 3.2, now 1.6; a fight with 40
+  pirates 5.7, now 3.7; a station's deck, the commercial level 5.2, now 1.6; a city's hangar 4.5, now 1.3; a city's
+  street 9.5, now 2.8; a city's tower 7.8, now 3.3; the alley 6 to 9, now 3.0.
+- **Not changed, still the dearest now:** the Orbit and System views in space (4.2 to 4.5, their overlay and names
+  are drawn each frame), the weather's drawing in the open, the street's 1150 draw calls, the ships' own thinking in
+  a big fight.
+- **Not known:** how much of this arrives on the Steam Deck. Nothing was measured there; the graphics card's share
+  there cannot be measured here.
+- **My own slip, found before it went out:** the kept groups by kind were handed to `set_fire_group()`, which changed
+  them in place; `firegroups79` failed on it. It takes a copy now.
+- **Looked at:** two pictures at the end of the changes, a city's hall with its people and space after the way back
+  aboard: both as before.
+- **A new build:** `build/steamdeck/Spacefarer.pck` and `build/windows/Spacefarer.pck` packed anew (the programs
+  beside them are unchanged); the Windows build, started headless, passes `frame50` and `deck49`.
+- Smoke test group `frame50` (5 checks). Run in parts, none failed that did not fail before: `modules`, `power`,
+  `multifocus`, `firegroups79`, `pad80`, `controls`, `khi`, `package20`, `wingmen`, `platform`, `gear`, `landing`,
+  `debug_ground`, `stationwin`, `foot_combat`, `foot_team`, `foot_drones`, `foot_sneak`, `weather54e`, `sights54a`,
+  `room64e`, `round64d`, `games64g`, `casino62`, `cam58`, `w58a`, `story55`, `deck49`, `split16`, `split17`,
+  `split22`, `split23`, `split24`, `split26`, `split32`. Failing as on the commit before: `deck` (the deck from the
+  station window, alone) and one check of `drones` (a key for "launch all"). No full run.
+
+## alpha 0.8.75.49 – 2026-11-26
+
+**Towards the demo for the Steam Deck (Luz: only the single player has to run on the Deck's own screen, split screen
+is for a large screen and part of the demo, the debug menu must be reachable, the on-screen keyboard is enough for a
+name), and what the first full run of the tests since the split screen's stages found.**
+- **The debug menu is reached without a keyboard:** an entry "Debug Menu" in the pause menu (the Deck has no F12).
+  It is there while the debug commands are on: in a debug build, and in the demo build, whose export has the
+  feature "demo" (an exported release build has them off, as before).
+- **Where a split screen is begun, a narrow picture is told so:** "Split screen is made for a large screen, a TV or
+  a monitor …" on a picture narrower than 1600 (the Deck's own is 1280). It is said, not forbidden.
+- **Every window fits 1280 x 800:** the windows' narrow layouts are used from a picture narrower than 1300 on (it
+  was 1200), so the Deck's own screen gets them. Three pages of the pilot window and one of the ship's menu ran out
+  of that picture before. The galaxy map's text about a system scrolls in its place on a low picture (it pushed the
+  panel 64 pixels out). Measured with the look tool: all 57 pages fit 1280 x 800, 958 x 1080 and 1920 x 1080.
+- **An export is set up:** `export_presets.cfg` with "Steam Deck Demo (Linux)" and "Demo (Windows)", both with the
+  feature "demo", into `build/` (not in the repository).
+- **A first build that runs:** `build/steamdeck/` (the program for Linux, 64 bit, and the game's pack, with a note
+  how to bring it onto the Deck) and `build/windows/`. Built from Godot's official export templates 4.3 (Luz had
+  me download them) and the game's pack: the program of the template beside the pack. The Windows build was
+  started here, headless, with two test groups: it has the feature "demo", the debug commands are on, it finds its
+  57 sounds, and the groups pass in it. **The Linux build has not run anywhere yet.**
+- The demo build begins in fullscreen while no settings are saved.
+- **Found for an exported game:** the list of sound files was read from the folder's files, which an exported game
+  does not have (only their ".import" notes): the list was empty there. It reads the notes now.
+- **The full run of the tests** (the first since the split screen's stages; 40 minutes): 1132 checks passed, 11
+  failed, 2 script errors. After the changes below: 1142 passed, 1 failed, 1 script error.
+  - Ten of the eleven were my new split screen tests, which pass alone and began in another state in the full
+    run: the groups before leave the game in another system (since stage 5 a second player who comes back to
+    their last station is then a system away), and the first player's list still held lines of earlier groups.
+    The split screen's groups begin at home now, and clear that list; `split29` says "not checked" where a system
+    has no government's station.
+  - The single player's test of the station's concourse met its narrow layout (0.8.75.41) in the 64 pixel wide
+    picture of a headless run: it knows it now.
+  - `split33` and `split25` called a function the buy-back window does not have while tidying up.
+  - **Still failing in the full run, cause not found:** `split33`, shot down in a system of their own (it passes
+    alone and with the groups just before it); it prints what it finds now.
+  - **Old, not from this work:** `colmeta62a` stops with a script error; alpha 0.8.75.35 does the same.
+- **Not tried, not known:** anything on a Steam Deck itself: the frame rate, the size of the texts on its screen,
+  a controller's way through the start menu and the pilot's creation, the on-screen keyboard at the name. The word
+  at "Split Screen" was not looked at in a picture. The exported game was not looked at in a window (only run
+  headless).
+- Smoke test group `deck49` (2 checks).
+
 ## alpha 0.8.75.48 – 2026-11-26
 
 **Package 75, split screen, stage 5C, the rest: a system's world is kept when it changes hands, a fall on foot goes

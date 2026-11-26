@@ -26,8 +26,9 @@ const MODULE_BUYBACK := 0.6   # outfitter pays 60 % of the list price
 
 var world = null              # SystemView of the current system (or null)
 ## Debug commands ("debug_*") are only accepted when cheats are enabled – on by default in
-## debug builds (running from the editor), off in exported release builds.
-var cheats_enabled := OS.is_debug_build()
+## debug builds (running from the editor), off in exported release builds. The demo build (its export preset has the
+## feature "demo") keeps them on: Luz shows different parts of the game with the debug menu (26 Nov 2026).
+var cheats_enabled := OS.is_debug_build() or OS.has_feature("demo")
 var god_mode := false         # player ship takes no damage
 var history: Array = []       # last commands (debugging / replay)
 

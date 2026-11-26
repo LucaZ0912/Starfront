@@ -812,9 +812,19 @@ func gear_of(seat: int):
 
 ## One of the two steps into the place of "the pilot": everything the game does for its pilot (a shop, a counter,
 ## what is bought and worn, what a skill makes of it) is then done for them, with their own credits and Coins.
+var prof_act = null                 # (a measurement, smoke test perf49: who asks to be the second player, how often; null: nothing is counted)
+
+
 func act_as(seat: int, quiet: bool = false) -> void:
 	if not has_pilot2() or seat == acting or seat < 0 or seat > 1:
 		return
+	if prof_act != null and seat == 1:
+		var st: Array = get_stack()
+		var who := ""
+		for i in range(1, mini(st.size(), 6)):
+			if not String(st[i]["function"]) in ["with_seat", "act_as", "in_eye", "eye_as", "as_pilot"]:
+				who += "%s:%d < " % [st[i]["function"], st[i]["line"]]
+		prof_act[who] = int(prof_act.get(who, 0)) + 1
 	var my_credits := credits
 	var my_coins := coins
 	credits = int(pilot2.get("credits", 0))

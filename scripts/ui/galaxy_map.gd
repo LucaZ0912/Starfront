@@ -248,6 +248,11 @@ func open(p_transit: bool = false) -> void:
 func _open(p_transit: bool) -> void:
 	transit_mode = p_transit
 	visible = true
+	# a low picture (the Steam Deck's 800): the system's text scrolls in its place instead of pushing the panel out
+	var low: bool = get_viewport().get_visible_rect().size.y < 900.0
+	info.fit_content = not low
+	info.scroll_active = true
+	info.size_flags_vertical = Control.SIZE_EXPAND_FILL if low else Control.SIZE_FILL
 	title_label.text = "Hyperspace: Star Map" if transit_mode else "Galaxy Map"
 	if selected_system < 0:
 		selected_system = GameState.current_system

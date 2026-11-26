@@ -51,9 +51,10 @@ func ids() -> Array:
 	var d := DirAccess.open("res://assets/sfx")
 	if d == null:
 		return out
-	for f in d.get_files():
+	for f0 in d.get_files():
+		var f: String = f0.trim_suffix(".import")        # (an exported game: the folder holds the files' ".import" notes only)
 		var base := f.get_basename()
-		if f.ends_with(".import") or base in out:
+		if base in out:
 			continue
 		if f.get_extension() in ["wav", "ogg", "mp3"]:
 			out.append(base)

@@ -30,6 +30,14 @@ func open() -> void:
 	_show_main()
 
 
+## The debug menu, from here: the pause ends and the menu opens.
+func _debug_menu() -> void:
+	close()
+	var mn = get_tree().current_scene
+	if mn != null and "debug_menu" in mn and mn.debug_menu != null and not mn.debug_menu.visible:
+		mn.debug_menu.toggle.call_deferred()
+
+
 func close() -> void:
 	if not visible:
 		return
@@ -53,6 +61,8 @@ func _show_main() -> void:
 	v.add_child(UI.menu_button("Save Game", func(): _show_browser("save")))
 	v.add_child(UI.menu_button("Load Game", func(): _show_browser("load")))
 	v.add_child(UI.menu_button("Settings", _show_settings))
+	if Commands.cheats_enabled:
+		v.add_child(UI.menu_button("Debug Menu", _debug_menu, Color(1.0, 0.8, 0.3)))     # (also reached by its key; a controller has none for it)
 	v.add_child(UI.menu_button("Leave without saving?  Click again" if _leave_armed == "menu" else "Main Menu", func(): _leave("menu"), UI.GOLD))
 	v.add_child(UI.menu_button("Quit without saving?  Click again" if _leave_armed == "quit" else "Quit to Desktop", func(): _leave("quit"), UI.NEON_PINK))
 	v.add_child(UI.label("%s quicksave  •  %s quickload" % [Keybinds.key_text("quicksave"), Keybinds.key_text("quickload")], 12, UI.TEXT_DIM))

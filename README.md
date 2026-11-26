@@ -467,6 +467,34 @@ Slanted, cosy top-down view since 0.7.49.2.
 - 0.8.64.8 (package 64g): `MinigameData.SPECIAL` with `luz`, `ratte` (billiards), `rook`, `kraut` (darts), found
   by the story flag `luz_bar_st` (Centauria's id, set by `dan_work._bar_flag()`) from the flag `luz_round`;
   `MinigameData.luz_place()` and `LUZ_SCORE` (the top row of `arcade_board()` there); smoke group `games64g`.
+- **Building the demo** (0.8.75.49): `godot --headless --path . --export-pack "Steam Deck Demo (Linux)"
+  build/steamdeck/Spacefarer.pck` writes the game's pack (no export templates needed for it); the program is the
+  official template `linux_release.x86_64` of Godot 4.3 (not the .NET one: the game has no C#), copied beside the pack
+  under the same name (`Spacefarer.x86_64`). The same for Windows with "Demo (Windows)" and
+  `windows_release_x86_64.exe`. The templates used lie in `build/_templates/`; `build/` is not in the repository.
+- 0.8.75.52 (the frame rate, third round): `SystemView._look_other()` (the second look's part of a frame in one
+  `in_eye()`), `_map_still_step()` / `_draw_map_still()` (the map's standing lines: a child "Still" of each look's
+  overlay), `prof_eye` and `GameState.prof_act` (counting who asks to be the other player; null: nothing is counted);
+  `Ship._nearest_hostile()` asks the distance first and only ships of its own view; `Pad._update_hint()` and
+  `HUD` (`_mid_sig`, `_zone_col`) draw anew on a change only. **Rule of thumb from the measuring:** with two players
+  every `in_eye()` / `act_as()` round trip costs about 0.1 ms; do a player's work of a frame in one of them.
+- 0.8.75.51 (the warp): `HUD._lists_step()` (the overview's and contacts' rows get their words one after another;
+  `_update_overview(all)`, `_overview_row()`, `_contact_row()`); `SystemView._cull_step()` (the rocks a slice a
+  frame, mined ones back with it; `_cull_asteroids()` is the whole pass still), `_pods_here`, no hover while
+  `Pad.using_pad`; `Fx._dot()` (a spark of the warp trail). **Measuring a warp:** `PERF49_ONLY=warp` (and
+  `PERF49_WARPDIG=1` for whose `_process` a dear frame went into, what was said and drawn in it; `PERF49_GATE=1`,
+  `PERF49_WARPCALLS=1`, `PERF49_WARPTAB=contacts`).
+- 0.8.75.50 (the frame rate): `Walker._redraw_step()` (a figure's picture only when it changes); `HUD.covered`,
+  `HUD._update_module_tiles()` and the bar's kept `_mods_c` / `_groups_c`; `ShipFitting.active_modules()` and
+  `fire_groups_auto()` keep their result for a state of the ship (nobody may change what they get:
+  `set_fire_group()` takes a copy); `SystemView.set_covered()`; `Main._cover_step()`. **Measuring:**
+  `--smoketest --only=perf49` in a window (`PERF49_SECS`, `PERF49_ONLY="space,fight,deck,city"`, `PERF49_DIG=1` for
+  every script's and picture's share): lines `PERF49 …` with a frame taken apart into physics, process, drawing and
+  renderer.
+- 0.8.75.49 (towards the Steam Deck demo): `Commands.cheats_enabled` is also on with the export feature "demo";
+  `PauseMenu._debug_menu()`; `MainMenu.SPLIT_MIN_W`; `UI.NARROW_W` 1300; `GalaxyMap._open()` lets the system's text
+  scroll on a low picture; `Audio.ids()` reads ".import" notes; `export_presets.cfg`. Smoke test: `_home_again()`
+  before the split screen's groups in the full run.
 - 0.8.75.48 (stage 5C, the rest): `SystemView.become_own(seat)` / `become_shared()` / `_swap_looks_state()`
   (`LOOK_OWN`: what of a look is the look's own; the rest is its player's and changes sides) and `refit()`; main
   `ADOPT`, `load_system()` decides `keep_old` / `take_theirs`, `_view_hand_over()` (the shared view becomes

@@ -754,6 +754,9 @@ func _process(delta: float) -> void:
 				await _test_rook64f(main.view)           # package 64f: Rook and the Colosseum
 				_test_games64g()                        # package 64g: the round at the bar's games
 				await _test_music64()                   # (Luz) the bar's music, Survivor's
+				await _test_deck49()                    # the demo for the Steam Deck: the debug menu from the pause menu, the word at "Split Screen"
+				await _test_frame50()                   # the frame rate: what rests on foot, the module bar, a figure standing still
+				await _home_again()                     # (the groups before leave the game in another system: the split screen's begin at home)
 				await _test_split0()                    # split screen, stage 0: the foundation
 				await _test_split1(main.view)           # split screen, stage 1: a match for two
 				await _test_split2(main.view)           # split screen, stage 1: Survivor for two
@@ -971,7 +974,7 @@ func _test_station(sp: StationUI) -> void:
 	check(el == "" and int(GameState.pilot["look"]["hair"]) == int(nl["hair"]) and GameState.credits == cr_l - Commands.look_price() and GameState.pilot["attrs"] == attrs0,
 		"image studio: new looks for %s – the attributes stay as they are" % GameData.fmt_credits(Commands.look_price()))
 	sp.show_concourse(false)
-	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) - int(not sp.station.get("curia", false)) - int(not sp.station.get("exchange", false)) and sp.body.get_child(0).get_child_count() == 3, "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
+	check(sp.concourse_tiles == GameData.services.size() - int(not sp.station.get("senate", false)) - int(not sp.station.get("curia", false)) - int(not sp.station.get("exchange", false)) and (sp.body.get_child(0).get_child_count() == 3 or UI.narrow(sp.win)), "station concourse: commander and news, the ship with its services, the station with its services (%d tiles)" % sp.concourse_tiles)
 	# Market via commands
 	var c0 := GameState.credits
 	var item := ""
@@ -7776,7 +7779,8 @@ func _test_boost(view: SystemView) -> void:
 	pl.fit.capacitor = cm
 	pl.boost_cd = 0.0
 	pl.boost_t = 0.0
-	var ok_fire: bool = pl.boost_error() == "" and pl.boost()
+	var err0: String = pl.boost_error()
+	var ok_fire: bool = err0 == "" and pl.boost()
 	var cost_ok: bool = absf(pl.fit.capacitor - cm * (1.0 - pl.BOOST_CAP)) < 0.5
 	var mult_ok: bool = absf(pl.boost_mult() - pl.BOOST_MULT) < 0.001
 	var again: String = pl.boost_error()
@@ -7785,6 +7789,8 @@ func _test_boost(view: SystemView) -> void:
 	pl.boost_cd = 0.0
 	pl.boost_glow = 0.0
 	var key_ok: bool = Keybinds.key_text("boost") != "" and InputMap.has_action("boost")
+	if not (ok_fire and cost_ok and mult_ok and again != "" and cd_err.contains("recharging") and key_ok):
+		print("BOOST parts: fire ", ok_fire, " ('", err0, "') cost ", cost_ok, " mult ", mult_ok, " again '", again, "' cd '", cd_err, "' key ", key_ok, " docked ", pl.is_docked(), " order ", pl.order)
 	check(ok_fire and cost_ok and mult_ok and again != "" and cd_err.contains("recharging") and key_ok and pl.NPC_BOOST_COOLDOWN > pl.BOOST_COOLDOWN,
 		"0.6.75.2: thrust burst – ×%.1f speed for %.1f s, a fifth of the capacitor, %d s to recharge (NPCs %d s, and only now and then); key %s" % [pl.BOOST_MULT, pl.BOOST_TIME, int(pl.BOOST_COOLDOWN), int(pl.NPC_BOOST_COOLDOWN), Keybinds.key_text("boost")])
 
@@ -29773,6 +29779,256 @@ func _test_music64() -> void:
 
 ## The story's windows out of the way before a test of the story begins (a talk left open or calls still queued by
 ## an earlier test would hold back the next talk, and with it the pilot's feet).
+## The frame rate (0.8.75.50, Luz: 20 to 60 pictures a second on the Steam Deck). What was changed for it must not
+## change the game: a single player on foot has the space view's picture off and the ship's HUD at rest, and the world
+## goes on meanwhile; back aboard both are there again at once. The module bar, asked five times a second now, still
+## follows a fire group set by hand; the fitting's kept list of modules is made anew when the ship changes. A figure
+## standing still is not drawn anew each frame, you are (where a run draws at all: not a headless one).
+func _test_frame50() -> void:
+	_story_quiet()
+	var keep50: bool = Commands.cheats_enabled
+	var docked50: bool = GameState.active() != null and GameState.active().docked_at != ""
+	var fg50: Dictionary = GameState.active().fire_groups.duplicate(true)
+	var fgc50: bool = GameState.active().fg_custom
+	Commands.cheats_enabled = true
+	Commands.execute({"type": "debug_special", "special": "fern"})
+	await _perf_wait_loading()
+	main.station_panel.close()
+	for i in 6:
+		await get_tree().process_frame
+	var v0 = main.view
+	var h0 = main.hud
+	var before: bool = v0.visible and not v0.covered and v0.background.visible and v0.sky.visible and h0._root.visible and not h0.covered
+	# ---- the fitting's list, kept; the bar follows a group set by hand
+	var f50 = GameState.active()
+	var a1: Array = f50.active_modules()
+	var same: bool = is_same(a1, f50.active_modules())
+	f50.mark_dirty()
+	var a2: Array = f50.active_modules()
+	var slots1: Array = a1.map(func(e): return String(e["slot"]))
+	var slots2: Array = a2.map(func(e): return String(e["slot"]))
+	check(same and not is_same(a1, a2) and slots1 == slots2, "frame50: the list of a ship's modules is kept between two calls and made anew when the ship is worked out anew, with the same modules (%d)" % a2.size())
+	if a2.is_empty():
+		check(true, "frame50: the module bar and a fire group set by hand: not checked (this ship has no module to switch)")
+	else:
+		var slot50 := String(a2[0]["slot"])
+		var auto0: Array = (f50.groups_of(slot50) as Array).duplicate()
+		f50.set_fire_group(slot50, 8, true)
+		await _perf_wait(0.5)
+		var in_bar: bool = (h0._groups_c.get(8, []) as Array).has(slot50)
+		f50.auto_fire_groups()
+		await _perf_wait(0.5)
+		var out_bar: bool = not (h0._groups_c.get(8, []) as Array).has(slot50)
+		var auto1: Array = f50.groups_of(slot50)
+		check(in_bar and out_bar and auto0 == auto1, "frame50: a module put into fire group 8 by hand stands in the bar's group 8 half a second later, and is out again with the groups by kind, which are as they were (%s)" % str(auto1))
+		if not (in_bar and out_bar and auto0 == auto1):
+			print("FRAME50 bar: in ", in_bar, " out ", out_bar, " before ", auto0, " after ", auto1)
+	# ---- 0.8.75.51: the list on the right gets its distances row by row, every row within half a second
+	h0._set_ov_tab("overview")
+	for r50 in h0._overview_rows:
+		(r50["button"] as Button).text = "x"
+	await _perf_wait(0.8)
+	var filled51 := 0
+	for r51 in h0._overview_rows:
+		if String((r51["button"] as Button).text).ends_with("km"):
+			filled51 += 1
+	check(h0._overview_rows.size() > 0 and filled51 == h0._overview_rows.size(), "frame50: the rows of the list on the right get their distance one after another, and every row has it again within 0.8 seconds (%d of %d)" % [filled51, h0._overview_rows.size()])
+	# the rocks are looked at a slice a frame: one far from the camera is hidden, shown by hand it is hidden again within half a second
+	var far_rock = null
+	for ar in v0.asteroid_nodes:
+		if is_instance_valid(ar) and not ar.visible and (ar.position as Vector2).distance_to(v0.camera.position) > 400000.0:
+			far_rock = ar
+			break
+	if far_rock == null:
+		check(true, "frame50: the rocks, a slice a frame: not checked (no rock far from the camera here)")
+	else:
+		far_rock.visible = true
+		await _perf_wait(0.5)
+		check(not far_rock.visible, "frame50: a rock far from the camera, shown by hand, is hidden again within half a second (the rocks are looked at a slice a frame, all of them five times a second; %d rocks here)" % v0.asteroid_nodes.size())
+	# ---- 0.8.75.52: whom a ship fights is found the cheap way round, and is the same ship as the long way round
+	var asked52 := 0
+	var same52 := 0
+	for sh52 in v0.ship_layer.get_children():
+		if not (sh52 is Ship) or sh52.dying or asked52 >= 14:
+			continue
+		asked52 += 1
+		var want52 = null
+		var bd52 := 400000.0
+		for o52 in get_tree().get_nodes_in_group("ships"):
+			if o52 == sh52 or o52.view != sh52.view or not o52.is_targetable() or not Ship.hostile(sh52, o52) or (sh52.ignore_drones and o52.is_drone) or not sh52.can_see(o52) or sh52._protected(o52):
+				continue
+			var d52: float = (sh52.position as Vector2).distance_to(o52.position)
+			if d52 < bd52:
+				bd52 = d52
+				want52 = o52
+		if sh52._nearest_hostile(400000.0) == want52:
+			same52 += 1
+	check(asked52 > 0 and same52 == asked52, "frame50: the nearest enemy of a ship, found with the cheap question first, is the one the long way round finds (%d of %d ships)" % [same52, asked52])
+	# the map's standing lines are a picture of their own, drawn anew now and then, not every frame
+	var lv52: int = v0.level
+	v0.set_level(3)
+	await _perf_wait(2.5)
+	var still52 = v0.overlay.get_node_or_null("Still")
+	var n52 := {"still": 0, "over": 0}
+	var cs52 := func(): n52["still"] = int(n52["still"]) + 1
+	var co52 := func(): n52["over"] = int(n52["over"]) + 1
+	if still52 != null:
+		still52.draw.connect(cs52)
+	v0.overlay.draw.connect(co52)
+	var fr52 := Engine.get_process_frames()
+	await _perf_wait(1.0)
+	var frames52: int = Engine.get_process_frames() - fr52
+	if still52 != null:
+		still52.draw.disconnect(cs52)
+	v0.overlay.draw.disconnect(co52)
+	var map52: bool = v0.map_alpha() > 0.5
+	v0.set_level(lv52)
+	await _perf_wait(1.5)
+	if int(n52["over"]) == 0:
+		check(still52 != null and map52, "frame50: the System view has the map's standing lines as a picture of their own (this run draws nothing each frame: how often it is drawn anew is not seen)")
+	else:
+		check(still52 != null and map52 and int(n52["still"]) >= 1 and int(n52["still"]) <= 4 and int(n52["over"]) >= frames52 / 2, "frame50: in the System view the map's standing lines were drawn anew %d times in a second of %d frames, the overlay over them %d times" % [int(n52["still"]), frames52, int(n52["over"])])
+	# ---- on foot: space and its HUD rest, the world goes on
+	var e50 := String(Commands.execute({"type": "debug_deck"}))
+	var t50 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t50 < 20000 and (main.ground == null or not is_instance_valid(main.ground)):
+		await get_tree().process_frame
+	for i2 in 10:
+		await get_tree().process_frame
+	var on_foot: bool = main.ground != null and is_instance_valid(main.ground)
+	var resting: bool = on_foot and v0.covered and not v0.visible and not v0.background.visible and not v0.sky.visible and h0.covered and not h0._root.visible
+	var at0 := {}
+	for sh in v0.ship_layer.get_children():
+		if sh is Ship:
+			at0[sh.get_instance_id()] = sh.position
+	await _perf_wait(2.0)
+	var moved := 0
+	for sh2 in v0.ship_layer.get_children():
+		if sh2 is Ship and at0.has(sh2.get_instance_id()) and (sh2.position as Vector2).distance_to(at0[sh2.get_instance_id()]) > 1.0:
+			moved += 1
+	# ---- the people of the place: drawn anew far less often than once a frame
+	if on_foot:
+		Commands.execute({"type": "debug_ground_level", "level": "commercial"})
+		await _perf_wait(1.5)
+	var plain: Array = []
+	for wk in (main.ground.find_children("*", "Node2D", true, false) if on_foot else []):
+		if wk is Walker and wk.npc and wk.marker == "" and not wk.dancing and wk.creature == "" and wk.aim == Vector2.INF and wk.umbrella <= 0.0 and wk.drink_t <= 0.0 and not wk._sig_sv:
+			plain.append(wk)
+	var cnt := {"still": 0, "you": 0}
+	var cb_s := func(): cnt["still"] = int(cnt["still"]) + 1
+	var cb_y := func(): cnt["you"] = int(cnt["you"]) + 1
+	for wk2 in plain:
+		wk2.draw.connect(cb_s)
+	if on_foot and main.ground.pilot != null:
+		main.ground.pilot.draw.connect(cb_y)
+	var fr0 := Engine.get_process_frames()
+	await _perf_wait(1.0)
+	var frames50: int = Engine.get_process_frames() - fr0
+	for wk3 in plain:
+		if is_instance_valid(wk3) and wk3.draw.is_connected(cb_s):
+			wk3.draw.disconnect(cb_s)
+	if on_foot and main.ground.pilot != null:
+		main.ground.pilot.draw.disconnect(cb_y)
+	main.close_deck(false)
+	await get_tree().process_frame
+	var back: bool = not v0.covered and v0.visible and v0.background.visible and v0.sky.visible and not h0.covered
+	await get_tree().process_frame
+	back = back and h0._root.visible
+	check(before and resting and back, "frame50: on foot alone the space view's picture is off and the ship's HUD rests, back aboard both are there again ('%s')" % e50)
+	if not (before and resting and back):
+		print("FRAME50 rest: before ", before, " on foot ", on_foot, " resting ", resting, " back ", back, " (view covered ", v0.covered, " visible ", v0.visible, ", hud covered ", h0.covered, " root ", h0._root.visible, ")")
+	check(moved > 0, "frame50: the world goes on under the ground view: %d of %d ships moved in two seconds" % [moved, at0.size()])
+	var each: float = float(cnt["still"]) / maxf(float(plain.size()), 1.0)
+	if plain.is_empty():
+		check(true, "frame50: the people of a place: not checked (nobody here)")
+	elif int(cnt["you"]) == 0:
+		check(each <= 12.0, "frame50: in a second of %d frames each of %d people was drawn anew %.1f times (this run draws nothing each frame, also not you: only what a figure asks for is seen)" % [frames50, plain.size(), each])
+	else:
+		check(each <= 12.0 and int(cnt["you"]) >= frames50 / 2, "frame50: in a second of %d frames each of %d people was drawn anew %.1f times, you %d times" % [frames50, plain.size(), each, int(cnt["you"])])
+	Commands.cheats_enabled = keep50
+	await _home_again()                               # (this group leaves the game as it began: at home …)
+	f50.fire_groups = fg50                            # (… with the fire groups it had …)
+	f50.fg_custom = fgc50
+	if not docked50 and GameState.active() != null and GameState.active().docked_at != "":
+		main.station_panel.close()
+		var e_un := String(Commands.execute({"type": "undock"}))      # (… and out in space, if it was: the groups after it fly)
+		var t_un := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t_un < 15000 and (main.view.player == null or not is_instance_valid(main.view.player) or main.view.player.is_docked() or String(main.view.player.order.get("type", "")) in ["undocking", "docking"]):
+			await get_tree().process_frame
+		print("[SMOKE] frame50: undocked again ('", e_un, "'), docked now: ", main.view.player.is_docked() if main.view.player != null else true)
+
+
+## The demo for the Steam Deck (Luz, 26 Nov 2026): the debug menu is reached without a keyboard, from the pause menu
+## (while the debug commands are on: a debug build, or the export's feature "demo"); with them off the entry is not
+## there. Where a split screen is begun, a picture narrower than 1600 reads that split screen is made for a large
+## screen (the Deck's own is 1280 wide), a wide one does not.
+func _test_deck49() -> void:
+	var MM = load("res://scripts/ui/main_menu.gd")
+	var keep: bool = Commands.cheats_enabled
+	print("DECK49 this build: feature demo ", OS.has_feature("demo"), "  debug build ", OS.is_debug_build(), "  debug commands on at the start ", keep, "  sounds found ", Audio.ids().size())
+	var texts := func(root: Node) -> Array:
+		var out: Array = []
+		for b in root.find_children("*", "Button", true, false):
+			out.append(String((b as Button).text))
+		return out
+	# ---- the pause menu's entry
+	Commands.cheats_enabled = true
+	main.debug_menu.close()
+	main.pause_menu.open()
+	await get_tree().process_frame
+	var with_it: bool = (texts.call(main.pause_menu) as Array).has("Debug Menu")
+	var btn: Button = null
+	for b2 in main.pause_menu.find_children("*", "Button", true, false):
+		if String((b2 as Button).text) == "Debug Menu":
+			btn = b2
+	if btn != null:
+		btn.pressed.emit()
+	for f1 in 4:
+		await get_tree().process_frame
+	var opened: bool = not main.pause_menu.visible and not get_tree().paused and main.debug_menu.visible
+	main.debug_menu.close()
+	Commands.cheats_enabled = false
+	main.pause_menu.open()
+	await get_tree().process_frame
+	var without: bool = not (texts.call(main.pause_menu) as Array).has("Debug Menu")
+	main.pause_menu.close()
+	Commands.cheats_enabled = keep
+	check(with_it and opened and without, "deck49: with the debug commands on, the pause menu has \"Debug Menu\": it ends the pause and opens the menu; with them off the entry is not there")
+	if not (with_it and opened and without):
+		print("DECK49 pause: entry ", with_it, " opened ", opened, " (pause ", main.pause_menu.visible, " paused ", get_tree().paused, " menu ", main.debug_menu.visible, ") gone without ", without)
+	# ---- the word where a split screen is begun
+	var narrow_w: float = float(MM.SPLIT_MIN_W)
+	var here: float = get_viewport().get_visible_rect().size.x
+	check(narrow_w >= 1300.0 and narrow_w <= 1920.0, "deck49: a picture as wide as the Steam Deck's own (1280) is told that split screen is made for a large screen, one of 1920 is not (the mark is at %d; this run's picture is %d wide)" % [int(narrow_w), int(here)])
+
+
+## Found in the full run (26 Nov 2026): the groups before the split screen's leave the game in another system than the
+## home system. Since each player is in the system they flew to (stage 5), a second player's ship that comes back to
+## the station it docked at last is then a system away, and what a test expects "beside you" is not there. So the
+## split screen's groups begin where a new game begins.
+func _home_again() -> void:
+	for wl in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	if GameState.current_system == Universe.home_system:
+		return
+	var keep: bool = Commands.cheats_enabled
+	Commands.cheats_enabled = true
+	if main.ground != null and is_instance_valid(main.ground):
+		main.close_deck(false)
+	var e := String(Commands.execute({"type": "debug_teleport", "system": Universe.home_system}))
+	Commands.cheats_enabled = keep
+	for f in 40:
+		await get_tree().process_frame
+	for wl2 in 900:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+	main.station_panel.close()
+	print("[SMOKE] home again for the split screen's groups: '", e, "' system ", GameState.current_system, " (home ", Universe.home_system, ")")
+
+
 func _story_quiet() -> void:
 	# (found in the full run: an earlier test leaves the pilot with no health; landing then ends in a collapse and the
 	# pilot cannot walk. The story's tests begin with a pilot who is whole)
@@ -36103,6 +36359,7 @@ func _test_split25(view0: SystemView) -> void:
 		for f0 in 20:
 			await get_tree().process_frame
 		if main.huds.size() == 2 and v.player_of(1) != null:
+			main.huds[0].log_label.clear()               # (the first player's list anew: lines of earlier groups are not this group's)
 			var h1 = main.huds[0]
 			var h2 = main.huds[1]
 			var p1: Ship = v.player
@@ -36288,9 +36545,9 @@ func _test_split25(view0: SystemView) -> void:
 	# tidy up: the game as it was
 	Players.sim.clear()
 	if main.loss_window.visible:
-		main.loss_window.close()
+		main.loss_window._decide(false)
 	if main.loss_window2 != null and main.loss_window2.visible:
-		main.loss_window2.close()
+		main.loss_window2._decide(false)
 	main.pilot_window.close()
 	Players.stop_split()
 	Pad.seat_forget()
@@ -37182,6 +37439,12 @@ func _test_split29(view0: SystemView) -> void:
 	var sys29: int = v.system_id
 	if st29.is_empty() or v.player == null or not is_instance_valid(v.player) or v.player.is_docked():
 		print("SPLIT29 start: a government's station ", not st29.is_empty(), " your ship ", v.player)
+		if st29.is_empty() and v.player != null and is_instance_valid(v.player):
+			wait_ok = true                                   # (as the single player's group does: no government's station here, not checked)
+			rounds_ok = true
+			told_ok = true
+			escort_ok = true
+			print("SPLIT29: no government's station in this system: not checked")
 	else:
 		GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
 		Players.start_split("kbm", "pad:97")
@@ -37191,6 +37454,7 @@ func _test_split29(view0: SystemView) -> void:
 		for f0 in 20:
 			await get_tree().process_frame
 		if main.huds.size() == 2 and v.player_of(1) != null:
+			main.huds[0].log_label.clear()               # (the first player's list anew: lines of earlier groups are not this group's)
 			var p1: Ship = v.player
 			var p2: Ship = v.player_of(1)
 			var tr = v.traffic
@@ -37355,6 +37619,7 @@ func _test_split30(view0: SystemView) -> void:
 		for f0 in 20:
 			await get_tree().process_frame
 		if main.huds.size() == 2 and v.player_of(1) != null:
+			main.huds[0].log_label.clear()               # (the first player's list anew: lines of earlier groups are not this group's)
 			var p1: Ship = v.player
 			var p2: Ship = v.player_of(1)
 			GameState.wingmen.clear()
@@ -37546,6 +37811,7 @@ func _test_split31(view0: SystemView) -> void:
 		for f0 in 20:
 			await get_tree().process_frame
 		if main.huds.size() == 2 and v.player_of(1) != null:
+			main.huds[0].log_label.clear()               # (the first player's list anew: lines of earlier groups are not this group's)
 			var p1: Ship = v.player
 			var f1 = GameState.active_of(0)
 			var f2 = GameState.active_of(1)
@@ -38272,10 +38538,15 @@ func _test_split33(view0: SystemView) -> void:
 				var offer2: Dictionary = GameState.loss_offer_of(1)
 				var theirs_down: bool = not offer2.is_empty() and String(offer2.get("name", "")) == lost_name and GameState.loss_offer.is_empty() and lw2 != null and lw2.visible \
 					and main.halves[1].holds(lw2) and not main.loss_window.visible and is_instance_valid(p1b) and not p1b.dying
-				var a4: Vector2 = p1b.position
+				if not theirs_down:
+					print("SPLIT33 down, at the moment: offer ", not offer2.is_empty(), " name ", String(offer2.get("name", "")) == lost_name, " yours none ", GameState.loss_offer.is_empty(), " their window ", lw2, " up ", (lw2 != null and lw2.visible),
+						" in their half ", (lw2 != null and main.halves[1].holds(lw2)), " yours up ", main.loss_window.visible, " your ship ", p1b, " valid ", is_instance_valid(p1b), " halves on ", main.halves_on(),
+						" two looks ", (main.view1.eyes_two if main.view1 != null and is_instance_valid(main.view1) else false), " talk ", main._talk, " on foot ", [main.on_foot(0), main.on_foot(1)], " their view ", main._v2(), " systems ", [GameState.system_of(0), GameState.system_of(1)])
+				var a4: Vector2 = p1b.position if is_instance_valid(p1b) else Vector2.ZERO
 				Players.sim["0:move"] = Vector2(1.0, 0.0)
-				for f4b in 90:
-					await get_tree().process_frame
+				var tf4b := Time.get_ticks_msec()
+				while Time.get_ticks_msec() - tf4b < 6000 and is_instance_valid(p1b) and p1b.position.distance_to(a4) <= 12.0:
+					await get_tree().process_frame               # (by the clock, not by a count of frames: headless, frames can be very short)
 				Players.sim.clear()
 				var you_fly: bool = is_instance_valid(p1b) and p1b.position.distance_to(a4) > 10.0
 				if lw2 != null and lw2.visible:
@@ -38302,9 +38573,9 @@ func _test_split33(view0: SystemView) -> void:
 	# tidy up: the game as it was
 	Players.sim.clear()
 	if main.loss_window2 != null and main.loss_window2.visible:
-		main.loss_window2.close()
+		main.loss_window2._decide(false)
 	if main.loss_window.visible:
-		main.loss_window.close()
+		main.loss_window._decide(false)
 	Players.stop_split()
 	Pad.seat_forget()
 	GameState.act_as(0)
@@ -38422,6 +38693,764 @@ func _test_fly4look(view: SystemView) -> void:
 	GameState.active_changed.emit()
 	for i94 in 30:
 		await get_tree().process_frame
+
+
+## A measurement, not a check (not part of the full run: `--only=perf49`, in a window, e.g. `--resolution 1280x800`):
+## what a frame costs in the places a single player is in, with the frame limit and vsync off. For the Steam Deck
+## (Luz, 26 Nov 2026: 20 to 60 pictures a second in the game there, 90 in the menus). A frame is taken apart by two
+## marks, one run first and one run last in every step, and the renderer's own two signals:
+##   physics   the scripts' `_physics_process` of all nodes, summed over the steps of the frame (and how many steps)
+##   process   the scripts' `_process` of all nodes
+##   drawing   from the end of `_process` to the renderer's start: the `_draw` functions and what was deferred
+##   renderer  the renderer's own work, until the picture is handed over
+## PERF49_SECS seconds per measurement (default 3). PERF49_ONLY="space,fight,deck,city" picks parts. PERF49_DIG=1: every
+## script's and every picture's share. PERF49_SHOTS=1: "Claude outputs/perf49_street.png" and "perf49_space_after.png"
+## (the street with its people, space after the way back aboard).
+class PerfMark extends Node:
+	var first := true
+	var book: Dictionary = {}
+
+	func _process(_d: float) -> void:
+		book["p0" if first else "p1"] = Time.get_ticks_usec()
+
+	func _physics_process(_d: float) -> void:
+		if first:
+			book["f0"] = Time.get_ticks_usec()
+		else:
+			book["phys"] = int(book.get("phys", 0)) + Time.get_ticks_usec() - int(book.get("f0", Time.get_ticks_usec()))
+			book["steps"] = int(book.get("steps", 0)) + 1
+
+
+## Whose `_process` a frame's time went into: the scripts in question run one after another for the measurement (by
+## their process priority, which is put back afterwards), with a stamp of the clock between each two.
+class PerfStamp extends Node:
+	var key := ""
+	var book: Dictionary = {}
+
+	func _process(_d: float) -> void:
+		book["s_" + key] = Time.get_ticks_usec()
+
+
+var _perf_split: Array = []          # [name, the stamp after it, its nodes]
+
+
+func _perf_split_on() -> void:
+	_perf_split_off()
+	var v = main.view
+	var groups: Array = [["others", []]]
+	# every autoload and every child of main by itself (their own `_process`; what is below them stays with "others")
+	for rc in get_tree().root.get_children():
+		if rc != main and rc != self and not (rc is PerfMark) and not (rc is PerfStamp) and rc.is_processing():
+			groups.append([String(rc.name), [rc]])
+	groups.append(["main", [main]])
+	for mc in main.get_children():
+		if mc != v and mc != main.hud and mc.is_processing() and mc.get_script() != null:
+			groups.append([String(mc.name), [mc]])
+	groups.append_array([["view", [v]], ["bodies", v.celestials.duplicate()], ["ships", v.ship_layer.get_children()], ["traffic", [v.traffic]], ["hud", [main.hud]]])
+	var pr := 0
+	for grp in groups:
+		for nd in grp[1]:
+			if is_instance_valid(nd):
+				(nd as Node).process_priority = pr
+		var st := PerfStamp.new()
+		st.key = String(grp[0])
+		st.book = _perf_book
+		st.process_mode = Node.PROCESS_MODE_ALWAYS
+		st.process_priority = pr + 5
+		get_tree().root.add_child(st)
+		_perf_split.append([String(grp[0]), st, grp[1]])
+		pr += 10
+
+
+func _perf_split_off() -> void:
+	for sp in _perf_split:
+		for nd in sp[2]:
+			if is_instance_valid(nd):
+				(nd as Node).process_priority = 0
+		if is_instance_valid(sp[1]):
+			(sp[1] as Node).queue_free()
+	_perf_split = []
+
+
+## The frame before, by script: "others 0.21 main 0.10 view 5.40 …" (milliseconds).
+func _perf_split_text() -> String:
+	var out := ""
+	var prev: int = int(_perf_book.get("p0", 0))
+	for sp in _perf_split:
+		var at: int = int(_perf_book.get("s_" + String(sp[0]), prev))
+		if at - prev >= 200:
+			out += "%s %.2f  " % [sp[0], float(at - prev) / 1000.0]
+		prev = at
+	return out
+
+
+var _perf_book: Dictionary = {}
+var _perf_marks: Array = []
+
+
+func _perf_begin() -> void:
+	if not _perf_marks.is_empty():
+		return
+	for k in 2:
+		var pm := PerfMark.new()
+		pm.first = k == 0
+		pm.book = _perf_book
+		pm.process_mode = Node.PROCESS_MODE_ALWAYS
+		pm.process_priority = -1000000 if k == 0 else 1000000
+		pm.process_physics_priority = -1000000 if k == 0 else 1000000
+		get_tree().root.add_child(pm)
+		_perf_marks.append(pm)
+	RenderingServer.frame_pre_draw.connect(func(): _perf_book["r0"] = Time.get_ticks_usec())
+	RenderingServer.frame_post_draw.connect(func(): _perf_book["r1"] = Time.get_ticks_usec())
+	Engine.max_fps = 0
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+
+
+func _perf(tag: String, note: String = "") -> void:
+	var secs: float = float(OS.get_environment("PERF49_SECS")) if OS.get_environment("PERF49_SECS") != "" else 3.0
+	for warm in 30:
+		await get_tree().process_frame
+	var ms: Array = []
+	var sums := {"phys": 0.0, "proc": 0.0, "draw": 0.0, "rend": 0.0, "steps": 0.0, "calls": 0.0}
+	var t0 := Time.get_ticks_usec()
+	var last := t0
+	_perf_book["phys"] = 0
+	_perf_book["steps"] = 0
+	while Time.get_ticks_usec() - t0 < int(secs * 1000000.0):
+		await get_tree().process_frame
+		# (this is the start of a frame: the book holds the frame before)
+		var now := Time.get_ticks_usec()
+		ms.append(float(now - last) / 1000.0)
+		last = now
+		var b := _perf_book
+		sums["phys"] += float(b.get("phys", 0)) / 1000.0
+		sums["steps"] += float(b.get("steps", 0))
+		sums["proc"] += float(int(b.get("p1", 0)) - int(b.get("p0", 0))) / 1000.0
+		sums["draw"] += float(int(b.get("r0", 0)) - int(b.get("p1", 0))) / 1000.0
+		sums["rend"] += float(int(b.get("r1", 0)) - int(b.get("r0", 0))) / 1000.0
+		sums["calls"] += Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+		b["phys"] = 0
+		b["steps"] = 0
+	var n := maxf(float(ms.size()), 1.0)
+	var all := 0.0
+	for x in ms:
+		all += float(x)
+	ms.sort()
+	var p95: float = float(ms[int(float(ms.size() - 1) * 0.95)]) if not ms.is_empty() else 0.0
+	var worst: float = float(ms[ms.size() - 1]) if not ms.is_empty() else 0.0
+	var ships := 0
+	if main.view != null and is_instance_valid(main.view):
+		ships = main.view.ship_layer.get_child_count()
+	print("PERF49 %-34s frame %5.2f ms (95%%: %5.2f, worst %5.1f) = %4d fps | physics %5.2f (%.2f steps) | process %5.2f | drawing %5.2f | renderer %5.2f | draw calls %4d | nodes %5d | ships %3d %s" % [
+		tag, all / n, p95, worst, int(1000.0 * n / maxf(all, 0.001)), sums["phys"] / n, sums["steps"] / n, sums["proc"] / n, sums["draw"] / n, sums["rend"] / n,
+		int(sums["calls"] / n), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)), ships, note])
+
+
+func _perf_wait_loading() -> void:
+	for i in 40:
+		await get_tree().process_frame
+	for wl in 3000:
+		if main.loading == null or not is_instance_valid(main.loading):
+			break
+		await get_tree().process_frame
+
+
+func _perf_wait(secs: float) -> void:
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < int(secs * 1000.0):
+		await get_tree().process_frame
+
+
+## One short measurement, as numbers (milliseconds a frame).
+func _perf_take(secs: float) -> Dictionary:
+	for warm in 6:
+		await get_tree().process_frame
+	var sums := {"frame": 0.0, "phys": 0.0, "proc": 0.0, "draw": 0.0, "rend": 0.0}
+	var n := 0
+	var t0 := Time.get_ticks_usec()
+	var last := t0
+	_perf_book["phys"] = 0
+	_perf_book["steps"] = 0
+	while Time.get_ticks_usec() - t0 < int(secs * 1000000.0):
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		var b := _perf_book
+		sums["frame"] += float(now - last) / 1000.0
+		last = now
+		sums["phys"] += float(b.get("phys", 0)) / 1000.0
+		sums["proc"] += float(int(b.get("p1", 0)) - int(b.get("p0", 0))) / 1000.0
+		sums["draw"] += float(int(b.get("r0", 0)) - int(b.get("p1", 0))) / 1000.0
+		sums["rend"] += float(int(b.get("r1", 0)) - int(b.get("r0", 0))) / 1000.0
+		b["phys"] = 0
+		b["steps"] = 0
+		n += 1
+	for k in sums.keys():
+		sums[k] = float(sums[k]) / maxf(float(n), 1.0)
+	return sums
+
+
+## Where a place's frame goes: every script whose nodes run each frame is stopped for a moment (its `_process`, then
+## its `_physics_process`), and every kind of node that is drawn anew each frame is hidden for a moment; what the frame
+## gets cheaper by is that script's or that picture's share. The biggest are printed.
+func _perf_dig(tag: String) -> void:
+	var nodes: Array = get_tree().root.find_children("*", "", true, false)
+	var by_proc: Dictionary = {}
+	var by_phys: Dictionary = {}
+	var counts: Dictionary = {}
+	var conns: Array = []
+	for nd in nodes:
+		var sc = (nd as Node).get_script()
+		var key: String = String(sc.resource_path).get_file() if sc != null else ""
+		if key in ["smoke_test.gd", ""] and sc != null:
+			continue
+		if key != "":
+			if (nd as Node).is_processing():
+				if not by_proc.has(key):
+					by_proc[key] = []
+				(by_proc[key] as Array).append(nd)
+			if (nd as Node).is_physics_processing():
+				if not by_phys.has(key):
+					by_phys[key] = []
+				(by_phys[key] as Array).append(nd)
+		if nd is CanvasItem and (nd as CanvasItem).is_visible_in_tree():
+			var id: int = (nd as Node).get_instance_id()
+			counts[id] = 0
+			var cb := func(): counts[id] = int(counts[id]) + 1
+			(nd as CanvasItem).draw.connect(cb)
+			conns.append([nd, cb])
+	var f0 := Engine.get_process_frames()
+	for fr in 60:
+		await get_tree().process_frame
+	var frames: float = maxf(float(Engine.get_process_frames() - f0), 1.0)
+	var by_draw: Dictionary = {}
+	for pair in conns:
+		var cn = pair[0]
+		if not is_instance_valid(cn):
+			continue
+		(cn as CanvasItem).draw.disconnect(pair[1])
+		var cnt: int = int(counts[(cn as Node).get_instance_id()])
+		if float(cnt) < frames * 0.4:
+			continue
+		var sc2 = (cn as Node).get_script()
+		var key2: String = String(sc2.resource_path).get_file() if sc2 != null and String(sc2.resource_path) != "" else "%s '%s' in %s" % [(cn as Node).get_class(), String((cn as Node).name), String((cn as Node).get_parent().name)]
+		if not by_draw.has(key2):
+			by_draw[key2] = []
+		(by_draw[key2] as Array).append(cn)
+	var base: Dictionary = await _perf_take(1.5)
+	print("PERF49 DIG %s: frame %.2f = physics %.2f + process %.2f + drawing %.2f + renderer %.2f + rest; %d kinds of node drawn anew each frame" % [tag, base["frame"], base["phys"], base["proc"], base["draw"], base["rend"], by_draw.size()])
+	var rows: Array = []
+	for key3 in by_proc.keys():
+		var grp: Array = by_proc[key3]
+		for g in grp:
+			if is_instance_valid(g):
+				(g as Node).set_process(false)
+		var r: Dictionary = await _perf_take(0.6)
+		for g2 in grp:
+			if is_instance_valid(g2):
+				(g2 as Node).set_process(true)
+		rows.append([float(base["frame"]) - float(r["frame"]), "process  %-26s x%-4d frame -%.2f (process -%.2f, drawing -%.2f)" % [key3, grp.size(), float(base["frame"]) - float(r["frame"]), float(base["proc"]) - float(r["proc"]), float(base["draw"]) - float(r["draw"])]])
+	for key4 in by_phys.keys():
+		var grp2: Array = by_phys[key4]
+		for g3 in grp2:
+			if is_instance_valid(g3):
+				(g3 as Node).set_physics_process(false)
+		var r2: Dictionary = await _perf_take(0.6)
+		for g4 in grp2:
+			if is_instance_valid(g4):
+				(g4 as Node).set_physics_process(true)
+		rows.append([float(base["frame"]) - float(r2["frame"]), "physics  %-26s x%-4d frame -%.2f (physics -%.2f)" % [key4, grp2.size(), float(base["frame"]) - float(r2["frame"]), float(base["phys"]) - float(r2["phys"])]])
+	for key5 in by_draw.keys():
+		var grp3: Array = by_draw[key5]
+		var was: Array = []
+		for g5 in grp3:
+			if is_instance_valid(g5) and (g5 as CanvasItem).visible:
+				(g5 as CanvasItem).visible = false
+				was.append(g5)
+		var r3: Dictionary = await _perf_take(0.6)
+		for g6 in was:
+			if is_instance_valid(g6):
+				(g6 as CanvasItem).visible = true
+		rows.append([float(base["frame"]) - float(r3["frame"]), "picture  %-26s x%-4d frame -%.2f (drawing -%.2f, renderer -%.2f)" % [key5.left(60), grp3.size(), float(base["frame"]) - float(r3["frame"]), float(base["draw"]) - float(r3["draw"]), float(base["rend"]) - float(r3["rend"])]])
+	rows.sort_custom(func(a, b): return float(a[0]) > float(b[0]))
+	for i in mini(rows.size(), 14):
+		print("PERF49 DIG   ", rows[i][1])
+
+
+## What single functions cost: each is called many times in a row and timed (microseconds a call).
+func _perf_calls(tag: String, calls: Array) -> void:
+	var rows: Array = []
+	for c in calls:
+		var fn: Callable = c[1]
+		var n := 300
+		var t0 := Time.get_ticks_usec()
+		for i in n:
+			fn.call()
+		rows.append([float(Time.get_ticks_usec() - t0) / float(n), String(c[0])])
+	rows.sort_custom(func(a, b): return float(a[0]) > float(b[0]))
+	var out := ""
+	for r in rows:
+		out += "  %s %.0f" % [r[1], r[0]]
+	print("PERF49 CALLS %s (microseconds a call):%s" % [tag, out])
+
+
+func _perf_view_calls(tag: String) -> void:
+	var v = main.view
+	await _perf_calls(tag + ", the view", [
+		["cull rocks", v._cull_asteroids], ["hover", v._update_hover], ["jamming", v._apply_jamming], ["market", v._market_tick.bind(0.0)], ["pods", v._sync_pods],
+		["pod pickup", v._pod_pickup_check], ["wingmen", v._sync_wingmen], ["platform", v._sync_platform], ["return rocks", v._return_rocks], ["hazards", v._hazard_tick.bind(0.0)],
+		["bodies", v._update_bodies], ["screen rect", v._update_screen_rect], ["audio", v._update_audio], ["defence", v._update_defence.bind(0.0)], ["notorious", v._update_notorious.bind(0.0)],
+		["traffic", v.traffic._process.bind(0.0)], ["whole _process", v._process.bind(0.0)],
+	])
+	var tr = v.traffic
+	await _perf_calls(tag + ", the traffic", [
+		["shuttles", tr._update_shuttles], ["miners", tr._update_miners.bind(0.5)], ["patrols", tr._update_patrols.bind(0.5)], ["convoys", tr._update_convoys],
+		["loiterers", tr._update_loiterers.bind(0.5)], ["tourists", tr._update_tourists.bind(0.5)], ["faction jobs", tr._update_faction_jobs.bind(0.5)],
+	])
+
+
+## What a ship's physics step is made of (each part called by itself, many times in a row).
+func _perf_ship(tag: String, sh) -> void:
+	var s: Dictionary = sh.fit.stats()
+	var dt := 1.0 / 60.0
+	await _perf_calls(tag, [
+		["whole step", sh._physics_process.bind(dt)], ["own turn", sh._own_turn], ["lod skip", sh._lod_skip.bind(dt)], ["power", sh._update_power], ["regen", sh._regen.bind(dt, s)],
+		["hatches", sh._update_hatches.bind(dt)], ["arms", sh._update_arms.bind(dt)], ["npc drones", sh._update_npc_drones.bind(dt)], ["npc pulse", sh._update_npc_pulse.bind(dt)],
+		["npc cloak", sh._update_npc_cloak.bind(dt)], ["cloak fx", sh._update_cloak_fx.bind(dt)], ["auto fire", sh._update_auto_fire.bind(dt, s)], ["targeting", sh._update_targeting.bind(dt, s)],
+		["movement", sh._update_movement.bind(dt, s)], ["gravity", sh.view.apply_gravity.bind(sh, dt)], ["weapons", sh._update_weapons.bind(dt, s)], ["tools", sh._update_tools.bind(dt, s)],
+		["point defence", sh._update_pd.bind(dt, s)], ["npc jammer", sh._update_npc_jammer.bind(dt, s)], ["redraw if seen", sh._redraw_if_seen], ["stats()", sh.fit.stats],
+	])
+	var tg = sh.target if sh.target != null and is_instance_valid(sh.target) else sh.view.player
+	await _perf_calls(tag + ", inside", [
+		["can see", sh.can_see.bind(tg)], ["display name", sh.display_name], ["archetype", sh._update_archetype.bind(dt)], ["afterburner mult", sh.afterburner_mult], ["boost mult", sh.boost_mult],
+		["npc boost", sh._npc_boost.bind(dt)], ["nearest hostile", sh._nearest_hostile.bind(sh.lock_range(s))], ["lock range", sh.lock_range.bind(s)], ["focus", sh._update_focus.bind(sh.lock_range(s))],
+		["is traffic", sh.is_traffic], ["in warp", sh.in_warp], ["is docked", sh.is_docked], ["cloaked", sh.cloaked], ["valid target", sh._valid.bind(tg)], ["near pilot", sh.view.near_pilot.bind(sh.position)],
+		["on screen", func(): SystemView.on_screen_at(sh.position, 900.0)], ["empty call", func(): pass],
+	])
+
+
+func _perf_hud(tag: String) -> void:
+	var h = main.hud
+	var f = GameState.active()
+	var pl = main.view.player
+	await _perf_calls(tag, [
+		["layout", h._layout_step], ["zone", h._update_zone_label], ["ticker", h._update_ticker.bind(0.0)], ["cme", h._update_cme_banner.bind(0.0)],
+		["modules", h._update_modules], ["locks", h._update_locks], ["stats()", f.stats], ["overview", h._update_overview], ["contacts", h._update_contacts],
+		["drones", h._update_drones], ["allies", h._update_allies], ["selected", h._update_selected], ["power line", func(): h._update_power_line(f, f.stats())],
+		["status_flags", func(): h.status_flags(pl)], ["active()", GameState.active], ["whole _process", h._process.bind(0.0)],
+		["bars", func():
+			var s: Dictionary = f.stats()
+			h._set_bar(h._w["shield"], f.shield, s["shield_max"])
+			h._set_bar(h._w["armor"], f.armor, s["armor_max"])
+			h._set_bar(h._w["structure"], f.structure, s["structure_max"])
+			h._set_bar(h._w["cap"], f.capacitor, s["cap_max"])
+			h._set_bar(h._w["fuel"], f.fuel, s["fuel_max"])],
+	])
+
+
+## A warp across the system, frame by frame (Luz, from the Steam Deck: in a warp the display jumps between 60 pictures
+## a second and fewer than 10). Each frame is taken apart as in _perf(); printed are the frames by size (how many
+## cost more than 4, 8, 16, 33 ms) and the dearest ones with their parts, the zoom and how far the warp is.
+func _perf_warp(tag: String) -> void:
+	var v = main.view
+	var pl = v.player
+	if pl == null or not is_instance_valid(pl):
+		print("PERF49 WARP %s: no ship" % tag)
+		return
+	# the farthest thing a warp goes to
+	var far_id := ""
+	var far_d := 0.0
+	for c in v.celestials:
+		if is_instance_valid(c) and String(c.kind) in ["gate", "station", "planet", "moon", "descent"]:
+			var d: float = (c.position as Vector2).distance_to(pl.position)
+			if d > far_d and v.by_id.find_key(c) != null:
+				far_d = d
+				far_id = String(v.by_id.find_key(c))
+	v.select(far_id)                                       # (as a player does: the target picked, then the warp)
+	if OS.get_environment("PERF49_WARPTAB") != "":
+		main.hud._set_ov_tab(OS.get_environment("PERF49_WARPTAB"))     # "contacts": the list of ships instead of the overview
+	var e := String(Commands.execute({"type": "warp_to", "id": far_id}))
+	# what happens in a frame: rocks shown or hidden, rocks and other bodies drawn anew, nodes made
+	var cnt9 := {"vis": 0, "rock": 0, "body": 0, "ship": 0}
+	var hooks: Array = []
+	var plain9: bool = OS.get_environment("PERF49_WARPDIG") == ""     # (the counting below costs time itself: only when asked for)
+	for a9 in v.asteroid_nodes:
+		if is_instance_valid(a9) and not plain9:
+			var cv := func(): cnt9["vis"] = int(cnt9["vis"]) + 1
+			var cd := func(): cnt9["rock"] = int(cnt9["rock"]) + 1
+			a9.visibility_changed.connect(cv)
+			a9.draw.connect(cd)
+			hooks.append([a9, cv, cd])
+	for c8 in v.celestials:
+		if is_instance_valid(c8) and not plain9 and not v.asteroid_nodes.has(c8):
+			var cb8 := func(): cnt9["body"] = int(cnt9["body"]) + 1
+			c8.draw.connect(cb8)
+			hooks.append([c8, null, cb8])
+	# what else is drawn anew in a frame: every picture of the game but the bodies, counted by kind
+	var drawn9 := {}
+	for ci in (main.find_children("*", "CanvasItem", true, false) if not plain9 else []):
+		if ci is Celestial:
+			continue
+		var sc9 = (ci as Node).get_script()
+		var key9: String = String(sc9.resource_path).get_file() if sc9 != null and String(sc9.resource_path) != "" else "%s in %s" % [(ci as Node).get_class(), (ci as Node).get_parent().get_class()]
+		var cb9 := func(): drawn9[key9] = int(drawn9.get(key9, 0)) + 1
+		(ci as CanvasItem).draw.connect(cb9)
+		hooks.append([ci, null, cb9])
+	if not plain9:
+		_perf_split_on()
+	var msgs9: Array = []
+	var on_msg := func(a1 = null, _a2 = null, _a3 = null, _a4 = null): msgs9.append(str(a1).left(60))
+	GameState.message.connect(on_msg)
+	var nodes9 := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	print("PERF49 WARP %s: %d rocks, %d other bodies, %d nodes" % [tag, v.asteroid_nodes.size(), v.celestials.size() - v.asteroid_nodes.size(), nodes9])
+	var rows: Array = []
+	var t0 := Time.get_ticks_usec()
+	var last := t0
+	_perf_book["phys"] = 0
+	_perf_book["steps"] = 0
+	var seen := false
+	while Time.get_ticks_usec() - t0 < 90000000:
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		var b := _perf_book
+		var warping: bool = is_instance_valid(pl) and pl.in_warp()
+		rows.append([float(now - last) / 1000.0, float(b.get("phys", 0)) / 1000.0, int(b.get("steps", 0)), float(int(b.get("p1", 0)) - int(b.get("p0", 0))) / 1000.0,
+			float(int(b.get("r0", 0)) - int(b.get("p1", 0))) / 1000.0, float(int(b.get("r1", 0)) - int(b.get("r0", 0))) / 1000.0,
+			float(v.camera.zoom.x), float(pl.warp_progress()) if warping else -1.0, float(now - t0) / 1000000.0, int(v.level),
+			int(cnt9["vis"]), int(cnt9["rock"]), int(cnt9["body"]), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) - nodes9, v.ship_layer.get_child_count(),
+			_perf_split_text() + ("  said: " + " / ".join(PackedStringArray(msgs9)) if not msgs9.is_empty() else ""), str(drawn9)])
+		msgs9.clear()
+		drawn9.clear()
+		nodes9 = int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+		cnt9["vis"] = 0
+		cnt9["rock"] = 0
+		cnt9["body"] = 0
+		last = now
+		b["phys"] = 0
+		b["steps"] = 0
+		if warping:
+			seen = true
+		elif seen and float(now - t0) > 2000000.0:
+			if not b.has("warp_end"):
+				b["warp_end"] = now
+			elif now - int(b["warp_end"]) > 300000 and not b.has("warp_shot") and OS.get_environment("PERF49_SHOTS") != "":
+				b["warp_shot"] = true                     # (the trail of sparks behind the ship, a moment after the warp)
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_warp_end_%s.png" % tag)
+			elif now - int(b["warp_end"]) > 2000000:
+				break
+	_perf_book.erase("warp_end")
+	_perf_book.erase("warp_shot")
+	_perf_split_off()
+	GameState.message.disconnect(on_msg)
+	for hk in hooks:
+		if is_instance_valid(hk[0]):
+			if hk[1] != null:
+				hk[0].visibility_changed.disconnect(hk[1])
+			hk[0].draw.disconnect(hk[2])
+	var over := {4: 0, 8: 0, 16: 0, 33: 0}
+	var all := 0.0
+	for r in rows:
+		all += float(r[0])
+		for k in over.keys():
+			if float(r[0]) > float(k):
+				over[k] = int(over[k]) + 1
+	print("PERF49 WARP %s to %s ('%s', %.0f km): %d frames in %.1f s, a frame %.2f ms; dearer than 4 ms: %d, 8 ms: %d, 16 ms: %d, 33 ms: %d" % [
+		tag, far_id, e, far_d, rows.size(), all / 1000.0, all / maxf(float(rows.size()), 1.0), over[4], over[8], over[16], over[33]])
+	var by_cost: Array = rows.duplicate()
+	by_cost.sort_custom(func(a, b2): return float(a[0]) > float(b2[0]))
+	for i in mini(by_cost.size(), 12):
+		var r2: Array = by_cost[i]
+		print("PERF49 WARP   at %5.2f s  frame %6.2f = physics %5.2f (%d steps) + process %6.2f + drawing %6.2f + renderer %5.2f | warp %.2f | rocks shown or hidden %d, rocks drawn %d, bodies drawn %d, nodes %+d, ships %d" % [
+			r2[8], r2[0], r2[1], r2[2], r2[3], r2[4], r2[5], r2[7], r2[10], r2[11], r2[12], r2[13], r2[14]])
+		print("PERF49 WARP        its process by script: ", r2[15])
+		print("PERF49 WARP        drawn anew: ", r2[16])
+	# the course of it: a line each second
+	var sec := 0
+	var acc := [0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0]
+	for r3 in rows:
+		if int(float(r3[8])) != sec:
+			if int(acc[5]) > 0:
+				print("PERF49 WARP   second %2d: %3d frames, a frame %5.2f (worst %6.2f) = physics %5.2f + process %5.2f + drawing %5.2f + renderer %5.2f" % [
+					sec, int(acc[5]), float(acc[0]) / float(acc[5]), float(acc[6]), float(acc[1]) / float(acc[5]), float(acc[2]) / float(acc[5]), float(acc[3]) / float(acc[5]), float(acc[4]) / float(acc[5])])
+			sec = int(float(r3[8]))
+			acc = [0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0]
+		acc[0] += float(r3[0])
+		acc[1] += float(r3[1])
+		acc[2] += float(r3[3])
+		acc[3] += float(r3[4])
+		acc[4] += float(r3[5])
+		acc[5] = int(acc[5]) + 1
+		acc[6] = maxf(float(acc[6]), float(r3[0]))
+
+
+## The split screen (only when asked for, `PERF49_ONLY=split`): the same place for one player, then for two in the one
+## system (two looks at the one world, two HUDs), then with the second player in a neighbouring system (two worlds).
+func _perf_switches(tag: String) -> void:
+	SystemView.prof_eye = {}
+	GameState.prof_act = {}
+	var f0 := Engine.get_process_frames()
+	var p0 := Engine.get_physics_frames()
+	await _perf_wait(3.0)
+	var frames: float = maxf(float(Engine.get_process_frames() - f0), 1.0)
+	var steps: int = Engine.get_physics_frames() - p0
+	var pe: Dictionary = SystemView.prof_eye
+	var pa: Dictionary = GameState.prof_act
+	SystemView.prof_eye = null
+	GameState.prof_act = null
+	for pair in [["the other look", pe], ["the second player", pa]]:
+		var d: Dictionary = pair[1]
+		var keys: Array = d.keys()
+		keys.sort_custom(func(a, b): return int(d[a]) > int(d[b]))
+		var all := 0
+		for k in keys:
+			all += int(d[k])
+		print("PERF49 SWITCH %s, %s: %.1f a frame (%d frames, %d physics steps in 3 s)" % [tag, pair[0], float(all) / frames, int(frames), steps])
+		for i in mini(keys.size(), 14):
+			print("PERF49 SWITCH   %6.2f a frame  %s" % [float(d[keys[i]]) / frames, String(keys[i]).left(150)])
+
+
+func _perf_split_screen() -> void:
+	var PilotData = load("res://data/pilot.gd")
+	var v = main.view
+	main.station_panel.close()
+	if v.player != null and is_instance_valid(v.player) and v.player.is_docked():
+		Commands.execute({"type": "undock"})
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 25000:
+		await get_tree().process_frame
+		if v.player != null and is_instance_valid(v.player) and not v.player.is_docked() and String(v.player.order.get("type", "")) != "undocking":
+			break
+	main.station_panel.close()
+	v.set_level(0)
+	await _perf_wait(2.0)
+	await _perf("one player, in space")
+	var origin: int = GameState.current_system
+	var dest := -1
+	for lk in Universe.systems[origin]["links"]:
+		if dest < 0:
+			dest = int(lk)
+	GameState.new_pilot2({"name": "Mira Voss", "look": GameState.PilotArt.default_look(), "attrs": PilotData.default_attrs()})
+	Players.start_split("kbm", "pad:97")
+	var ts := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - ts < 8000 and not (v.eyes_two and v.player_of(1) != null and main.huds.size() == 2):
+		await get_tree().process_frame
+	await _perf_wait(2.0)
+	if not (v.eyes_two and main.huds.size() == 2):
+		print("PERF49 split: the game for two did not begin")
+		return
+	await _perf("two players, one system")
+	await _perf_calls("two players, one system", [
+		["view _process", v._process.bind(0.0)], ["eyes sync", v._eyes_sync], ["look step yours", v._look_step.bind(0.0)], ["look step theirs", func(): v.in_eye(1, v._look_step.bind(0.0))],
+		["look zoom yours", v._look_zoom.bind(0.0)], ["in_eye alone", func(): v.in_eye(1, func(): pass)], ["looks done", v._looks_done], ["cull step", v._cull_step.bind(0.016)],
+		["bodies", v._update_bodies], ["camera", v._update_camera.bind(0.0)], ["screen rect", v._update_screen_rect], ["hover", v._update_hover], ["interdict", v._update_interdict],
+		["audio", v._update_audio], ["hud 1 _process", main.huds[0]._process.bind(0.0)], ["hud 2 _process", main.huds[1]._process.bind(0.0)], ["main _process", main._process.bind(0.0)],
+		["main space step", main._space_step], ["main halves step", main._halves_step], ["main apart step", main._apart_step], ["act_as there and back", func():
+			GameState.act_as(1, true)
+			GameState.act_as(0, true)],
+		["ship _process", v.player._process.bind(0.0)], ["ship own turn", v.player._own_turn], ["their ship own turn", v.player_of(1)._own_turn],
+	])
+	await _perf_switches("two players, one system")
+	if OS.get_environment("PERF49_DIG") != "":
+		await _perf_dig("two players, one system")
+	if OS.get_environment("PERF49_SHOTS") != "":
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_split_one.png")
+	var f2 = GameState.active_of(1)
+	f2.fuel = float(f2.stats()["fuel_max"])
+	var went: bool = dest >= 0 and bool(main.as_pilot(1, GameState.begin_jump.bind(f2, dest)))
+	for f1a in 6:
+		await get_tree().process_frame
+	f2.transit = minf(float(f2.transit), 0.3)
+	var tw := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tw < 40000:
+		await get_tree().process_frame
+		if not f2.in_transit() and not main.in_hyperspace2 and (main.loading == null or not is_instance_valid(main.loading)) and main.view2 != null and is_instance_valid(main.view2):
+			break
+	await _perf_wait(3.0)
+	if main.view2 == null or not is_instance_valid(main.view2):
+		print("PERF49 split: the second player did not arrive in a system of their own (jumped: ", went, ")")
+		return
+	await _perf("two players, two systems")
+	await _perf_switches("two players, two systems")
+	if OS.get_environment("PERF49_DIG") != "":
+		await _perf_dig("two players, two systems")
+	if OS.get_environment("PERF49_SHOTS") != "":
+		get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_split_two.png")
+
+
+func _test_perf49(_view: SystemView) -> void:
+	_story_quiet()
+	Commands.cheats_enabled = true
+	Commands.execute({"type": "debug_god", "on": true})
+	_perf_begin()
+	var only: Array = Array(OS.get_environment("PERF49_ONLY").split(",", false))
+	var want := func(part: String) -> bool: return only.is_empty() or only.has(part)
+	var dig: bool = OS.get_environment("PERF49_DIG") != ""
+	var vs: Vector2 = get_viewport().get_visible_rect().size
+	print("PERF49 picture %d x %d, %s, %s" % [int(vs.x), int(vs.y), RenderingServer.get_video_adapter_name(), OS.get_processor_name()])
+	main.station_panel.close()
+	if want.call("space"):
+		await _perf("docked, the window closed")
+		print("PERF49 planet: '", Commands.execute({"type": "debug_planet", "planet_type": ""}), "'")
+		main.view.set_level(0)
+		await _perf_wait(2.0)
+		await _perf("space, beside a planet, combat")
+		for lv in [1, 2, 3]:
+			main.view.set_level(lv)
+			await _perf_wait(2.5)
+			await _perf("space, view %s" % String(SystemView.LEVEL_NAMES[lv]))
+			if OS.get_environment("PERF49_SHOTS") != "":
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_view_%s.png" % String(SystemView.LEVEL_NAMES[lv]).to_lower())
+		main.view.set_level(0)
+		await _perf_wait(2.5)
+		await _perf_hud("space, combat view")
+		if dig:
+			await _perf_dig("space, combat view")
+		# what the parts of the picture cost, one switched off at a time (combat view, beside the planet)
+		var v = main.view
+		var hud0 = main.hud
+		v.background.visible = false
+		await _perf("  without the sky's shader")
+		v.background.visible = true
+		for c in v.celestials:
+			if is_instance_valid(c):
+				c.visible = false
+		await _perf("  without planets and star")
+		for c2 in v.celestials:
+			if is_instance_valid(c2):
+				c2.visible = true
+		hud0.visible = false
+		await _perf("  without the HUD's picture")
+		hud0.set_process(false)
+		await _perf("  without the HUD at all")
+		hud0.set_process(true)
+		hud0.visible = true
+		v.overlay.visible = false
+		await _perf("  without the overlay")
+		v.overlay.visible = true
+	if only.has("split"):
+		await _perf_split_screen()
+	if only.has("warp"):
+		# (only when asked for: a warp takes its time)
+		print("PERF49 planet: '", Commands.execute({"type": "debug_planet", "planet_type": ""}), "'")
+		main.view.set_level(0)
+		await _perf_wait(2.0)
+		await _perf_warp("first")
+		await _perf_wait(1.0)
+		if OS.get_environment("PERF49_GATE") != "":
+			await _perf("at a gate, after the warp")
+			await _perf_dig("at a gate")
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_gate.png")
+		if OS.get_environment("PERF49_WARPCALLS") != "":
+			# (what the things done now and then cost while the ship is in a warp)
+			var far2 := ""
+			var fd2 := 0.0
+			for c9 in main.view.celestials:
+				if is_instance_valid(c9) and String(c9.kind) == "gate" and (c9.position as Vector2).distance_to(main.view.player.position) > fd2 and main.view.by_id.find_key(c9) != null:
+					fd2 = (c9.position as Vector2).distance_to(main.view.player.position)
+					far2 = String(main.view.by_id.find_key(c9))
+			Commands.execute({"type": "warp_to", "id": far2})
+			await _perf_wait(7.0)
+			print("PERF49 in a warp now: ", main.view.player.in_warp(), ", selected '", main.hud.selected_id, "'")
+			await _perf_hud("in a warp")
+			await _perf_view_calls("in a warp")
+			await _perf_wait(1.0)
+			await _perf_dig("in a warp")
+		elif OS.get_environment("PERF49_WARPONE") == "":
+			await _perf_warp("back")
+	if want.call("fight"):
+		var pre := ""
+		for k in GameData.presets.keys():
+			if String(k).contains("pirate") and pre == "":
+				pre = String(k)
+		if pre == "":
+			pre = String(GameData.presets.keys()[0])
+		for wave in [10, 20, 40]:
+			Commands.execute({"type": "debug_kill_hostiles"})
+			await _perf_wait(1.0)
+			var left: int = wave
+			while left > 0:
+				Commands.execute({"type": "debug_spawn", "preset": pre, "count": mini(left, 20)})
+				left -= 20
+			await _perf_wait(5.0)
+			await _perf("fight, %d of %s" % [wave, pre])
+		await _perf_hud("fight with 40")
+		var foe9 = null
+		var civ9 = null
+		for sh9 in main.view.ship_layer.get_children():
+			if sh9 is Ship and not sh9.dying and sh9 != main.view.player and not sh9.is_docked():
+				if sh9.faction == "pirate" and foe9 == null:
+					foe9 = sh9
+				elif sh9.faction != "pirate" and civ9 == null:
+					civ9 = sh9
+		if foe9 != null:
+			await _perf_ship("a pirate in the fight", foe9)
+		if civ9 != null and is_instance_valid(civ9):
+			await _perf_ship("a ship of the traffic (%s)" % civ9.faction, civ9)
+		await _perf_ship("your ship", main.view.player)
+		if dig:
+			await _perf_dig("fight with 40")
+		var vf = main.view
+		for sh in vf.ship_layer.get_children():
+			sh.set_physics_process(false)
+		await _perf("  the ships standing still")
+		for sh2 in vf.ship_layer.get_children():
+			sh2.set_physics_process(true)
+		vf.ship_layer.visible = false
+		await _perf("  the ships not drawn")
+		vf.ship_layer.visible = true
+		Commands.execute({"type": "debug_kill_hostiles"})
+		await _perf_wait(3.0)
+	if want.call("deck") or want.call("city"):
+		Commands.execute({"type": "debug_special", "special": "fern"})
+		await _perf_wait_loading()
+		main.station_panel.close()
+		await _perf("Centauria, docked, window closed")
+	if want.call("deck"):
+		print("PERF49 deck: '", Commands.execute({"type": "debug_deck"}), "'")
+		await _perf_wait(3.0)
+		if main.ground != null and is_instance_valid(main.ground):
+			await _perf("a station's deck, %s" % String(main.ground.level))
+			Commands.execute({"type": "debug_ground_level", "level": "commercial"})
+			await _perf_wait(3.0)
+			await _perf("a station's deck, %s" % String(main.ground.level))
+			if dig:
+				await _perf_dig("station deck, commercial")
+			main.close_deck(false)
+			await _perf_wait(1.0)
+	if want.call("city"):
+		var pel := ""
+		for mo in Universe.get_layout(Universe.special_system("fern"))["moons"]:
+			if String(mo["name"]) == "Pelagia":
+				pel = String(mo["id"])
+		print("PERF49 land: '", Commands.execute({"type": "debug_land", "body": pel, "kind": "city"}), "'")
+		var tm := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - tm < 40000:
+			await get_tree().process_frame
+			if main.ground != null and is_instance_valid(main.ground) and main.ground.input_enabled:
+				break
+		for lvl in ["hangar", "street", "tower", "alley"]:
+			if main.ground == null or not is_instance_valid(main.ground):
+				break
+			var e := String(Commands.execute({"type": "debug_ground_level", "level": lvl}))
+			await _perf_wait(3.5)
+			await _perf("a city, %s" % String(main.ground.level), e)
+			if OS.get_environment("PERF49_SHOTS") != "" and lvl == "street":
+				get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_street.png")
+			if dig and lvl in ["street", "alley"]:
+				await _perf_dig("city, %s" % lvl)
+		if main.ground != null and is_instance_valid(main.ground):
+			var g = main.ground
+			g.visible = false
+			await _perf("  the city not drawn")
+			g.visible = true
+		if OS.get_environment("PERF49_SHOTS") != "":
+			main.close_deck(false)
+			for fs in 8:
+				await get_tree().process_frame
+			main.station_panel.close()
+			for fs2 in 8:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://Claude outputs/perf49_space_after.png")
+	check(true, "perf49: a measurement, see the PERF49 lines")
 
 
 ## A look, and one check (not part of the full run: `--only=winlook`, in a window): every page of the pilot window,
